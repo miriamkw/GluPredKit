@@ -3,39 +3,10 @@ from loop_model_scoring.penalty_math import (
     get_average_glucose_penalty,
     get_glucose_penalties
 )
-#from datetime import datetime
-#import json
 import matplotlib.pyplot as plt
 import numpy as np
-#from data_science_tidepool_api_python.makedata.tidepool_api import TidepoolAPI
 
-"""
-Recreating the examples in the Loop Model Scoring documentation.
-"""
-
-"""
-# TODO: Add support for using Tidepool API in this example
-
-EMAIL = 'YOUR_TIDEPOOL_USERNAME'
-PASSWORD = 'YOUR_TIDEPOOL_PASSWORD'
-
-tp_api = TidepoolAPI(EMAIL, PASSWORD)
-tp_api.login()
-
-# Default use the data from the last 24 hours
-start_date = datetime.now() - timedelta(days=1)
-end_date = datetime.now()
-
-# Uncomment the lines below to customize days
-#start_date = datetime(2023, 2, 4)
-#end_date = datetime(2023, 2, 5) # year, month, day
-
-# All the data in json format
-user_data = tp_api.get_user_event_data(start_date, end_date)
-
-tp_api.logout()
-"""
-
+# Recreating the examples in the Loop Model Scoring documentation.
 reference_blood_glucose = 90
 true_blood_glucose = 90
 derived_blood_glucose = 140
@@ -76,33 +47,5 @@ ax.grid()
 plt.legend(loc='best')
 
 plt.show()
-
-
-
-
-# TODO (later):
-# Create a file in this repo where you can use tidepool api to calcualte penalty for a given date and time
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
