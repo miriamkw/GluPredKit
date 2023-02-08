@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Virtual environment
+loop-scoring/
+
 # Distribution / packaging
 .Python
 build/
@@ -26,6 +29,10 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Operating System Generated Files
+.DS_Store
+.idea/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -54,6 +61,9 @@ coverage.xml
 # Translations
 *.mo
 *.pot
+
+# Test Files
+tests/__pycache__/
 
 # Django stuff:
 *.log
