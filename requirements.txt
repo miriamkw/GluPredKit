@@ -1,3 +1,4 @@
 opsb-pyloopkit==0.1.0
 -e git+https://github.com/miriamkw/data-science-tidepool-api-python.git@0.1#egg=tidepool_data_science_project
 requests==2.23.0
+matplotlib==3.6.3
