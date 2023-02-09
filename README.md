@@ -42,3 +42,9 @@ Create a file named `credentials.json` in the root directory. Copy and paste the
 
 The calculations of forecasts are based on the therapy settins defined in `therapy_settings.json`.
 
+
+# Important Notes
+- Predictions are based solemnly on past data
+- For now, the default meal model is the linear one in pyloopkit, and there is no simple way of using parabolic (I plan to change it and add a PR)
+
+
