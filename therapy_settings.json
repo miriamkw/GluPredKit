@@ -1,0 +1,51 @@
+{
+    "basal_rate_schedule": [
+        {
+            "startTime": 0.0, 
+            "value": 0.8
+        },
+        {
+            "startTime": 43200.0,
+            "value": 0.8
+        }
+    ],
+    "carb_ratio_schedule": [
+        {
+            "startTime": 0.0, 
+            "value": 10.0
+        },
+        {
+            "startTime": 30600.0,
+            "value": 10.0
+        }
+    ],
+    "insulin_sensitivity_factor_schedule": [
+        {
+            "startTime": 0.0,
+            "value": 81.0
+        },
+        {
+            "startTime": 1800.0,
+            "value": 81.0
+        }
+    ],
+    "correction_range_schedule": [
+        {
+            "startTime": "0.0",
+            "value": [
+                100.0,
+                114.0
+            ]
+        }
+    ],
+    "glucose_store": {
+        "momentumDataInterval": " 900.0"
+    },
+    "maximum_basal_rate": 2.5,
+    "maximum_bolus": 12.0,
+    "insulin_action_duration": 21600.0,
+    "insulin_model": "humalogNovologAdult",
+    "carb_default_absorption_times_fast": 7200.0,
+    "carb_default_absorption_times_medium": 10800.0,
+    "carb_default_absorption_times_slow": 14400.0
+}

@@ -529,6 +529,51 @@ def remove_too_new_values(
 	return (l1, l2, l3, l4, l5)
 
 
+def remove_too_old_values(
+		sort_time,
+		list_1, list_2, list_3=None, list_4=None, list_5=None,
+		is_dose_data=False
+		):
+	""" Remove values that occur before a certain date. This function makes the
+		assumption that the date list is sorted in ascending order, and
+		that all lists (if they are not None) are the same length. The first
+		list must be the list with the times, unless is_dose_data is True,
+		in which case the second list must contain the times.
+
+	Arguments:
+	sort_time -- the datetime after which to remove values
+	"""
+	l1 = []
+	l2 = []
+	l3 = []
+	l4 = []
+	l5 = []
+
+	for i in range(0, len(list_1)):
+		# if this isn't dose data, use the first list to sort
+		if not is_dose_data and list_1[i] > sort_time:
+			l1.append(list_1[i])
+			l2.append(list_2[i])
+			if list_3:
+				l3.append(list_3[i])
+			if list_4:
+				l4.append(list_4[i])
+			if list_5:
+				l5.append(list_5[i])
+		# otherwise, use the second list to sort
+		elif is_dose_data and list_2[i] > sort_time:
+			l1.append(list_1[i])
+			l2.append(list_2[i])
+			if list_3:
+				l3.append(list_3[i])
+			if list_4:
+				l4.append(list_4[i])
+			if list_5:
+				l5.append(list_5[i])
+
+	return (l1, l2, l3, l4, l5)
+
+
 def get_values_by_date(
 		sort_time,
 		list_1, list_2, list_3=None, list_4=None, list_5=None,
@@ -574,14 +619,6 @@ def get_values_by_date(
 	return (l1, l2, l3, l4, l5)
 
 
-
-# TODO for better efficiency:
-# take settings as input, so we dont need to parse it for each prediction
-# take glucose data, bolus data, basal data and carb data as inputs so we dont repeat the sorting
-# some of this can happen in another file, that uses the tidepool api etc. like penalty_store.py
-
-
-
 def parse_json(user_data):
 	""" Sort the user data from tidepool API into lists of the different data types
 
@@ -610,11 +647,10 @@ def parse_json(user_data):
 	return (glucose_data, bolus_data, basal_data, carb_data)
 
 
-# TO DO: Add support for returning measured values in parse_report_and_run
-# This can be added to the input dict
-# Just remove the sorting to before, and make get_too_new_values to return the deleted values? requres too much refactor.. add a separate method
-
-
+def get_offset():
+	now = datetime.now()
+	utcNow = datetime.utcnow()
+	return int((now - utcNow).total_seconds())
 
 
 # Take an issue report and run it through the Loop algorithm
@@ -633,29 +669,7 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 
 	# TODO: Refactor so that this process is not repeated for each prediction
 	settings = get_settings(settings_dict)
-	
-	"""
-	# Load data
-	glucose_data = []
-	bolus_data = []
-	basal_data = []
-	carb_data = []
-
-	# Sort data types into lists
-	for data in user_data:
-	if data['type'] == 'cbg':
-		glucose_data.append(data)
-	elif data['type'] == 'bolus':
-		bolus_data.append(data)
-	elif data['type'] == 'basal':
-		basal_data.append(data)
-	elif data['type'] == 'food':
-		carb_data.append(data)
-	"""
-	now = datetime.now()
-	utcNow = datetime.utcnow()
-	offset = int((now - utcNow).total_seconds())
-	#offset = 0
+	offset = get_offset()
 
 	input_dict = {}
 	
@@ -693,7 +707,6 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 			bolus_data, 
 			basal_data,
 			offset,
-			#entry_to_add=issue_dict.get("get_normalized_dose_entries")[-1],
 			now_time=time_to_run
 		)
 	else:
@@ -849,11 +862,7 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 	input_dict["target_range_minimum_values"] = target_range_minimum_values
 	input_dict["target_range_maximum_values"] = target_range_maximum_values
 	input_dict["target_range_value_units"] = "mg/dL"
-
-	# TO DO: Add last temp basal
-	last_temp_basal = []
-
-	input_dict["last_temporary_basal"] = last_temp_basal
+	input_dict["last_temporary_basal"] = []
 
 	recommendations = update(
 		input_dict
