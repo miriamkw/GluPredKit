@@ -25,7 +25,17 @@ This repository contains an implementation of a method for scoring the loop mode
 The documentation is under construction.
 
 ### Run example script
-Run `python3 example.py` in terminal in the root directory to recreate the loop scoring plot examples used in the documentation.
+Run `<EXAMPLE_SCRIPT>.py` in terminal in the root directory to recreate the loop scoring plot examples used in the documentation.
+
+#### example_mock_data.py
+An example script that recreates the examples in the documentation of the penalty function.
+
+#### example_one_forecast.py
+An example script that calculates and plots one forecast trajectory for a given date, and calculates the penalty for the trajectory.
+
+#### example_between_dates.py
+An example script that calculates and plots the penalties for the forecasts between two given dates.
+
 
 ### Credentials for Tidepool API
 
@@ -44,7 +54,7 @@ The calculations of forecasts are based on the therapy settins defined in `thera
 
 
 # Important Notes
-- Predictions are based solemnly on past data
+- Predictions are based solemnly on past data (assuming no knowledge about future inputs)
 - For now, the default meal model is the linear one in pyloopkit, and there is no simple way of using parabolic (I plan to change it and add a PR)
 
 
