@@ -132,14 +132,14 @@ plt.show()
 
 
 # Plot the treatment decisions made using derived vs true values
-reference_blood_glucose = inputs.get("glucose_values")[-1] # 95
+#reference_blood_glucose = inputs.get("glucose_values")[-1] # 95
 true_blood_glucose = measurements[71] # 174
 derived_blood_glucose = recommendations.get("predicted_glucose_values")[72] #112
 target = 105
 
-ideal_glucose_values = get_ideal_treatment(reference_blood_glucose, target)
-derived_end_value = reference_blood_glucose + target - derived_blood_glucose
-derived_glucose_values = get_ideal_treatment(reference_blood_glucose, derived_end_value)
+ideal_glucose_values = get_ideal_treatment(true_blood_glucose, target)
+derived_end_value = true_blood_glucose + target - derived_blood_glucose
+derived_glucose_values = get_ideal_treatment(true_blood_glucose, derived_end_value)
 
 derived_penalties = get_glucose_penalties(derived_glucose_values)
 true_penalties = get_glucose_penalties(ideal_glucose_values)

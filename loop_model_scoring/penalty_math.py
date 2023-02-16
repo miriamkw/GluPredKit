@@ -35,18 +35,17 @@ def get_penalty(reference_blood_glucose, true_blood_glucose, derived_blood_gluco
 	return penalty_derived - penalty_true
 
 
-def get_ideal_treatment(blood_glucose_value, end_value):
-	""" Get the blood glucose trajectory given the ideal treatment
+def get_ideal_treatment(start_value, end_value):
+	""" Get the blood glucose trajectory for six hours given the ideal treatment 
 
 	Arguments:
-	blood_glucose_value -- the blood glucose measurement at the time of reference for a forecast
-	interval -- the interval between each blood glucose measuremen/prediction in minutes
+	start_value -- the blood glucose measurement at the beginning of a trajectory
 	end_value -- the end blood glucose in mg/dL given a treatment action that will lead to this value
 
 	Output:
 	A list of glucose_values representing the trajectory of an ideal treatment
 	"""
-	glucose_values = [blood_glucose_value]
+	glucose_values = [start_value]
 
 	# Hard coding the insulin model parameters for now
 	
@@ -65,10 +64,10 @@ def get_ideal_treatment(blood_glucose_value, end_value):
 	for i in range(n):
 		t = t + interval
 
-		if blood_glucose_value <= end_value:
-			glucose_values.append(get_glucose_from_carbs(blood_glucose_value, end_value, t))
+		if start_value <= end_value:
+			glucose_values.append(get_glucose_from_carbs(start_value, end_value, t))
 		else:
-			glucose_values.append(blood_glucose_value - (1 - percent_effect_remaining(t - delay, action_duration, peak_activity_time)) * (blood_glucose_value - end_value))
+			glucose_values.append(start_value - (1 - percent_effect_remaining(t - delay, action_duration, peak_activity_time)) * (start_value - end_value))
 
 	assert len(glucose_values) == n+1,\
 		"expected output shape to match"
