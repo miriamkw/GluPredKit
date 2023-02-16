@@ -151,7 +151,7 @@ plt.show()
 t = np.arange(-5.0*11, 365.0, 5.0)
 true_values = [inputs.get("glucose_values")[-1]] + measurements[:72]
 derived_values = recommendations.get("predicted_glucose_values")[:73]
-penalties = get_glucose_penalties_for_pairs(true_values, derived_values)
+penalties = get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type='rmse')
 
 fig, ax = plt.subplots()
 ax.scatter(t[:12+73], inputs.get("glucose_values")[-12:] + measurements[:72], color='blue', label='True')

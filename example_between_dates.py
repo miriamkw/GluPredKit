@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 
 
 # Define start- and end-date for computation of penalties
-start_date = datetime(2023, 2, 10, 12, 0)
-end_date = datetime(2023, 2, 11, 12, 0)
+start_date = datetime(2023, 2, 9, 12, 0)
+end_date = datetime(2023, 2, 10, 16, 0)
 
 
 # Load data from Tidepool API
@@ -89,7 +89,7 @@ for i in range(0, n):
 	recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
 	derived_values = recommendations.get("predicted_glucose_values")[:73]
 
-	penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values))
+	penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type='error'))
 	penalties.append(penalty)
 	penalty_dates.append(glucose_dates[i])
 
