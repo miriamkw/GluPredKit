@@ -139,7 +139,10 @@ def get_glucose_penalty_for_pair(true_blood_glucose, derived_blood_glucose, targ
 	ideal_treatment_true = get_ideal_treatment(true_blood_glucose, target)
 
 	derived_end_value = true_blood_glucose + target - derived_blood_glucose
-	ideal_treatment_derived = get_ideal_treatment(true_blood_glucose, derived_end_value)
+	if derived_end_value > 1:
+		ideal_treatment_derived = get_ideal_treatment(true_blood_glucose, derived_end_value)
+	else:
+		ideal_treatment_derived = get_ideal_treatment(true_blood_glucose, 1)
 
 	penalty_true = np.mean(get_glucose_penalties(ideal_treatment_true))
 	penalty_derived = np.mean(get_glucose_penalties(ideal_treatment_derived))
@@ -162,6 +165,7 @@ def get_glucose_penalty_bayer(blood_glucose, target=105):
 	Penalty
 	"""
 	return 32.9170208165394 * (np.log(blood_glucose/target))**2
+
 
 def get_glucose_penalty_van_herpe(blood_glucose, target=105): 
 	"""

@@ -6,7 +6,6 @@ from loop_model_scoring.penalty_math import (
     get_glucose_penalties_for_pairs,
     get_glucose_penalties
 )
-#from pyloopkit.loop_math import predict_glucose
 import json
 from loop_model_scoring.tidepool_parser import (
     get_glucose_data,
@@ -20,6 +19,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 
+"""
+This example computes a forecast for a given date (time_to_run) and the penalty for this forecasted trajectory.
+
+"""
 
 # The time to run a prediction
 # Assuming that there are available continous measurements after in the Tidepool API
@@ -55,7 +58,6 @@ settings_file = "therapy_settings.json"
 with open(settings_file, "r") as file:
     settings_dict = json.load(file)
 
-# Get loop glucose predictions
 (glucose_data, bolus_data, basal_data, carb_data) = parse_json(user_data)
 
 offset = get_offset()
