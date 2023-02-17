@@ -218,8 +218,8 @@ def get_glucose_penalty_bayer(blood_glucose, target=105):
 	Output:
 	Penalty
 	"""
-	blood_glucose = max(blood_glucose, 1)
-	return 32.9170208165394 * (np.log(blood_glucose/target))**2
+	blood_glucose = np.maximum(blood_glucose, 1)
+	return 32.9170208165394 * ((np.log(blood_glucose) - np.log(target)) ** 2)
 
 
 def get_glucose_penalty_cao(blood_glucose): 
