@@ -36,6 +36,15 @@ An example script that calculates and plots one forecast trajectory for a given 
 #### example_between_dates.py
 An example script that calculates and plots the penalties for the forecasts between two given dates.
 
+#### example_therapy_settings.py
+An example script that plots the penalty given various therapy settings in 3D. It is assumed that the therapy settings are not varying throughout the day.
+
+Example plot of results: 
+1) Carb ratios as well as a linear combination between basal rate and ISF (negatively proportionate.
+/Users/miriamkopperstadwolff/Library/CloudStorage/OneDrive-NTNU/Repositories/Python/loop-model-scoring/figures/therapy_settings_3d.png
+
+2) Using the carb ratio that provides the lowest average penalty in the last plot, we plot the penalties for different basal rates and insulin sensitivity factors.
+/Users/miriamkopperstadwolff/Library/CloudStorage/OneDrive-NTNU/Repositories/Python/loop-model-scoring/figures/basal and sensivity.png
 
 ### Credentials for Tidepool API
 

@@ -76,8 +76,6 @@ n = len(glucose_dates) - 72
 
 # Stop measuring for the last six hours
 for i in range(0, n):
-	# For my example, there should be penalties from 12 to 18, and then start again 0330.
-
 	# If the timedelta between a glucose measurement and a measurement 73 steps later is more than six hours (adding 10 minutes as margin)
 	# countinue to next iteration as it means that measurements are missing in this time period
 	if (glucose_dates[i+72] - glucose_dates[i]) > timedelta(hours=6, minutes=10):
