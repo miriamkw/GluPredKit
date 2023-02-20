@@ -48,26 +48,27 @@ def get_ideal_treatment(start_value, end_value):
 	glucose_values = [start_value]
 
 	# Hard coding the insulin model parameters for now
-	
 	action_duration = 360.0
 	peak_activity_time = 75.0
 	delay = 10.0
 	interval = 1
 
+	# The adjustment that will be made to the glucose value
+	end_value_delta = start_value - end_value
+
 	# Minutes of total trajectory
 	total_time = 360
-	n = int(360 / interval)
-	t = 0
+	n = int(total_time / interval)
 
 	# TODO: Derive explicit formulas for calculating loss for the ideal treatments
 
 	for i in range(n):
-		t = t + interval
+		t = (i + 1) * interval
 
 		if start_value <= end_value:
 			glucose_values.append(get_glucose_from_carbs(start_value, end_value, t))
 		else:
-			glucose_values.append(start_value - (1 - percent_effect_remaining(t - delay, action_duration, peak_activity_time)) * (start_value - end_value))
+			glucose_values.append(start_value - (1 - percent_effect_remaining(t - delay, action_duration, peak_activity_time)) * end_value_delta)
 
 	assert len(glucose_values) == n+1,\
 		"expected output shape to match"
@@ -88,14 +89,11 @@ def get_glucose_from_carbs(blood_glucose, target, time):
 	Output:
 	A glucose value at a given time and given an ideal amount of carbohydrates
 	"""
-	new_value = blood_glucose + (time - 10)*2
-
 	if time <= 10:
 		return blood_glucose
-	elif new_value >= target:
-		return target
-	else:
-		return min(target, new_value)
+
+	new_value = blood_glucose + (time - 10)*2
+	return min(target, new_value)
 
 
 def get_glucose_penalties_for_pairs(true_values, derived_values, target=105, penalty_type='bayer'): 

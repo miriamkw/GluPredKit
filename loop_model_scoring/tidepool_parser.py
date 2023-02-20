@@ -615,6 +615,230 @@ def get_offset():
     return int((now - utcNow).total_seconds())
 
 
+# To do
+# 1) a parse report method that prepares the input_dict with settings as well as parsing values and sorting them
+# 2) a run method that sorts out too new values and returns prediction
+
+def parse_report(glucose_data, bolus_data, basal_data, carb_data):
+    offset = get_offset()
+    input_dict = {}
+
+    if not len(glucose_data) == 0:
+        (glucose_dates, glucose_values) = get_glucose_data(
+            glucose_data,
+            offset
+        )
+        (glucose_dates, glucose_values) = sort_by_first_list(
+                glucose_dates, glucose_values
+            )[0:2]
+        input_dict["glucose_units"] = "mg/dL"
+
+    else:
+        raise RuntimeError("No glucose information found")
+
+    if not (len(bolus_data) == 0 or len(basal_data) == 0):
+        (dose_types,
+         dose_starts,
+         dose_ends,
+         dose_values
+         ) = get_insulin_data(
+            bolus_data,
+            basal_data,
+            offset
+        )
+    else:
+        warnings.warn("Warning: no insulin dose information found")
+        (dose_types,
+         dose_starts,
+         dose_ends,
+         dose_values
+         ) = ([], [], [], [])
+
+    (dose_types,
+     dose_starts,
+     dose_ends,
+     dose_values
+     ) = sort_dose_lists(
+            dose_types,
+            dose_starts,
+            dose_ends,
+            dose_values
+        )[0:4]
+    input_dict["dose_value_units"] = "U or U/hr"
+
+    if not len(carb_data) == 0:
+        (carb_dates,
+         carb_values,
+         carb_absorptions
+         ) = sort_by_first_list(
+            *get_carb_data(
+                carb_data,
+                offset,
+            )
+        )[0:3]
+    else:
+        (carb_dates,
+         carb_values,
+         carb_absorptions
+         ) = ([], [], [])
+
+    input_dict["carb_value_units"] = "g"
+
+    return input_dict, glucose_dates, glucose_values, dose_types, dose_starts, dose_ends, dose_values, carb_dates, carb_values, carb_absorptions
+
+
+def parse_settings(input_dict, settings_dict):
+    settings = get_settings(settings_dict)
+    input_dict["settings_dictionary"] = settings
+
+    if settings_dict.get(
+            "insulin_sensitivity_factor_schedule"):
+        (sensitivity_start_times,
+         sensitivity_end_times,
+         sensitivity_values
+         ) = get_sensitivities(
+            settings_dict.get(
+                "insulin_sensitivity_factor_schedule"
+            )
+        )
+    else:
+        raise RuntimeError("No insulin sensitivity information found")
+
+    (sensitivity_start_times,
+     sensitivity_end_times,
+     sensitivity_values
+     ) = sort_by_first_list(
+        sensitivity_start_times,
+        sensitivity_end_times,
+        sensitivity_values
+    )[0:3]
+
+    input_dict["sensitivity_ratio_start_times"] = sensitivity_start_times
+    input_dict["sensitivity_ratio_end_times"] = sensitivity_end_times
+    input_dict["sensitivity_ratio_values"] = sensitivity_values
+    input_dict["sensitivity_ratio_value_units"] = "mg/dL/U"
+
+    if settings_dict.get("carb_ratio_schedule"):
+        (carb_ratio_starts,
+         carb_ratio_values
+         ) = get_carb_ratios(
+            settings_dict.get("carb_ratio_schedule")
+        )
+    else:
+        raise RuntimeError("No carb ratio information found")
+    (carb_ratio_starts,
+     carb_ratio_values
+     ) = sort_by_first_list(
+        carb_ratio_starts,
+        carb_ratio_values
+    )[0:2]
+
+    input_dict["carb_ratio_start_times"] = carb_ratio_starts
+    input_dict["carb_ratio_values"] = carb_ratio_values
+    input_dict["carb_ratio_value_units"] = "g/U"
+
+    if settings_dict.get("basal_rate_schedule"):
+        (basal_rate_starts,
+         basal_rate_values,
+         basal_rate_minutes
+         ) = get_basal_schedule(
+            settings_dict.get("basal_rate_schedule")
+        )
+    else:
+        raise RuntimeError("No basal rate information found")
+    (basal_rate_starts,
+     basal_rate_minutes,
+     basal_rate_values
+     ) = sort_by_first_list(
+        basal_rate_starts,
+        basal_rate_minutes,
+        basal_rate_values
+    )[0:3]
+
+    input_dict["basal_rate_start_times"] = basal_rate_starts
+    input_dict["basal_rate_minutes"] = basal_rate_minutes
+    input_dict["basal_rate_values"] = basal_rate_values
+    input_dict["basal_rate_units"] = "U/hr"
+
+    if settings_dict.get("correction_range_schedule"):
+        (target_range_starts,
+         target_range_ends,
+         target_range_minimum_values,
+         target_range_maximum_values
+         ) = get_target_range_schedule(
+            settings_dict.get("correction_range_schedule")
+        )
+        (target_range_starts,
+         target_range_ends,
+         target_range_minimum_values,
+         target_range_maximum_values
+         ) = sort_by_first_list(
+            target_range_starts,
+            target_range_ends,
+            target_range_minimum_values,
+            target_range_maximum_values
+        )[0:4]
+    else:
+        raise RuntimeError("No target range rate information found")
+
+    input_dict["target_range_start_times"] = target_range_starts
+    input_dict["target_range_end_times"] = target_range_ends
+    input_dict["target_range_minimum_values"] = target_range_minimum_values
+    input_dict["target_range_maximum_values"] = target_range_maximum_values
+    input_dict["target_range_value_units"] = "mg/dL"
+    input_dict["last_temporary_basal"] = []
+
+    return input_dict
+
+def run_prediction(input_dict, glucose_dates, glucose_values, dose_types, dose_starts, dose_ends, dose_values, carb_dates, carb_values, carb_absorptions, time_to_run):
+
+    input_dict["time_to_calculate_at"] = time_to_run
+
+    (glucose_dates, glucose_values) = remove_too_new_values(
+        time_to_run,
+        glucose_dates,
+        glucose_values
+    )[0:2]
+    input_dict["glucose_dates"] = glucose_dates
+    input_dict["glucose_values"] = glucose_values
+
+    (dose_types,
+     dose_starts,
+     dose_ends,
+     dose_values
+     ) = remove_too_new_values(
+        time_to_run,
+        dose_types,
+        dose_starts,
+        dose_ends,
+        dose_values,
+        is_dose_data=True
+    )[0:4]
+    input_dict["dose_types"] = dose_types
+    input_dict["dose_start_times"] = dose_starts
+    input_dict["dose_end_times"] = dose_ends
+    input_dict["dose_values"] = dose_values
+    input_dict["dose_delivered_units"] = [None for i in range(len(dose_types))]
+
+    (carb_dates, carb_values, carb_absorptions) = remove_too_new_values(
+        time_to_run,
+        carb_dates,
+        carb_values,
+        carb_absorptions
+    )[0:3]
+
+    input_dict["carb_dates"] = carb_dates
+    input_dict["carb_values"] = carb_values
+    input_dict["carb_absorption_times"] = carb_absorptions
+
+    recommendations = update(
+        input_dict
+    )
+
+    return recommendations
+
+
+
 # Take an issue report and run it through the Loop algorithm
 def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=None):
     """ Get relevent information from a Loop issue report and use it to

@@ -10,7 +10,10 @@ from loop_model_scoring.tidepool_parser import (
     remove_too_old_values,
     get_offset,
     parse_json,
-    parse_report_and_run
+    #parse_report_and_run,
+    parse_settings,
+    parse_report,
+    run_prediction
 )
 from datetime import datetime, timedelta
 import numpy as np
@@ -46,16 +49,16 @@ with open(settings_file, "r") as file:
 # Get loop glucose predictions
 (glucose_data, bolus_data, basal_data, carb_data) = parse_json(user_data)
 
-offset = get_offset()
+# offset = get_offset()
 
-
-
+input_dict, glucose_dates, glucose_values, dose_types, dose_starts, dose_ends, dose_values, carb_dates, carb_values, carb_absorptions = parse_report(glucose_data, bolus_data, basal_data, carb_data)
 
 # Sort and filter out too new and too old glucose values
-(glucose_dates, glucose_values) = get_glucose_data(glucose_data, offset=offset)
-(glucose_dates, glucose_values) = sort_by_first_list(glucose_dates, glucose_values)[0:2]
 (glucose_dates, glucose_values) = remove_too_old_values(start_date, glucose_dates, glucose_values)[0:2]
 (glucose_dates, glucose_values) = remove_too_new_values(end_date + timedelta(hours=6), glucose_dates, glucose_values)[0:2]
+
+
+
 
 n = len(glucose_dates) - 72
 
@@ -120,7 +123,9 @@ for carb_ratio in carb_ratios:
             true_values = glucose_values[i:i+73]
             
             # Predict
-            recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
+            # recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
+            input_dict = parse_settings(input_dict, settings_dict)
+            recommendations = run_prediction(input_dict, glucose_dates.copy(), glucose_values.copy(), dose_types.copy(), dose_starts.copy(), dose_ends.copy(), dose_values.copy(), carb_dates.copy(), carb_values.copy(), carb_absorptions.copy(), glucose_dates[i])
             derived_values = recommendations.get("predicted_glucose_values")[:73]
 
             penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type=penalty_type))
@@ -202,7 +207,12 @@ for basal_rate in basal_rates:
             true_values = glucose_values[i:i+73]
             
             # Predict
-            recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
+            # recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
+            input_dict = parse_settings(input_dict, settings_dict)
+            recommendations = run_prediction(input_dict, glucose_dates.copy(), glucose_values.copy(), dose_types.copy(),
+                                             dose_starts.copy(), dose_ends.copy(), dose_values.copy(),
+                                             carb_dates.copy(), carb_values.copy(), carb_absorptions.copy(),
+                                             glucose_dates[i])
             derived_values = recommendations.get("predicted_glucose_values")[:73]
 
             penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type=penalty_type))
@@ -232,35 +242,10 @@ plt.show()
 """
 TODO:
 - Right now a bottleneck is runtime --> this needs to be improved
-- Create a more sophisticated process with testing and validation
+- Create a more sophisticated process with testing and validation datasets, maybe in a notebook
 - Add a stage where you look at optimization for time on day
 
 """
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
