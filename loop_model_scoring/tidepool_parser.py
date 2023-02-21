@@ -115,20 +115,13 @@ def get_carb_data(carb_data, offset=0):
     3 lists in (carb_values, carb_start_dates, carb_absorption_times)
     format
     """
-
-    start_dates = []
-    carb_values = []
-    absorption_times = []
-
-    for sample in carb_data:
-        date = parse_datetime_string(sample['time']) + timedelta(seconds=offset)
-        start_dates.append(date)
-        carb_values.append(sample['nutrition']['carbohydrate']['net'])
-        absorption_times.append(sample['payload']['com.loopkit.AbsorptionTime'] / 60)
+    start_dates = [parse_datetime_string(sample['time']) + timedelta(seconds=offset) for sample in carb_data]
+    carb_values = [sample['nutrition']['carbohydrate']['net'] for sample in carb_data]
+    absorption_times = [sample['payload']['com.loopkit.AbsorptionTime'] / 60 for sample in carb_data]
 
     assert len(start_dates) == len(carb_values) == len(absorption_times), \
         "expected input shapes to match"
-    return (start_dates, carb_values, absorption_times)
+    return start_dates, carb_values, absorption_times
 
 
 def seconds_to_time(seconds):
@@ -172,7 +165,7 @@ def get_sensitivities(data):
     assert len(start_times) == len(end_times) == len(values), \
         "expected output shape to match"
 
-    return (start_times, end_times, values)
+    return start_times, end_times, values
 
 
 def get_carb_ratios(data):
@@ -226,7 +219,7 @@ def get_basal_schedule(data):
     assert len(start_times) == len(rate_minutes) == len(values), \
         "expected output shapes to match"
 
-    return (start_times, values, rate_minutes)
+    return start_times, values, rate_minutes
 
 
 def get_target_range_schedule(data):
@@ -238,7 +231,7 @@ def get_target_range_schedule(data):
     min_values = [float(dict_.get("value")[0]) for dict_ in data]
     max_values = [float(dict_.get("value")[1]) for dict_ in data]
 
-    return (start_times, end_times, min_values, max_values)
+    return start_times, end_times, min_values, max_values
 
 
 def load_momentum_effects(data, offset=0):
@@ -253,7 +246,7 @@ def load_momentum_effects(data, offset=0):
     values = [
         float(dict_.get("quantity")) for dict_ in data
     ]
-    return (start_times, values)
+    return start_times, values
 
 
 def get_counteractions(data, offset=0):
@@ -275,7 +268,7 @@ def get_counteractions(data, offset=0):
     values = [
         float(dict_.get("value")) for dict_ in data
     ]
-    return (start_times, end_times, values)
+    return start_times, end_times, values
 
 
 def load_insulin_effects(data, offset=0):
@@ -290,7 +283,7 @@ def load_insulin_effects(data, offset=0):
     values = [
         float(dict_.get("value")) for dict_ in data
     ]
-    return (start_times, values)
+    return start_times, values
 
 
 def get_retrospective_effects(data, offset=0):
@@ -305,7 +298,7 @@ def get_retrospective_effects(data, offset=0):
     values = [
         float(dict_.get("quantity")) for dict_ in data
     ]
-    return (start_times, values)
+    return start_times, values
 
 
 def get_settings(data):
@@ -380,36 +373,6 @@ def get_settings(data):
     return settings
 
 
-def get_last_temp_basal(data, offset=0):
-    """ Load the last temporary basal from an issue report
-        "last_temp_basal" dictionary
-    """
-    if (data.get(" type") == "LoopKit.DoseType.tempBasal"
-            or data.get("type") == "LoopKit.DoseType.tempBasal"):
-        type_ = DoseType.tempbasal
-    elif (data.get(" type") == "LoopKit.DoseType.basal"
-          or data.get("type") == "LoopKit.DoseType.basal"):
-        type_ = DoseType.basal
-    else:
-        raise RuntimeError("The last temporary basal is not a basal")
-
-    return [
-        type_,
-        datetime.strptime(
-            data.get(" startDate") if data.get(" startDate") is not None
-            else data.get("startDate"),
-            "%Y-%m-%d %H:%M:%S %z"
-        ) + timedelta(seconds=offset),
-        datetime.strptime(
-            data.get(" endDate") if data.get(" endDate") is not None
-            else data.get("endDate"),
-            "%Y-%m-%d %H:%M:%S %z"
-        ) + timedelta(seconds=offset),
-        float(data.get(" value")) if data.get(" value") is not None
-        else float(data.get("value"))
-    ]
-
-
 # %% List management tools
 def sort_by_first_list(list_1, list_2, list_3=None, list_4=None, list_5=None):
     """ Sort lists that are matched index-wise, using the first list as the
@@ -443,7 +406,7 @@ def sort_by_first_list(list_1, list_2, list_3=None, list_4=None, list_5=None):
     else:
         l5 = []
 
-    return (list_1, l2, l3, l4, l5)
+    return list_1, l2, l3, l4, l5
 
 
 def remove_too_new_values(
@@ -488,7 +451,7 @@ def remove_too_new_values(
             if list_5:
                 l5.append(list_5[i])
 
-    return (l1, l2, l3, l4, l5)
+    return l1, l2, l3, l4, l5
 
 
 def remove_too_old_values(

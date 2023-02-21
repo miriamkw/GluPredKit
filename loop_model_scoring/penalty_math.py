@@ -12,28 +12,6 @@ In this document you can:
 # Add a flexible way of choosing different penalty functions
 # Add more penalty function alternatives
 
-def get_penalty(reference_blood_glucose, true_blood_glucose, derived_blood_glucose):
-	""" Get the penalty for a pair of true and derived blood glucose values
-
-	Arguments:
-	reference_blood_glucose -- reference blood glucose value for a forecast
-	true_blood_glucose -- true blood glucose value t minutes into a forecast
-	derived_blood_glucose -- predicted blood glucose value t minutes into a forecast
-
-	Output:
-	The average penalty over a pair of true and derived blood glucose
-	"""
-	target = 105
-
-	ideal_glucose_values = get_ideal_treatment(reference_blood_glucose, target)
-	derived_end_value = true_blood_glucose + target - derived_blood_glucose
-	derived_glucose_values = get_ideal_treatment(reference_blood_glucose, derived_end_value)
-
-	penalty_true = get_average_glucose_penalty(ideal_glucose_values)
-	penalty_derived = get_average_glucose_penalty(derived_glucose_values)
-
-	return penalty_derived - penalty_true
-
 
 def get_ideal_treatment(start_value, end_value):
 	""" Get the blood glucose trajectory for six hours for an ideal treatment given a start- and end-glucose value
@@ -45,32 +23,36 @@ def get_ideal_treatment(start_value, end_value):
 	Output:
 	A list of glucose_values representing the trajectory of an ideal treatment
 	"""
-	glucose_values = [start_value]
-
-	# Hard coding the insulin model parameters for now
-	action_duration = 360.0
-	peak_activity_time = 75.0
-	delay = 10.0
-	interval = 1
-
 	# The adjustment that will be made to the glucose value
-	end_value_delta = start_value - end_value
+	end_value_delta = end_value - start_value
+
+	# TODO: Derive explicit formulas for calculating loss for the ideal treatments
+	# TODO: Cache the results of this function
+	# TODO: Add vectorization to this function
+
+	return [start_value] + [x + start_value for x in get_ideal_treatment_origin(end_value_delta)]
+
+
+def get_ideal_treatment_origin(end_value_delta):
+	glucose_values = []
+	# Decrease the interval to get more accurate penalty, but slower runtime
+	interval = 5
 
 	# Minutes of total trajectory
 	total_time = 360
 	n = int(total_time / interval)
 
-	# TODO: Derive explicit formulas for calculating loss for the ideal treatments
-
 	for i in range(n):
 		t = (i + 1) * interval
 
-		if start_value <= end_value:
-			glucose_values.append(get_glucose_from_carbs(start_value, end_value, t))
+		if end_value_delta == 0:
+			glucose_values.append(0)
+		elif end_value_delta > 0:
+			glucose_values.append(get_glucose_from_carbs(0, end_value_delta, t))
 		else:
-			glucose_values.append(start_value - (1 - percent_effect_remaining(t - delay, action_duration, peak_activity_time)) * end_value_delta)
+			glucose_values.append((1 - percent_effect_remaining(t - 10.0, 360.0, 75.0)) * end_value_delta)
 
-	assert len(glucose_values) == n+1,\
+	assert len(glucose_values) == n,\
 		"expected output shape to match"
 
 	return glucose_values

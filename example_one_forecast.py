@@ -116,7 +116,7 @@ derived_glucose_values = get_ideal_treatment(true_blood_glucose, derived_end_val
 derived_penalties = get_glucose_penalties(derived_glucose_values)
 true_penalties = get_glucose_penalties(ideal_glucose_values)
 
-t = np.arange(0.0, 361.0, 1.0)
+t = np.arange(0.0, 365.0, 5.0)
 fig, ax = plt.subplots()
 ax.plot(t, derived_glucose_values, label='Derived')
 ax.plot(t, ideal_glucose_values, label='True')
