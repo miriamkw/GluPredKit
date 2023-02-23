@@ -87,7 +87,7 @@ for i in range(0, n):
 	recommendations = parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settings_dict, time_to_run=glucose_dates[i])
 	derived_values = recommendations.get("predicted_glucose_values")[:73]
 
-	penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type='error'))
+	penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type='bayer'))
 	penalties.append(penalty)
 	penalty_dates.append(glucose_dates[i])
 

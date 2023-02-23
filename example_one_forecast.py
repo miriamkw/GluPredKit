@@ -25,7 +25,7 @@ This example computes a forecast for a given date (time_to_run) and the penalty 
 """
 
 # The time to run a prediction
-# Assuming that there are available continous measurements after in the Tidepool API
+# Assuming that there are available continuous measurements after in the Tidepool API
 # Finds the last glucose value before this date
 time_to_run = datetime(2023, 2, 5, 8, 25)
 
