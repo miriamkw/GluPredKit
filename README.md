@@ -30,7 +30,7 @@ To implement your own BGP evaluation metric, create a new class that inherits fr
 
 
 
-## Error Metrics Overview {#error-metrics-overview}
+## Error Metrics Overview
 
 | Name                    | Class | Description | Weaknesses |
 |-------------------------|-------|-------------|------------|
