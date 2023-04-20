@@ -5,6 +5,10 @@ import unittest
 from metrics.base_metric import BaseMetric
 from metrics.rmse import RMSE
 from metrics.mae import MAE
+from metrics.van_herpe import VanHerpe
+from metrics.kovatchev import Kovatchev
+from metrics.cao import Cao
+from metrics.bayer import Bayer
 
 class TestMetric(unittest.TestCase):
 
@@ -30,6 +34,38 @@ class TestMetric(unittest.TestCase):
         expected_output = 2.0
         output = metric(input_data, target_data)
         self.assertAlmostEqual(output, expected_output)
+
+    def test_van_herpe_metric(self):
+        metric = VanHerpe()
+        input_data = [90]
+        target_data = [140]
+        expected_output = 34.675294
+        output = metric(input_data, target_data)
+        self.assertAlmostEqual(output, expected_output, delta=0.0001)
+
+    def test_kovatchev_metric(self):
+        metric = Kovatchev()
+        input_data = [90]
+        target_data = [140]
+        expected_output =  10.169543
+        output = metric(input_data, target_data)
+        self.assertAlmostEqual(output, expected_output, delta=0.0001)
+    
+    def test_cao_metric(self):
+        metric = Cao()
+        input_data = [90]
+        target_data = [140]
+        expected_output = 40.02489
+        output = metric(input_data, target_data)
+        self.assertAlmostEqual(output, expected_output, delta=0.0001)
+
+    def test_bayer_metric(self):
+        metric = Bayer()
+        input_data = [90]
+        target_data = [140]
+        expected_output = 7.71737
+        output = metric(input_data, target_data)
+        self.assertAlmostEqual(output, expected_output, delta=0.0001)
 
 if __name__ == '__main__':
     unittest.main()
