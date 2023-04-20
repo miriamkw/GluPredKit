@@ -1,14 +1,12 @@
 # Blood Glucose Prediction Evaluation
 
-This repository aims to be a framework to train, test and evaluate different blood glucose prediction models. 
-
-The following features are provided:
+This repository provides a framework for training, testing, and evaluating blood glucose prediction (BGP) models. The following features are provided:
 * Fetch user data from Tidepool (more data sources might be implemented in future versions).
-* Provide examples of blood glucose prediction (BGP) models in `loop_model_scoring/models`
-* Provide a base class for BGP models where users can implement their own prediction models
-* Provide examples of BGP evaluation metrics in `loop_model_scoring/metrics`
-* Provide a base class for BGP evaluation metrics where users can implement their own evaluation metrics
-* Provide graphic visualization alternatives of the performance of BGP
+* Examples of BGP models in `loop_model_scoring/models`.
+* Base class for BGP models where users can implement their own prediction models.
+* Examples of BGP evaluation metrics in `loop_model_scoring/metrics`.
+* Base class for BGP evaluation metrics where users can implement their own evaluation metrics.
+* Graphic visualization alternatives of the performance of BGP.
 
 ## Content (to do: create smart links)
 * Prerequisites
@@ -18,69 +16,30 @@ The following features are provided:
   * Running examples
   * Implementing BGP models
   * Implementing BGP evaluation metrics
+* [Error Metrics Overview](#error-metrics-overview)
 * Disclaimers
 
 
 
-
-
-# (OLD!) Loop Model Scoring
-This repository contains an implementation of a method for scoring the loop model and treatment decisions, as proposed by Damon Bayer in [this documentation](https://docs.google.com/document/d/14AJ9u2oGJiiJU1cWVDf_rC_WdJc0oOj1uIkXutOovQU/edit#).
-
-
-## Prerequisites
-
-- Python 3.x
-- Virtual environment tool
-
-
-## Setup
-
-1. Create a virtual environment by running the following command:
-`python -m venv loop-scoring`
-
-2. Activate the virtual environment by running the following command:
-`source loop-scoring/bin/activate`
-
-3. Install the required packages by running the following command:
-`pip install -r requirements.txt`
-
-
 ## Usage
 
-The documentation is under construction.
+### Implementing BGP Models
 
-### Run example script
-Run `<EXAMPLE_SCRIPT>.py` in terminal in the root directory to recreate the loop scoring plot examples used in the documentation.
-
-#### example_mock_data.py
-An example script that recreates the examples in the documentation of the penalty function.
-
-#### example_one_forecast.py
-An example script that calculates and plots one forecast trajectory for a given date, and calculates the penalty for the trajectory.
-
-#### example_between_dates.py
-An example script that calculates and plots the penalties for the forecasts between two given dates.
+### Implementing BGP Evaluation Metrics
+To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `loop_model_scoring/metrics/base_metric.py`. Your new class should implement the evaluate method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
 
 
-### Credentials for Tidepool API
 
-Create a file named `credentials.json` in the root directory. Copy and paste the following information and adjust the information with your credentials:
+## Error Metrics Overview {#error-metrics-overview}
 
-`{
-	"tidepool_api": {
-		"email": "YOUR_TIDEPOOL_USERNAME",
-		"password": "YOUR_TIDEPOOL_PASSWORD"
-	} 
-}`
-
-### Therapy settings
-
-The calculations of forecasts are based on the therapy settins defined in `therapy_settings.json`.
+| Name                    | Class | Description | Weaknesses |
+|-------------------------|-------|-------------|------------|
+| Root Mean Squared Error | RMSE  |             |            | 
+| Mean Absolute Error     | 27    |             |            |
+| Error                   | 45    |             |            |
 
 
-# Important Notes
-- Predictions are based solemnly on past data (assuming no knowledge about future inputs)
-- For now, the default meal model is the linear one in pyloopkit, and there is no simple way of using parabolic (I plan to change it and add a PR)
+
+
 
 
