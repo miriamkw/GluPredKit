@@ -6,6 +6,7 @@ from loop_model_scoring.penalty_math import (
     get_glucose_penalties_for_pairs,
     get_glucose_penalties
 )
+import multiprocessing
 import json
 from loop_model_scoring.tidepool_parser import (
     get_glucose_data,
@@ -22,8 +23,8 @@ import matplotlib.pyplot as plt
 
 
 # Define start- and end-date for computation of penalties
-start_date = datetime(2023, 2, 9, 12, 0)
-end_date = datetime(2023, 2, 10, 16, 0)
+start_date = datetime(2023, 2, 1, 12, 0)
+end_date = datetime(2023, 2, 10, 12, 0)
 
 
 # Load data from Tidepool API
@@ -69,6 +70,10 @@ plt.legend(loc='best')
 plt.show()
 
 
+# Ideas:
+# concurrency
+#
+
 # Plot penalties and dates
 penalty_dates = []
 penalties = []
@@ -90,6 +95,7 @@ for i in range(0, n):
 	penalty = np.mean(get_glucose_penalties_for_pairs(true_values, derived_values, penalty_type='bayer'))
 	penalties.append(penalty)
 	penalty_dates.append(glucose_dates[i])
+
 
 fig, ax = plt.subplots()
 ax.scatter(penalty_dates, penalties, color='blue', label='Penalty')

@@ -64,19 +64,9 @@ def get_insulin_data(
         ) for _ in range(len(bolus_data))
     ]
 
-    values = []
-
     start_dates = [parse_datetime_string(sample['time']) + timedelta(seconds=offset) for sample in bolus_data]
     end_dates = start_dates.copy()
-
-    for sample in bolus_data:
-        value = sample['normal']
-        date = parse_datetime_string(sample['time']) + timedelta(seconds=offset)
-
-        # For bolus doses end date is not recorded in the Tidepool API
-        # start_dates.append(date)
-        # end_dates.append(date)
-        values.append(value)
+    values = [sample['normal'] for sample in bolus_data]
 
     for sample in basal_data:
         # Basal values are stored as U/h
