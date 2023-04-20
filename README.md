@@ -8,7 +8,7 @@ This repository provides a framework for training, testing, and evaluating blood
 * Base class for BGP evaluation metrics where users can implement their own evaluation metrics.
 * Graphic visualization alternatives of the performance of BGP.
 
-## Content (to do: create smart links)
+## Content
 * [Setup](#setup)
 * [Usage](#usage)
   * [Command line interface](#command-line-interface)
@@ -33,7 +33,7 @@ This repository provides a framework for training, testing, and evaluating blood
 ### Implementing BGP Models
 
 ### Implementing BGP Evaluation Metrics
-To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `loop_model_scoring/metrics/base_metric.py`. Your new class should implement the evaluate method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
+To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
 
 ### Testing
 To run the tests, write `python tests/test_all.py` in the terminal.
