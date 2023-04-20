@@ -29,8 +29,10 @@ def get_penalty(reference_blood_glucose, true_blood_glucose, derived_blood_gluco
 	derived_end_value = true_blood_glucose + target - derived_blood_glucose
 	derived_glucose_values = get_ideal_treatment(reference_blood_glucose, derived_end_value)
 
-	penalty_true = get_average_glucose_penalty(ideal_glucose_values)
-	penalty_derived = get_average_glucose_penalty(derived_glucose_values)
+	#penalty_true = get_average_glucose_penalty(ideal_glucose_values)
+	#penalty_derived = get_average_glucose_penalty(derived_glucose_values)
+	penalty_true = np.mean(ideal_glucose_values)
+	penalty_derived = np.mean(derived_glucose_values)
 
 	return penalty_derived - penalty_true
 

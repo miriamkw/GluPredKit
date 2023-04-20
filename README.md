@@ -16,10 +16,14 @@ This repository provides a framework for training, testing, and evaluating blood
   * Running examples
   * Implementing BGP models
   * Implementing BGP evaluation metrics
+  * Testing
 * [Error Metrics Overview](#error-metrics-overview)
 * Disclaimers
 
-
+## Setup
+1. Create a virtual environment by running the following command: python -m venv bgp-evaluation 
+2. Activate the virtual environment by running the following command: source bgp-evaluation/bin/activate 
+3. Install the required packages by running the following command: pip install -r requirements.txt
 
 ## Usage
 
@@ -28,14 +32,15 @@ This repository provides a framework for training, testing, and evaluating blood
 ### Implementing BGP Evaluation Metrics
 To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `loop_model_scoring/metrics/base_metric.py`. Your new class should implement the evaluate method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
 
-
+### Testing
+To run the tests, write `python tests/test_all.py` in the terminal.
 
 ## Error Metrics Overview
 
 | Name                    | Class | Description | Weaknesses |
 |-------------------------|-------|-------------|------------|
 | Root Mean Squared Error | RMSE  |             |            | 
-| Mean Absolute Error     | 27    |             |            |
+| Mean Absolute Error     | MAE   |             |            |
 | Error                   | 45    |             |            |
 
 

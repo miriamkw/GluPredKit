@@ -1,13 +1,13 @@
 from data_science_tidepool_api_python.makedata.tidepool_api import TidepoolAPI
 from pyloopkit.generate_graphs import plot_loop_inspired_glucose_graph
 from pyloopkit.loop_math import predict_glucose
-from loop_model_scoring.penalty_math import (
+from src.penalty_math import (
     get_ideal_treatment,
     get_glucose_penalties_for_pairs,
     get_glucose_penalties
 )
 import json
-from loop_model_scoring.tidepool_parser import (
+from src.tidepool_parser import (
     get_glucose_data,
     sort_by_first_list,
     remove_too_new_values,

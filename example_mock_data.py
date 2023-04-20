@@ -1,6 +1,5 @@
-from loop_model_scoring.penalty_math import (
+from src.penalty_math import (
     get_ideal_treatment,
-    get_average_glucose_penalty,
     get_glucose_penalties
 )
 import matplotlib.pyplot as plt
@@ -29,7 +28,6 @@ ax.grid()
 plt.legend(loc='best')
 
 plt.show()
-
 
 # Plot the penalty of simulated true blood glucose traces
 derived_penalties = get_glucose_penalties(derived_glucose_values)
