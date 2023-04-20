@@ -37,11 +37,11 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 
 ## Error Metrics Overview
 
-| Name                    | Class | Description | Weaknesses |
-|-------------------------|-------|-------------|------------|
-| Root Mean Squared Error | RMSE  |             |            | 
-| Mean Absolute Error     | MAE   |             |            |
-| Error                   | 45    |             |            |
+| Name                    | Class | Description                                                            |
+|-------------------------|-------|------------------------------------------------------------------------|
+| Root Mean Squared Error | RMSE  | Returns a value between [0, inf]. Treats high and low values equally.  | 
+| Mean Absolute Error     | MAE   | Returns a value between [0, inf]. Treats high and low values equally.  | 
+| Error                   | 45    |                                                                        | 
 
 
 
