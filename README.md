@@ -1,4 +1,30 @@
-# Loop Model Scoring
+# Blood Glucose Prediction Evaluation
+
+This repository aims to be a framework to train, test and evaluate different blood glucose prediction models. 
+
+The following features are provided:
+* Fetch user data from Tidepool (more data sources might be implemented in future versions).
+* Provide examples of blood glucose prediction (BGP) models in `loop_model_scoring/models`
+* Provide a base class for BGP models where users can implement their own prediction models
+* Provide examples of BGP evaluation metrics in `loop_model_scoring/metrics`
+* Provide a base class for BGP evaluation metrics where users can implement their own evaluation metrics
+* Provide graphic visualization alternatives of the performance of BGP
+
+## Content (to do: create smart links)
+* Prerequisites
+* Setup
+* Usage
+  * Command line interface
+  * Running examples
+  * Implementing BGP models
+  * Implementing BGP evaluation metrics
+* Disclaimers
+
+
+
+
+
+# (OLD!) Loop Model Scoring
 This repository contains an implementation of a method for scoring the loop model and treatment decisions, as proposed by Damon Bayer in [this documentation](https://docs.google.com/document/d/14AJ9u2oGJiiJU1cWVDf_rC_WdJc0oOj1uIkXutOovQU/edit#).
 
 
