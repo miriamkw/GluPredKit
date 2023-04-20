@@ -9,6 +9,7 @@ from metrics.van_herpe import VanHerpe
 from metrics.kovatchev import Kovatchev
 from metrics.cao import Cao
 from metrics.bayer import Bayer
+from metrics.pcc import PCC
 
 class TestMetric(unittest.TestCase):
 
@@ -25,6 +26,15 @@ class TestMetric(unittest.TestCase):
         expected_output = 2.449489742783178
         output = metric(input_data, target_data)
         self.assertAlmostEqual(output, expected_output)
+
+    def test_pcc_metric(self):
+        y_true = [1, 2, 3, 4, 5]
+        y_pred = [1, 3, 5, 7, 9]
+        expected_output = 1.0
+        metric = PCC()
+        output = metric(y_true, y_pred)
+        self.assertAlmostEqual(output, expected_output)
+
 
     def test_mae_metric(self):
         # Test MAE using a known input and output

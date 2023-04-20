@@ -37,14 +37,17 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 
 ## Error Metrics Overview
 
-| Name                    | Class     | Description                                                            |
-|-------------------------|-----------|------------------------------------------------------------------------|
-| Root Mean Squared Error | RMSE      | Returns a value between [0, inf]. Treats high and low values equally.  | 
-| Mean Absolute Error     | MAE       | Returns a value between [0, inf]. Treats high and low values equally.  | 
-| Bayer                   | Bayer     |                                                                        | 
-| Cao                     | Cao       |                                                                        | 
-| Kovatchev               | Kovatchev |                                                                        | 
-| Van Herpe               | VanHerpe  |                                                                        | 
-
+| Name                                            | Class     | Description                                                                                                                                                                                                                                                        |
+|-------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Root Mean Squared Error                         | RMSE      | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
+| Mean Absolute Error                             | MAE       | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
+| Bayer                                           | Bayer     | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
+| Cao                                             | Cao       | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
+| Kovatchev                                       | Kovatchev | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
+| Van Herpe                                       | VanHerpe  | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
+| Temporal Gain (to do!)                          | TG        | Takes prediction horizon into account. The amount of average time gained for early detection of a potential hypo/hyper glycemia event using the model (https://ieeexplore.ieee.org/document/6157604). The higher value, the better.                                | 
+| Energy of the second-order differences (to do!) | ESOD      | Takes prediction horizon into account. Reflects the presence of spurious oscillations in the predicted time series, and thus the risk of generating false hypo/hyper alerts. The closer to 1, the better (https://ieeexplore.ieee.org/document/6157604).           | 
+| J (to do!)                                      | J         | Takes prediction horizon into account. Simultaneously takes into account two merit criteria (TG and ESOD), the regularity of the predicted profile and the time gained thanks to prediction (https://ieeexplore.ieee.org/document/6157604). The lower, the better. | 
+| Pearson's Correlation Coefficient (to do!)      | PCC       | a measure of the linear relationship between two variables X and Y, giving a value between -1 and +1. A value of +1 indicates a perfect positive correlation, 0 indicates no correlation, and -1 indicates a perfect negative correlation.                         | 
 
 
