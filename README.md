@@ -9,23 +9,26 @@ This repository provides a framework for training, testing, and evaluating blood
 * Graphic visualization alternatives of the performance of BGP.
 
 ## Content (to do: create smart links)
-* Prerequisites
-* Setup
-* Usage
-  * Command line interface
-  * Running examples
-  * Implementing BGP models
-  * Implementing BGP evaluation metrics
-  * Testing
+* [Setup](#setup)
+* [Usage](#usage)
+  * [Command line interface](#command-line-interface)
+  * [Running examples](#running-examples)
+  * [Implementing BGP models](#implementing-bgp-models)
+  * [Implementing BGP evaluation metrics](#implementing-bgp-evaluation-metrics)
+  * [Testing](#testing)
 * [Error Metrics Overview](#error-metrics-overview)
-* Disclaimers
+* [Disclaimers](#disclaimers)
 
 ## Setup
-1. Create a virtual environment by running the following command: python -m venv bgp-evaluation 
-2. Activate the virtual environment by running the following command: source bgp-evaluation/bin/activate 
-3. Install the required packages by running the following command: pip install -r requirements.txt
+1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation`.
+2. Activate the virtual environment by running the following command: `source bgp-evaluation/bin/activate`.
+3. Install the required packages by running the following command: `pip install -r requirements.txt`.
 
 ## Usage
+
+### Command line interface
+
+### Running examples
 
 ### Implementing BGP Models
 
