@@ -31,6 +31,48 @@ This repository provides a framework for training, testing, and evaluating blood
 ### Running examples
 
 ### Implementing BGP Models
+To implement your own BGP model, create a new class that inherits from the BaseModel class in `src/models/base_model.py`. 
+
+The `fit` and `predict` methods in the model takes some dataframes as inputs. These dataframes can be custom made or retrieved from real user data using one of the parsers in `src/parsers/`.
+
+The four dataframe inputs represent blood glucose measurements, bolus doses of insulin, basal rate deliveries of insulin and carbohydrate intakes.
+
+In the following tables are the columns and some example data for each one of the dataframes:
+
+Blood glucose measurements (`df_glucose`):
+
+| time                 | units  | value   | device_name |
+|----------------------|--------|---------|-------------|
+| 2023-02-09T23:57:00Z | mmol/L | 8.43714 | Dexcom G6   |
+| 2023-02-09T23:51:59Z | mmol/L | 8.27061 | Dexcom G6   |
+| 2023-02-09T23:46:59Z | mmol/L | 8.21511 | Dexcom G6   |
+
+Bolus doses of insulin (`df_bolus`):
+
+| time                 | dose[IU] | device_name  |
+|----------------------|----------|--------------|
+| 2023-02-09T23:57:00Z | 1        | Omnipod-Dash |
+| 2023-02-09T23:51:59Z | 2.5      | Omnipod-Dash |
+| 2023-02-09T23:46:59Z | 2.1      | Omnipod-Dash |
+
+
+Basal rates of insulin (`df_basal`):
+
+| time                 | duration[ms] | rate[IU] | device_name | scheduled_basal | programmed_basal |
+|----------------------|--------------|----------|-------------|-----------------|------------------|
+| 2023-02-09T23:57:00Z | 4505492      | 0.759073 | Dexcom G6   | 0.75 IU/hr      | 0.75 IU/hr       |
+| 2023-02-09T23:51:59Z | 133717       | 0.0      | Dexcom G6   | 0.75 IU/hr      | 0.0 IU/hr        |
+| 2023-02-09T23:46:59Z | 1198603      | 0.0      | Dexcom G6   | 0.75 IU/hr      | 0.0 IU/hr        |
+
+Carbohydrate intakes (`df_carbs`):
+
+| time                 | units  | value | absorption_time\[s] |
+|----------------------|--------|-------|---------------------|
+| 2023-02-09T23:57:00Z | grams  | 30    | 10800               |
+| 2023-02-09T23:51:59Z | grams  | 50    | 10800               |
+| 2023-02-09T23:46:59Z | grams  | 45    | 10800               |
+
+
 
 ### Implementing BGP Evaluation Metrics
 To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
@@ -53,4 +95,6 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 | J (to do!)                                      | J         | Takes prediction horizon into account. Simultaneously takes into account two merit criteria (TG and ESOD), the regularity of the predicted profile and the time gained thanks to prediction (https://ieeexplore.ieee.org/document/6157604). The lower, the better. | 
 | Pearson's Correlation Coefficient               | PCC       | a measure of the linear relationship between two variables X and Y, giving a value between -1 and +1. A value of +1 indicates a perfect positive correlation, 0 indicates no correlation, and -1 indicates a perfect negative correlation.                         | 
 
-
+## Disclaimers
+* Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
+* Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
