@@ -7,6 +7,7 @@ from typing import List
 
 class LinearRegressor(BaseModel):
     def __init__(self, output_offsets: List[int] = None):
+        # TODO: Implement support for several prediction horizons
         if output_offsets is None:
             output_offsets = list(range(5, 365, 5)) # default offsets
         self.output_offsets = output_offsets

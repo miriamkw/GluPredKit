@@ -864,6 +864,8 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 	input_dict["target_range_value_units"] = "mg/dL"
 	input_dict["last_temporary_basal"] = []
 
+	print(input_dict)
+
 	recommendations = update(
 		input_dict
 		)
