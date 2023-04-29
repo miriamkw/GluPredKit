@@ -1,15 +1,12 @@
-import sys
-sys.path.insert(0, './src')
-
 import unittest
-from metrics.base_metric import BaseMetric
-from metrics.rmse import RMSE
-from metrics.mae import MAE
-from metrics.van_herpe import VanHerpe
-from metrics.kovatchev import Kovatchev
-from metrics.cao import Cao
-from metrics.bayer import Bayer
-from metrics.pcc import PCC
+from src.metrics.base_metric import BaseMetric
+from src.metrics.rmse import RMSE
+from src.metrics.mae import MAE
+from src.metrics.van_herpe import VanHerpe
+from src.metrics.kovatchev import Kovatchev
+from src.metrics.cao import Cao
+from src.metrics.bayer import Bayer
+from src.metrics.pcc import PCC
 
 class TestMetric(unittest.TestCase):
 

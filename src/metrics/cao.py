@@ -1,6 +1,5 @@
-from metrics.base_metric import BaseMetric
-from metrics.helper_functions import get_average_glucose_penalty_for_pairs
-import numpy as np
+from src.metrics.base_metric import BaseMetric
+from src.metrics.helper_functions import get_average_glucose_penalty_for_pairs
 
 class Cao(BaseMetric):
     def __init__(self, is_bounded=False):

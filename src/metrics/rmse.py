@@ -1,4 +1,4 @@
-from metrics.base_metric import BaseMetric
+from src.metrics.base_metric import BaseMetric
 import numpy as np
 
 class RMSE(BaseMetric):

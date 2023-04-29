@@ -2,7 +2,7 @@
 The tidepool parser uses tidepool API to fetch some data using user credentials
 and return the data in a format that can be used as input to the blood glucose prediction models.
 """
-from data_science_tidepool_api_python.makedata.tidepool_api import TidepoolAPI
+from tidepool_data_science_project.makedata.tidepool_api import TidepoolAPI
 from typing import List, Dict
 from datetime import datetime, timedelta
 import pandas as pd
@@ -69,8 +69,8 @@ def parse_json(user_data):
             basal_data.append(data)
         elif data['type'] == 'food':
             carb_data.append(data)
-        elif data['physicalActivity']:
-            print('Physical activity type is not yet supported. ')
+        #elif data['physicalActivity']:
+        #    print('Physical activity type is not yet supported. ')
         else:
             print('Unknown type is not yet supported: ', data['type'])
 

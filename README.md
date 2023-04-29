@@ -98,3 +98,4 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 ## Disclaimers
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
 * Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
+* Metrics assumes mg/dL for the input.
