@@ -84,11 +84,9 @@ class LoopModel(BaseModel):
         return glucose_dates, glucose_values
 
     def get_insulin_data(self, df_bolus, df_basal):
-        # Is sorting is required?
+        # TODO: Insulin doses need to be sorted after merge of bolus doses and basal rates
         df_bolus = df_bolus.sort_values(by='time', ascending=True).reset_index(drop=True)
         df_basal = df_basal.sort_values(by='time', ascending=True).reset_index(drop=True)
-
-        # TODO: Insulin doses need to be sorted after merge of bolus doses and basal rates
 
         dose_types_bolus = [DoseType.from_str("bolus") for _ in df_bolus['dose[IU]']]
         dose_types_basal = df_basal.delivery_type.apply(
