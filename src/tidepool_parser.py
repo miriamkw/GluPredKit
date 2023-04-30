@@ -716,7 +716,7 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 		 dose_ends,
 		 dose_values
 		 ) = ([], [], [], [])
-
+	"""
 	(dose_types,
 	 dose_starts,
 	 dose_ends,
@@ -731,6 +731,8 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 		 )[0:4],
 		 is_dose_data=True
 	)[0:4]
+	"""
+
 	input_dict["dose_types"] = dose_types
 	input_dict["dose_start_times"] = dose_starts
 	input_dict["dose_end_times"] = dose_ends
@@ -748,12 +750,14 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 					 offset,
 				 )
 		)[0:3]
+		"""
 		(carb_dates, carb_values, carb_absorptions) = remove_too_new_values(
 			time_to_run,
 			carb_dates,
 			carb_values,
 			carb_absorptions
 		)[0:3]
+		"""
 	else:
 		(carb_dates,
 		 carb_values,
@@ -864,10 +868,23 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 	input_dict["target_range_value_units"] = "mg/dL"
 	input_dict["last_temporary_basal"] = []
 
-	print(input_dict)
+	#print(input_dict)
+	print(input_dict["time_to_calculate_at"])
+	print(input_dict["glucose_dates"])
+	print(input_dict["glucose_values"])
 
 	recommendations = update(
 		input_dict
 		)
+
+	print("OUTPUT")
+	print("N predictions: ", len(recommendations.get("predicted_glucose_values")))
+	print(recommendations.get("predicted_glucose_values"))
+	print(recommendations.get("predicted_glucose_dates"))
+	print("Prediction date: ", input_dict["time_to_calculate_at"])
+
+	#inputs = recommendations.get("input_data")
+	#print(inputs.get("glucose_values")[:12])
+	#print(inputs.get("glucose_dates")[:12])
 
 	return recommendations

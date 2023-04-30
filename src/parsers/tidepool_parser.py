@@ -26,13 +26,13 @@ def fetch_tidepool_data(username: str, password: str, start_date: datetime, end_
         df_glucose = pd.json_normalize(glucose_data)[['time', 'units', 'value', 'origin.payload.sourceRevision.source.name']]
         df_bolus = pd.json_normalize(bolus_data)[['time', 'normal', 'origin.payload.device.name']]
         df_basal = pd.json_normalize(basal_data)[['time', 'duration', 'rate', 'origin.payload.device.name', 'payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate',
-                                                  'payload.com.loopkit.InsulinKit.MetadataKeyProgrammedTempBasalRate']]
+                                                  'payload.com.loopkit.InsulinKit.MetadataKeyProgrammedTempBasalRate', 'deliveryType']]
         df_carbs = pd.json_normalize(carb_data)[['time','nutrition.carbohydrate.units','nutrition.carbohydrate.net', 'payload.com.loopkit.AbsorptionTime']]
 
         # Rename columns (add units if its not obvious)
         df_glucose.rename(columns={"origin.payload.sourceRevision.source.name": "device_name"}, inplace=True)
         df_bolus.rename(columns={"normal": "dose[IU]", "origin.payload.device.name": "device_name"}, inplace=True)
-        df_basal.rename(columns={"duration": "duration[ms]", "rate": "rate[IU]", "origin.payload.device.name": "device_name", "payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate": "scheduled_basal", "payload.com.loopkit.InsulinKit.MetadataKeyProgrammedTempBasalRate": "programmed_basal"}, inplace=True)
+        df_basal.rename(columns={"duration": "duration[ms]", "rate": "rate[IU]", "origin.payload.device.name": "device_name", "payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate": "scheduled_basal", "payload.com.loopkit.InsulinKit.MetadataKeyProgrammedTempBasalRate": "programmed_basal", "deliveryType": "delivery_type"}, inplace=True)
         df_carbs.rename(columns={"nutrition.carbohydrate.units": "units", "nutrition.carbohydrate.net": "value", "payload.com.loopkit.AbsorptionTime": "absorption_time[s]"}, inplace=True)
 
         # Convert time to datetime object

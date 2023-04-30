@@ -87,7 +87,7 @@ ax.scatter(t[:12 + 73], inputs.get("glucose_values")[-12:] + measurements[:72], 
 ax.plot(t[-73:], recommendations.get("predicted_glucose_values")[:73], label='Predicted', linestyle='--',
         color='orange')
 # ax.plot(t[-71:-7], carb_predicted_glucose_values[:73], label='Carbs', linestyle = '--')
-ax.plot(t[-73:], insulin_predicted_glucose_values[:73], label='Insulin', linestyle='--')
+#ax.plot(t[-73:], insulin_predicted_glucose_values[:73], label='Insulin', linestyle='--')
 
 ax.set(xlabel='Time (minutes)', ylabel='Blood Glucose (mg/dL)',
        title='Measured vs one trajectory of predicted values')
