@@ -24,10 +24,6 @@ class LoopModel(BaseModel):
 
         input_dict = self.get_input_dict()
 
-        glucose_dates, glucose_values = self.get_glucose_data(df_glucose)
-        input_dict["glucose_dates"] = glucose_dates
-        input_dict["glucose_values"] = glucose_values
-
         dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus, df_basal)
         input_dict["dose_types"] = dose_types
         input_dict["dose_start_times"] = start_times
@@ -41,50 +37,50 @@ class LoopModel(BaseModel):
         input_dict["carb_absorption_times"] = carb_absorption_times
 
         history_length = 6
-        n_predictions = len(glucose_values) - 12*6 - history_length
+        n_predictions = df_glucose.shape[0] - 12*6 - history_length
 
         if n_predictions <= 0:
             print("Not enough data to predict.")
             return
 
-        time_to_calculate = df_glucose["time"][6]
-        input_dict["time_to_calculate_at"] = time_to_calculate
-
-        # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
-        df_glucose = df_glucose[df_glucose['time'] < time_to_calculate]
-
-        # For each glucose measurement in data, get a new prediction (input_dict['time_to_calculate_at': <SOME DATE>])
-        # Skip iteration if there is not enough predictions
-        # For now we do it simple: First prediction after 6 measurements, and last when we have 12*6 more measurements left
-
-        output_dict = update(input_dict)
-
-        """
-        Changing "time_to_calculate_at" changes the prediction value output, but not the predictions dates output. 
-        I dont understand what exactly this input does. The Update() function from pyloopkit expects to get 
-        input data where too old and too new values are filtered out. 
-        """
-
-        print("OUTPUT")
-        # NOTE: The output of the predictions includes the last measured glucose value
-        print("N predictions: ", len(output_dict.get("predicted_glucose_values")))
-        print(output_dict.get("predicted_glucose_values")[:12*6])
-        print("Prediction date: ", input_dict["time_to_calculate_at"])
-        print("Reference glucose value: ", input_dict["glucose_values"][5])
-        print("Reference glucose date: ", input_dict["glucose_dates"][5])
-
-        y_pred, y_test = [], []
-
-        return y_pred, y_test
-
-    def get_glucose_data(self, df_glucose):
         # Sort glucose values
         df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
-        glucose_dates = [timestamp for timestamp in df_glucose['time'].to_numpy()]
-        if df_glucose['units'][0] == 'mmol/L':
-            glucose_values = [value * 18.0182 for value in df_glucose['value'].to_numpy()]
+
+        # For each glucose measurement, get a new prediction
+        # Skip iteration if there are not enough predictions.
+        y_pred = []
+        y_true = []
+        for i in range(history_length, n_predictions + history_length):
+            time_to_calculate = df_glucose["time"][i]
+            input_dict["time_to_calculate_at"] = time_to_calculate
+
+            # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
+            glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
+            input_dict["glucose_dates"] = glucose_dates
+            input_dict["glucose_values"] = glucose_values
+
+            output_dict = update(input_dict)
+
+            if len(output_dict.get("predicted_glucose_values")) < 73:
+                print("Not enough predictions. Skipping iteration...")
+                continue
+            else:
+                y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
+                if df_glucose['units'][0] == 'mmol/L':
+                    y_true.append([value * 18.0182 for value in df_glucose['value'][i:i+72]])
+                else:
+                    y_true.append(df_glucose['value'][i:i+72])
+
+        return y_pred, y_true
+
+    def get_glucose_data(self, df):
+        # Sort glucose values
+        #df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+        glucose_dates = [timestamp for timestamp in df['time'].to_numpy()]
+        if df['units'][0] == 'mmol/L':
+            glucose_values = [value * 18.0182 for value in df['value'].to_numpy()]
         else:
-            glucose_values = df_glucose['value'].to_numpy()
+            glucose_values = df['value'].to_numpy()
         return glucose_dates, glucose_values
 
     def get_insulin_data(self, df_bolus, df_basal):
