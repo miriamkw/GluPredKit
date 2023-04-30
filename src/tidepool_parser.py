@@ -716,7 +716,7 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 		 dose_ends,
 		 dose_values
 		 ) = ([], [], [], [])
-	"""
+
 	(dose_types,
 	 dose_starts,
 	 dose_ends,
@@ -731,7 +731,6 @@ def parse_report_and_run(glucose_data, bolus_data, basal_data, carb_data, settin
 		 )[0:4],
 		 is_dose_data=True
 	)[0:4]
-	"""
 
 	input_dict["dose_types"] = dose_types
 	input_dict["dose_start_times"] = dose_starts

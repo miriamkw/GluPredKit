@@ -49,7 +49,7 @@ Blood glucose measurements (`df_glucose`):
 
 Bolus doses of insulin (`df_bolus`):
 
-| time                 | dose[IU] | device_name  |
+| time                 | dose[IU] | device_name  | 
 |----------------------|----------|--------------|
 | 2023-02-09T23:57:00Z | 1        | Omnipod-Dash |
 | 2023-02-09T23:51:59Z | 2.5      | Omnipod-Dash |
@@ -58,11 +58,11 @@ Bolus doses of insulin (`df_bolus`):
 
 Basal rates of insulin (`df_basal`):
 
-| time                 | duration[ms] | rate[IU] | device_name | scheduled_basal | programmed_basal | delivery_type |
-|----------------------|--------------|----------|-------------|-----------------|------------------|---------------|
-| 2023-02-09T23:57:00Z | 4505492      | 0.759073 | Dexcom G6   | 0.75 IU/hr      | 0.75 IU/hr       | basal         |
-| 2023-02-09T23:51:59Z | 133717       | 0.0      | Dexcom G6   | 0.75 IU/hr      | 0.0 IU/hr        | temp          | 
-| 2023-02-09T23:46:59Z | 1198603      | 0.0      | Dexcom G6   | 0.75 IU/hr      | 0.0 IU/hr        | temp          |
+| time                 | duration[ms] | rate[IU] | device_name   | scheduled_basal | programmed_basal | delivery_type |
+|----------------------|--------------|----------|---------------|-----------------|------------------|---------------|
+| 2023-02-09T23:57:00Z | 4505492      | 0.759073 | Omnipod-Dash  | 0.75 IU/hr      | 0.75 IU/hr       | basal         |
+| 2023-02-09T23:51:59Z | 133717       | 0.0      | Omnipod-Dash  | 0.75 IU/hr      | 0.0 IU/hr        | temp          | 
+| 2023-02-09T23:46:59Z | 1198603      | 0.0      | Omnipod-Dash  | 0.75 IU/hr      | 0.0 IU/hr        | temp          |
 
 Carbohydrate intakes (`df_carbs`):
 

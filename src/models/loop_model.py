@@ -24,50 +24,34 @@ class LoopModel(BaseModel):
 
         input_dict = self.get_input_dict()
 
-        # Sort glucose values
-        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+        glucose_dates, glucose_values = self.get_glucose_data(df_glucose)
+        input_dict["glucose_dates"] = glucose_dates
+        input_dict["glucose_values"] = glucose_values
+
+        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus, df_basal)
+        input_dict["dose_types"] = dose_types
+        input_dict["dose_start_times"] = start_times
+        input_dict["dose_end_times"] = end_times
+        input_dict["dose_values"] = dose_values
+        input_dict["dose_delivered_units"] = dose_delivered_units
+
+        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(df_carbs)
+        input_dict["carb_dates"] = carb_dates
+        input_dict["carb_values"] = carb_values
+        input_dict["carb_absorption_times"] = carb_absorption_times
+
+        history_length = 6
+        n_predictions = len(glucose_values) - 12*6 - history_length
+
+        if n_predictions <= 0:
+            print("Not enough data to predict.")
+            return
 
         time_to_calculate = df_glucose["time"][6]
         input_dict["time_to_calculate_at"] = time_to_calculate
 
         # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
         df_glucose = df_glucose[df_glucose['time'] < time_to_calculate]
-        input_dict["glucose_dates"] = [timestamp for timestamp in df_glucose['time'].to_numpy()]
-        if df_glucose['units'][0] == 'mmol/L':
-            input_dict["glucose_values"] = [value*18.0182 for value in df_glucose['value'].to_numpy()]
-        else:
-            input_dict["glucose_values"] = df_glucose['value'].to_numpy()
-
-        dose_types_bolus = [DoseType.from_str("bolus") for _ in df_bolus['dose[IU]']]
-        dose_types_basal = df_basal.delivery_type.apply(lambda x: DoseType.from_str("tempbasal") if x == 'temp' else DoseType.from_str("basal")).to_numpy()
-        dose_types = np.concatenate((dose_types_bolus, dose_types_basal), axis=0)
-
-        start_times_bolus = [timestamp for timestamp in df_bolus['time'].to_numpy()]
-        start_times_basal = [timestamp for timestamp in df_basal['time'].to_numpy()]
-        start_times = np.concatenate((start_times_bolus, start_times_basal), axis=0)
-        start_times = [timestamp for timestamp in start_times] # Strange error fix
-
-        end_times_bolus = start_times_bolus
-        end_times_basal = df_basal.apply(lambda x: x.time + pd.Timedelta(milliseconds=x['duration[ms]']), axis=1)#.to_numpy()
-        end_times_basal = [timestamp for timestamp in end_times_basal.to_numpy()]
-        end_times = np.concatenate((end_times_bolus, end_times_basal), axis=0)
-        end_times = [timestamp for timestamp in end_times] # Strange error fix
-
-        dose_values_bolus = df_bolus['dose[IU]'].to_numpy()
-        dose_values_basal = df_basal['rate[IU]'].to_numpy()
-        dose_values = np.concatenate((dose_values_bolus, dose_values_basal), axis=0)
-
-        input_dict["dose_types"] = dose_types
-        input_dict["dose_start_times"] = start_times
-        input_dict["dose_end_times"] = end_times
-        input_dict["dose_values"] = dose_values
-        input_dict["dose_delivered_units"] = [None for i in range(len(dose_types))]
-
-        # Is sorting is required?
-        df_carbs = df_carbs.sort_values(by='time', ascending=True).reset_index(drop=True)
-        input_dict["carb_dates"] = [timestamp.to_pydatetime() for timestamp in df_carbs['time'].to_numpy()]
-        input_dict["carb_values"] = df_carbs['value'].to_numpy()
-        input_dict["carb_absorption_times"] = [value/60 for value in df_carbs['absorption_time[s]'].to_numpy()]
 
         # For each glucose measurement in data, get a new prediction (input_dict['time_to_calculate_at': <SOME DATE>])
         # Skip iteration if there is not enough predictions
@@ -84,9 +68,7 @@ class LoopModel(BaseModel):
         print("OUTPUT")
         # NOTE: The output of the predictions includes the last measured glucose value
         print("N predictions: ", len(output_dict.get("predicted_glucose_values")))
-        print("N dates: ", len(output_dict.get("predicted_glucose_dates")))
-        print(output_dict.get("predicted_glucose_values")[:10])
-        print(output_dict.get("predicted_glucose_dates")[:10])
+        print(output_dict.get("predicted_glucose_values")[:12*6])
         print("Prediction date: ", input_dict["time_to_calculate_at"])
         print("Reference glucose value: ", input_dict["glucose_values"][5])
         print("Reference glucose date: ", input_dict["glucose_dates"][5])
@@ -96,10 +78,55 @@ class LoopModel(BaseModel):
         return y_pred, y_test
 
     def get_glucose_data(self, df_glucose):
-        return {}
+        # Sort glucose values
+        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+        glucose_dates = [timestamp for timestamp in df_glucose['time'].to_numpy()]
+        if df_glucose['units'][0] == 'mmol/L':
+            glucose_values = [value * 18.0182 for value in df_glucose['value'].to_numpy()]
+        else:
+            glucose_values = df_glucose['value'].to_numpy()
+        return glucose_dates, glucose_values
 
+    def get_insulin_data(self, df_bolus, df_basal):
+        # Is sorting is required?
+        df_bolus = df_bolus.sort_values(by='time', ascending=True).reset_index(drop=True)
+        df_basal = df_basal.sort_values(by='time', ascending=True).reset_index(drop=True)
 
+        # TODO: Insulin doses need to be sorted after merge of bolus doses and basal rates
 
+        dose_types_bolus = [DoseType.from_str("bolus") for _ in df_bolus['dose[IU]']]
+        dose_types_basal = df_basal.delivery_type.apply(
+            lambda x: DoseType.from_str("tempbasal") if x == 'temp' else DoseType.from_str("basal")).to_numpy()
+        dose_types = np.concatenate((dose_types_bolus, dose_types_basal), axis=0)
+
+        start_times_bolus = [timestamp for timestamp in df_bolus['time'].to_numpy()]
+        start_times_basal = [timestamp for timestamp in df_basal['time'].to_numpy()]
+        start_times = np.concatenate((start_times_bolus, start_times_basal), axis=0)
+        start_times = [timestamp for timestamp in start_times]  # Strange error fix
+
+        end_times_bolus = start_times_bolus
+        end_times_basal = df_basal.apply(lambda x: x.time + pd.Timedelta(milliseconds=x['duration[ms]']),
+                                         axis=1)  # .to_numpy()
+        end_times_basal = [timestamp for timestamp in end_times_basal.to_numpy()]
+        end_times = np.concatenate((end_times_bolus, end_times_basal), axis=0)
+        end_times = [timestamp for timestamp in end_times]  # Strange error fix
+
+        dose_values_bolus = df_bolus['dose[IU]'].to_numpy()
+        dose_values_basal = df_basal['rate[IU]'].to_numpy()
+        dose_values = np.concatenate((dose_values_bolus, dose_values_basal), axis=0)
+
+        dose_delivered_units = [None for i in range(len(dose_types))]
+
+        return dose_types, start_times, end_times, dose_values, dose_delivered_units
+
+    def get_carbohydrate_data(self, df_carbs):
+        df_carbs = df_carbs.sort_values(by='time', ascending=True).reset_index(drop=True)
+
+        carb_dates = [timestamp.to_pydatetime() for timestamp in df_carbs['time'].to_numpy()]
+        carb_values = df_carbs['value'].to_numpy()
+        carb_absorption_times = [value / 60 for value in df_carbs['absorption_time[s]'].to_numpy()]
+
+        return carb_dates, carb_values, carb_absorption_times
 
 
     def get_input_dict(self):
