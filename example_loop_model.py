@@ -18,7 +18,6 @@ df_glucose, df_bolus, df_basal, df_carbs = fetch_tidepool_data(username, passwor
 # Define the output offset of 30 minutes into the future
 output_offsets=[30]
 
-# Train linear regression model
 model = LoopModel()
 model.predict(df_glucose, df_bolus, df_basal, df_carbs)
 

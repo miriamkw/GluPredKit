@@ -18,6 +18,38 @@ class LoopModel(BaseModel):
         # Manually adjust the therapy settings at the bottom of this file to adjust the prediction model
         return self
 
+    def get_prediction_output(self, df_glucose, df_bolus, df_basal, df_carbs):
+        input_dict = self.get_input_dict()
+
+        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus,
+                                                                                                      df_basal)
+        input_dict["dose_types"] = dose_types
+        input_dict["dose_start_times"] = start_times
+        input_dict["dose_end_times"] = end_times
+        input_dict["dose_values"] = dose_values
+        input_dict["dose_delivered_units"] = dose_delivered_units
+
+        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(df_carbs)
+        input_dict["carb_dates"] = carb_dates
+        input_dict["carb_values"] = carb_values
+        input_dict["carb_absorption_times"] = carb_absorption_times
+
+        # Sort glucose values
+        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+
+        #time_to_calculate = df_glucose["time"][-1]
+        time_to_calculate = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+        input_dict["time_to_calculate_at"] = time_to_calculate
+
+        print("Time calculate: ", time_to_calculate)
+
+        # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
+        glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
+        input_dict["glucose_dates"] = glucose_dates
+        input_dict["glucose_values"] = glucose_values
+
+        return update(input_dict)
+
     def predict(self, df_glucose, df_bolus, df_basal, df_carbs):
         # TODO: Accounting for time zones in the predictions
         # TODO: Verify that predicted and measured values are in the same time grid (we have assumed a new measurement every 5 minutes)
@@ -141,20 +173,20 @@ class LoopModel(BaseModel):
                     'default_absorption_times': [120.0, 180.0, 240.0],
                     'max_basal_rate': 2.5,
                     'max_bolus': 12.0,
-                    'retrospective_correction_enabled': None
+                    'retrospective_correction_enabled': True
                 },
             'sensitivity_ratio_start_times': [datetime.time(0, 0), datetime.time(0, 30)],
             'sensitivity_ratio_end_times': [datetime.time(0, 30), datetime.time(0, 0)],
-            'sensitivity_ratio_values': [81.0, 81.0],
+            'sensitivity_ratio_values': [86.5, 86.5],
             'sensitivity_ratio_value_units': 'mg/dL/U',
 
             'carb_ratio_start_times': [datetime.time(0, 0), datetime.time(8, 30)],
-            'carb_ratio_values': [10.0, 10.0],
+            'carb_ratio_values': [8.0, 8.0],
             'carb_ratio_value_units': 'g/U',
 
             'basal_rate_start_times': [datetime.time(0, 0), datetime.time(12, 0)],
             'basal_rate_minutes': [720.0, 720.0],
-            'basal_rate_values': [0.8, 0.8],
+            'basal_rate_values': [0.7, 0.7],
             'basal_rate_units': 'U/hr',
 
             'target_range_start_times': [datetime.time(0, 0)],
