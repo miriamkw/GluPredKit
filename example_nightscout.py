@@ -54,7 +54,7 @@ async def main():
     units = ['mmol/L' for _ in entries]
     values = [entry.sgv_mmol for entry in entries]
     df_glucose = pd.DataFrame({'time': times, 'units': units, 'value': values})
-    #print(df_glucose)
+    print(df_glucose)
 
     ### Treatments ####
     # To fetch recent treatments (boluses, temp basals):
@@ -73,7 +73,7 @@ async def main():
             values.append(treatment.carbs)
             absorption_times.append(treatment.absorptionTime * 60)
     df_carbs = pd.DataFrame({'time': times, 'units': units, 'value': values, 'absorption_time[s]': absorption_times})
-    #print(df_carbs)
+    print(df_carbs)
 
     # Dataframe Bolus
     # time | dose[IU]
@@ -84,7 +84,7 @@ async def main():
             times.append(treatment.timestamp)
             doses.append(treatment.insulin)
     df_bolus = pd.DataFrame({'time': times, 'dose[IU]': doses})
-    #print(df_bolus)
+    print(df_bolus)
 
     # Dataframe Basal
     # time | duration[ms] | rate[IU] | delivery_type |
@@ -104,14 +104,14 @@ async def main():
             rates.append(treatment.rate)
             types.append('basal')
     df_basal = pd.DataFrame({'time': times, 'duration[ms]': durations, 'rate[IU]': rates, 'delivery_type': types})
-    #print(df_basal)
+    print(df_basal)
 
     model = LoopModel()
     recommendations = model.get_prediction_output(df_glucose, df_bolus, df_basal, df_carbs)
     inputs = recommendations.get("input_data")
 
     glucose_dates = recommendations.get("predicted_glucose_dates")[:73]
-    glucose_values = [val/18 for val in recommendations.get("predicted_glucose_values")[:73]]
+    glucose_values = [val / 18.0182 for val in recommendations.get("predicted_glucose_values")[:73]]
 
     start_date = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
     start_glucose = inputs.get("glucose_values")[-1]
@@ -123,7 +123,7 @@ async def main():
         carb_effect_dates=recommendations.get("carb_effect_dates"),
         carb_effect_values=recommendations.get("carb_effect_values")
     )
-    carb_values = [val/18 for val in carb_values]
+    carb_values = [val / 18.0182 for val in carb_values]
 
     (insulin_dates,
      insulin_values
@@ -132,7 +132,7 @@ async def main():
         insulin_effect_dates=recommendations.get("insulin_effect_dates"),
         insulin_effect_values=recommendations.get("insulin_effect_values")
     )
-    insulin_values = [val/18 for val in insulin_values]
+    insulin_values = [val / 18.0182 for val in insulin_values]
 
     (momentum_dates,
      momentum_values
@@ -141,7 +141,7 @@ async def main():
         momentum_dates=recommendations.get("momentum_effect_dates"),
         momentum_values=recommendations.get("momentum_effect_values")
     )
-    momentum_values = [val / 18 for val in momentum_values]
+    momentum_values = [val / 18.0182 for val in momentum_values]
 
     if recommendations.get("retrospective_effect_dates"):
         (retrospective_dates,
@@ -159,9 +159,9 @@ async def main():
         (retrospective_dates,
          retrospective_values
          ) = ([], [])
-    retrospective_values = [val / 18 for val in retrospective_values]
+    retrospective_values = [val / 18.0182 for val in retrospective_values]
 
-    print("Start glucose: ", start_glucose/18)
+    print("Start glucose: ", start_glucose / 18.0182)
     print("Final prediction: ", glucose_values[-1])
     print("")
     print("Final insulin: ", insulin_values[-1])
@@ -180,8 +180,6 @@ async def main():
         print("No retrospective values")
     else:
         ax.plot(retrospective_dates, retrospective_values, label='Retrospective', linestyle='--')
-
-
 
     plt.axhspan(5.6, 6.3, facecolor='b', alpha=0.2)
 

@@ -1,5 +1,3 @@
-import numpy as np
-
 from src.models.base_model import BaseModel
 from typing import List
 import datetime
@@ -102,12 +100,11 @@ class LoopModel(BaseModel):
                     y_true.append([value * 18.0182 for value in df_glucose['value'][i:i+72]])
                 else:
                     y_true.append(df_glucose['value'][i:i+72])
-
         return y_pred, y_true
 
     def get_glucose_data(self, df):
         # Sort glucose values
-        #df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+        df = df.sort_values(by='time', ascending=True).reset_index(drop=True)
         glucose_dates = [timestamp for timestamp in df['time'].to_numpy()]
         if df['units'][0] == 'mmol/L':
             glucose_values = [value * 18.0182 for value in df['value'].to_numpy()]
@@ -116,32 +113,31 @@ class LoopModel(BaseModel):
         return glucose_dates, glucose_values
 
     def get_insulin_data(self, df_bolus, df_basal):
-        # TODO: Insulin doses need to be sorted after merge of bolus doses and basal rates
-        df_bolus = df_bolus.sort_values(by='time', ascending=True).reset_index(drop=True)
-        df_basal = df_basal.sort_values(by='time', ascending=True).reset_index(drop=True)
+        # Merge datasets:
+        df_bolus['delivery_type'] = "bolus"
+        df_bolus['duration[ms]'] = 0.0
+        # Rename columns
+        df_bolus.rename(columns={"dose[IU]": "values"}, inplace=True)
+        df_basal.rename(columns={"rate[IU]": "values"}, inplace=True)
 
-        dose_types_bolus = [DoseType.from_str("bolus") for _ in df_bolus['dose[IU]']]
-        dose_types_basal = df_basal.delivery_type.apply(
-            lambda x: DoseType.from_str("tempbasal") if x == 'temp' else DoseType.from_str("basal")).to_numpy()
-        dose_types = np.concatenate((dose_types_bolus, dose_types_basal), axis=0)
+        columns = ['time', 'values', 'delivery_type', 'duration[ms]']
+        df_insulin = pd.concat([df_bolus[columns], df_basal[columns]])
+        df_insulin = df_insulin.sort_values(by='time', ascending=True).reset_index(drop=True)
+        def get_dose_type(x):
+            if  x == 'temp':
+                return DoseType.from_str("tempbasal")
+            elif x == 'bolus':
+                return DoseType.from_str("bolus")
+            else:
+                return DoseType.from_str("basal")
 
-        start_times_bolus = [timestamp for timestamp in df_bolus['time'].to_numpy()]
-        start_times_basal = [timestamp for timestamp in df_basal['time'].to_numpy()]
-        start_times = np.concatenate((start_times_bolus, start_times_basal), axis=0)
-        start_times = [timestamp for timestamp in start_times]  # Strange error fix
-
-        end_times_bolus = start_times_bolus
-        end_times_basal = df_basal.apply(lambda x: x.time + pd.Timedelta(milliseconds=x['duration[ms]']),
-                                         axis=1)  # .to_numpy()
-        end_times_basal = [timestamp for timestamp in end_times_basal.to_numpy()]
-        end_times = np.concatenate((end_times_bolus, end_times_basal), axis=0)
+        dose_types = df_insulin.delivery_type.apply(
+            lambda x: get_dose_type(x)).to_numpy()
+        start_times = [timestamp for timestamp in df_insulin['time'].to_numpy()]
+        end_times = df_insulin.apply(lambda x: x.time + pd.Timedelta(milliseconds=x['duration[ms]']), axis=1)
         end_times = [timestamp for timestamp in end_times]  # Strange error fix
-
-        dose_values_bolus = df_bolus['dose[IU]'].to_numpy()
-        dose_values_basal = df_basal['rate[IU]'].to_numpy()
-        dose_values = np.concatenate((dose_values_bolus, dose_values_basal), axis=0)
-
-        dose_delivered_units = [None for i in range(len(dose_types))]
+        dose_values = df_insulin['values'].to_numpy()
+        dose_delivered_units = [None for _ in range(len(dose_types))]
 
         return dose_types, start_times, end_times, dose_values, dose_delivered_units
 
@@ -177,7 +173,7 @@ class LoopModel(BaseModel):
                 },
             'sensitivity_ratio_start_times': [datetime.time(0, 0), datetime.time(0, 30)],
             'sensitivity_ratio_end_times': [datetime.time(0, 30), datetime.time(0, 0)],
-            'sensitivity_ratio_values': [86.5, 86.5],
+            'sensitivity_ratio_values': [86.4, 86.4],
             'sensitivity_ratio_value_units': 'mg/dL/U',
 
             'carb_ratio_start_times': [datetime.time(0, 0), datetime.time(8, 30)],
