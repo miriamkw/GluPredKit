@@ -48,7 +48,11 @@ class LoopModel(BaseModel):
 
         return update(input_dict)
 
-    def predict(self, df_glucose, df_bolus, df_basal, df_carbs):
+    def predict(self, df_glucose, df_bolus, df_basal, df_carbs, output_offset=30):
+        """
+        output_offset -- The amount of minutes ahead you want to predict. If None, a list of all the predicted trajectories will be returned
+        """
+
         # TODO: Accounting for time zones in the predictions
         # TODO: Verify that predicted and measured values are in the same time grid (we have assumed a new measurement every 5 minutes)
 
@@ -94,6 +98,14 @@ class LoopModel(BaseModel):
             if len(output_dict.get("predicted_glucose_values")) < 73:
                 print("Not enough predictions. Skipping iteration...")
                 continue
+            elif output_offset:
+                index = int(output_offset/5)
+                # Not null-indexed because at index 0 is the reference blood glucose
+                y_pred.append(output_dict.get("predicted_glucose_values")[index])
+                if df_glucose['units'][0] == 'mmol/L':
+                    y_true.append(df_glucose['value'][i+index] * 18.0182)
+                else:
+                    y_true.append(df_glucose['value'][i+index])
             else:
                 y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
                 if df_glucose['units'][0] == 'mmol/L':

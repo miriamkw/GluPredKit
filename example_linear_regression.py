@@ -20,11 +20,11 @@ password = credentials['tidepool_api']['password']
 
 df_glucose, df_bolus, df_basal, df_carbs = fetch_tidepool_data(username, password, start_date, end_date)
 
-# Define the output offset of 30 minutes into the future
-output_offsets=[30]
+# Define the output offset to 30 minutes into the future
+output_offset = 30
 
 # Train linear regression model
-model = LinearRegressor(output_offsets=output_offsets)
+model = LinearRegressor(output_offset=output_offset)
 model.fit(df_glucose, df_bolus, df_basal, df_carbs)
 
 # Get test data separate from training data and get predictions

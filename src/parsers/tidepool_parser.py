@@ -23,8 +23,6 @@ def fetch_tidepool_data(username: str, password: str, start_date: datetime, end_
         # Sort data into one dataframe each data type, and retreive only the essential information
         (glucose_data, bolus_data, basal_data, carb_data) = parse_json(user_data)
 
-        print("columns: ", pd.json_normalize(basal_data).columns)
-
         df_glucose = pd.json_normalize(glucose_data)[['time', 'units', 'value', 'origin.payload.sourceRevision.source.name']]
         df_bolus = pd.json_normalize(bolus_data)[['time', 'normal', 'origin.payload.device.name']]
         #df_basal = pd.json_normalize(basal_data)[['time', 'duration', 'rate', 'origin.payload.device.name', 'payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate',

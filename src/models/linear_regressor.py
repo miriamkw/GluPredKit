@@ -6,14 +6,14 @@ from src.models.base_model import BaseModel
 from typing import List
 
 class LinearRegressor(BaseModel):
-    def __init__(self, output_offsets: List[int] = None):
-        # TODO: Implement support for several prediction horizons
-        if output_offsets is None:
-            output_offsets = list(range(5, 365, 5)) # default offsets
-        self.output_offsets = output_offsets
+    def __init__(self, output_offset=30):
+        self.output_offset = output_offset
         self.model = LinearRegression()
 
     def fit(self, df_glucose, df_bolus, df_basal, df_carbs):
+        """
+        output_offset -- The amount of minutes ahead you want to predict
+        """
         # concatenate dataframes and target into X and y
         X, y = self.process_data(df_glucose)
 
@@ -29,8 +29,8 @@ class LinearRegressor(BaseModel):
 
     def process_data(self, df_glucose):
         # Assuming only one output, finding the index of the offset
-        index_offset = int(self.output_offsets[0]/5)
-        target_column_name = str(self.output_offsets[0])
+        index_offset = int(self.output_offset/5)
+        target_column_name = str(self.output_offset)
 
         data = df_glucose.copy()
         data[target_column_name] = data['value'].shift(index_offset)
