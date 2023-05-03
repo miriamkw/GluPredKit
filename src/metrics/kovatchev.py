@@ -6,7 +6,7 @@ class Kovatchev(BaseMetric):
     def __init__(self):
         super().__init__('Kovatchev')
 
-    def __call__(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred):
         def get_glucose_penalty(blood_glucose):
             blood_glucose = max(blood_glucose, 1)
             return 10 * (1.509 * (np.log(blood_glucose)**1.084 - 5.381))**2

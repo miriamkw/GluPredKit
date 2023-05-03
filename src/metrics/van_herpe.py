@@ -7,7 +7,7 @@ class VanHerpe(BaseMetric):
         super().__init__('VanHerpe')
         self.is_bounded = is_bounded
 
-    def __call__(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred):
         def get_glucose_penalty(blood_glucose):
             if (self.is_bounded):
                 if blood_glucose < 20:

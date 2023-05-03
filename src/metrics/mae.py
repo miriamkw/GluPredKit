@@ -5,7 +5,7 @@ class MAE(BaseMetric):
     def __init__(self):
         super().__init__('MAE')
 
-    def __call__(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 

@@ -7,7 +7,7 @@ class Bayer(BaseMetric):
         super().__init__('Bayer')
         self.target = target
 
-    def __call__(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred):
         def get_glucose_penalty(blood_glucose):
             blood_glucose = max(blood_glucose, 1)
             return 32.9170208165394 * (np.log(blood_glucose / self.target))**2

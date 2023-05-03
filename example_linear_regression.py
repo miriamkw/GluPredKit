@@ -46,4 +46,3 @@ kovatchev = Kovatchev()
 print("RMSE: ", rmse(y_test, y_pred))
 print("Bayer: ", bayer(y_test, y_pred))
 print("Kovatchev: ", kovatchev(y_test, y_pred))
-
