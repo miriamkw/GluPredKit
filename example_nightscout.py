@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 from aiohttp import ClientError, ClientConnectorError, ClientResponseError
-import py_nightscout as nightscout
+import nightscout
 import pytz
 import pandas as pd
 from src.models.loop_model import LoopModel
@@ -28,7 +28,6 @@ async def main():
         else:
             # You can use the api without authentication:
             api = nightscout.Api(NIGHTSCOUT_URL)
-        status = await api.get_server_status()
     except ClientResponseError as error:
         raise RuntimeError("Received ClientResponseError") from error
     except (ClientError, ClientConnectorError, TimeoutError, OSError) as error:
@@ -45,20 +44,25 @@ async def main():
     """
 
     #### Glucose Values (SGVs) ####
-    # Get last 10 entries:
-    entries = await api.get_sgvs()
+    # Get entries from the last six hours
+    # The predictions will not be correct with too few values, but the exact number is currently unknown
+    entries = api.get_sgvs({'count': 12*6})
+    print(len(entries))
 
     # Dataframe Glucose
     # time | units | value |
     times = [entry.date for entry in entries]
     units = ['mmol/L' for _ in entries]
-    values = [entry.sgv_mmol for entry in entries]
+    values = [entry.sgv / 18.0182 for entry in entries]
     df_glucose = pd.DataFrame({'time': times, 'units': units, 'value': values})
     print(df_glucose)
 
     ### Treatments ####
     # To fetch recent treatments (boluses, temp basals):
-    treatments = await api.get_treatments()
+    # By default returns the samples from the last 24 hours
+    # DISCLAIMER: Sceduled basal rates might not be written to ns
+    # DISCLAIMER2: Basal rates are of unit U/hr, and the predictions seem to be correct this way
+    treatments = api.get_treatments()
 
     # Dataframe Carbs
     # time | units | value | absorption_time\[s] |
@@ -87,7 +91,7 @@ async def main():
     print(df_bolus)
 
     # Dataframe Basal
-    # time | duration[ms] | rate[IU] | delivery_type |
+    # time | duration[ms] | rate[U/hr] | delivery_type |
     times = []
     durations = []
     rates = []
@@ -103,7 +107,7 @@ async def main():
             durations.append(treatment.duration * 60000) # From minutes to ms
             rates.append(treatment.rate)
             types.append('basal')
-    df_basal = pd.DataFrame({'time': times, 'duration[ms]': durations, 'rate[IU]': rates, 'delivery_type': types})
+    df_basal = pd.DataFrame({'time': times, 'duration[ms]': durations, 'rate[U/hr]': rates, 'delivery_type': types})
     print(df_basal)
 
     model = LoopModel()
@@ -188,16 +192,5 @@ async def main():
     plt.legend(loc='best')
 
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
 
 asyncio.run(main())

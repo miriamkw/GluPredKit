@@ -118,7 +118,7 @@ class LoopModel(BaseModel):
         df_bolus['duration[ms]'] = 0.0
         # Rename columns
         df_bolus.rename(columns={"dose[IU]": "values"}, inplace=True)
-        df_basal.rename(columns={"rate[IU]": "values"}, inplace=True)
+        df_basal.rename(columns={"rate[U/hr]": "values"}, inplace=True)
 
         columns = ['time', 'values', 'delivery_type', 'duration[ms]']
         df_insulin = pd.concat([df_bolus[columns], df_basal[columns]])

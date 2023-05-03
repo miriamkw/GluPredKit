@@ -3,9 +3,8 @@
 -e git+https://github.com/miriamkw/data-science-tidepool-api-python.git@0.2#egg=tidepool_data_science_project
 # Using a fork to use parabolic meal model which is currently not a simple way to do in original repository
 -e git+https://github.com/miriamkw/PyLoopKit.git@0.2#egg=pyloopkit
--e git+https://github.com/miriamkw/PyLoopKit.git@0.2#egg=pyloopkit
 requests==2.23.0
 matplotlib==3.6.3
 pandas==1.5.3
-py-nightscout==1.3.3
+python_nightscout @ git+https://github.com/ps2/python-nightscout.git@master
 scikit-learn
