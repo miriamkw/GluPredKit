@@ -42,10 +42,6 @@ def fetch_tidepool_data(username: str, password: str, start_date: datetime, end_
                                  "payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate": "scheduled_basal", "deliveryType": "delivery_type"}, inplace=True)
         df_carbs.rename(columns={"nutrition.carbohydrate.units": "units", "nutrition.carbohydrate.net": "value", "payload.com.loopkit.AbsorptionTime": "absorption_time[s]"}, inplace=True)
 
-        print("BASALS")
-        print(df_basal)
-
-
         # Convert time to datetime object
         for df in [df_glucose, df_bolus, df_basal, df_carbs]:
             df.time = pd.to_datetime(df.time)
