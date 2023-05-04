@@ -30,6 +30,31 @@ This repository provides a framework for training, testing, and evaluating blood
 
 ### Running examples
 
+#### Credentials
+Create a file named `credentials.json` in the root directory. Copy and paste the following information and adjust the information with your credentials:
+
+`{ "tidepool_api": 
+    { "email": "YOUR_TIDEPOOL_USERNAME", 
+    "password": "YOUR_TIDEPOOL_PASSWORD" 
+  },
+  "nightscout_api": {
+    "url": "https://diabetes.neethan.net/",
+    "api_secret": "wD6KB2HvJ5ZL3FZphKjbPLdHb5C1zEix"
+  }
+}`
+
+#### Example linear regression
+Using Tidepool API to train a simple linear regression. Input is the current CGM measurement, and output is the CGM measurement 30 minutes later.
+
+#### Example loop model
+Using Tidepool API to predict blood glucose using the Loop prediction model. Error metrics are printed for predictions after 30 minutes.
+
+#### Example nightscout
+Using Nightscout API to predict blood glucose using the Loop prediction model, with the most recent data. A plot for all the components of the prediction is shown: carbohydrates,
+momentum, retrospective correction and insulin. This script can be used to compare with the predictions in the Loop app in real-time to confirm that this repository is 
+predicting correctly.
+
+
 ### Implementing BGP Models
 To implement your own BGP model, create a new class that inherits from the BaseModel class in `src/models/base_model.py`. 
 
