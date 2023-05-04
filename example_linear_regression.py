@@ -1,6 +1,5 @@
 import numpy as np
-
-from src.parsers.tidepool_parser import fetch_tidepool_data
+from src.parsers.tidepool_parser import TidepoolParser
 from src.models.linear_regressor import LinearRegressor
 from datetime import datetime
 from src.metrics.rmse import RMSE
@@ -18,7 +17,9 @@ with open('credentials.json', 'r') as f:
 username = credentials['tidepool_api']['email']
 password = credentials['tidepool_api']['password']
 
-df_glucose, df_bolus, df_basal, df_carbs = fetch_tidepool_data(username, password, start_date, end_date)
+tidepool_parser = TidepoolParser()
+
+df_glucose, df_bolus, df_basal, df_carbs = tidepool_parser(start_date, end_date, username, password)
 
 # Define the output offset to 30 minutes into the future
 output_offset = 30
@@ -30,7 +31,7 @@ model.fit(df_glucose, df_bolus, df_basal, df_carbs)
 # Get test data separate from training data and get predictions
 start_date = datetime(2023, 3, 2)
 end_date = datetime(2023, 3, 2)
-df_glucose, df_bolus, df_basal, df_carbs = fetch_tidepool_data(username, password, start_date, end_date)
+df_glucose, df_bolus, df_basal, df_carbs = tidepool_parser(start_date, end_date, username, password)
 y_pred, y_test = model.predict(df_glucose, df_bolus, df_basal, df_carbs)
 y_test = y_test.to_numpy()
 

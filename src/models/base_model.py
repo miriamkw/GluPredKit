@@ -2,11 +2,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class BaseModel(BaseEstimator, TransformerMixin):
-    def __init__(self, output_offsets=None):
-        if output_offsets is None:
-            self.output_offsets = list(range(5, 361, 5)) # default list from 5 to 360 with step 5 like in Loop
-        else:
-            self.output_offsets = output_offsets
+    def __init__(self):
+        pass
 
     def fit(self, df_glucose, df_bolus, df_basal, df_carbs):
         # Perform any additional processing of the input features here
