@@ -61,7 +61,7 @@ def get_treatment_trajectory(start_value, end_value):
     action_duration = 360.0
     peak_activity_time = 75.0
     delay = 10.0
-    interval = 5
+    interval = 1
 
     # Minutes of total trajectory
     total_time = 360
