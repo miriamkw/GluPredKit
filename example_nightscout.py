@@ -54,7 +54,7 @@ async def main():
     units = ['mmol/L' for _ in entries]
     values = [entry.sgv / 18.0182 for entry in entries]
     df_glucose = pd.DataFrame({'time': times, 'units': units, 'value': values})
-    #print(df_glucose)
+    print(df_glucose)
 
     ### Treatments ####
     # To fetch recent treatments (boluses, temp basals):
@@ -76,7 +76,7 @@ async def main():
             values.append(treatment.carbs)
             absorption_times.append(treatment.absorptionTime * 60)
     df_carbs = pd.DataFrame({'time': times, 'units': units, 'value': values, 'absorption_time[s]': absorption_times})
-    #print(df_carbs)
+    print(df_carbs)
 
     # Dataframe Bolus
     # time | dose[IU]
@@ -87,7 +87,7 @@ async def main():
             times.append(treatment.timestamp)
             doses.append(treatment.insulin)
     df_bolus = pd.DataFrame({'time': times, 'dose[IU]': doses})
-    #print(df_bolus)
+    print(df_bolus)
 
     # Dataframe Basal
     # time | duration[ms] | rate[U/hr] | delivery_type |
@@ -135,9 +135,6 @@ async def main():
             new_duration = time_diff - next_row['duration[ms]']
             new_row = pd.DataFrame([[new_date, new_duration, 0.7, 'temp']], columns=df_basal.columns)
             new_rows = new_rows.append(new_row, ignore_index=True)
-
-    # Add the new rows to the original dataframe
-    df_basal = pd.concat([df_basal, new_rows])
 
     # Sort the dataframe in ascending order based on "date"
     df_basal = df_basal.sort_values(by='time', ascending=False)
