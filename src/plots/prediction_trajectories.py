@@ -43,21 +43,3 @@ class PredictionTrajectories(BasePlot):
         fig.canvas.mpl_connect('motion_notify_event', on_hover)
         ax.legend()
         plt.show()
-
-        """
-
-        line1, = ax.plot(x, y1, label='Line 1')
-        line2, = ax.plot(x, y2, label='Line 2')
-
-        def on_hover(event, lines):
-            if event.inaxes == ax:
-                for line in lines:
-                    contains, _ = line.contains(event)
-                    if contains:
-                        line.set_alpha(1.0)
-                    else:
-                        line.set_alpha(0.2)
-                fig.canvas.draw_idle()
-
-        fig.canvas.mpl_connect('motion_notify_event', on_hover)
-        """
