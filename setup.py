@@ -12,7 +12,7 @@ setup(
     author=author,
     author_email=author_email,
     packages=[package_name],  # add subpackages too
-    package_dir={package_name: 'loop_model_scoring'},
+    package_dir={package_name: package_name},
     long_description=open('README.md').read(),
     python_requires='>=3.6',
 )
