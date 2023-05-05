@@ -1,5 +1,3 @@
-from typing import List
-
 class BasePlot:
     def __init__(self, name):
         pass

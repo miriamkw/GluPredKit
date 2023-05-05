@@ -1,14 +1,9 @@
 from src.plots.interactive_prediction import InteractivePrediction
-import asyncio
-import datetime
 from aiohttp import ClientError, ClientConnectorError, ClientResponseError
 import nightscout
-import pytz
 import pandas as pd
 from src.models.loop_model import LoopModel
-from pyloopkit.loop_math import predict_glucose
 import json
-import matplotlib.pyplot as plt
 
 # Load data from Tidepool API
 with open('credentials.json', 'r') as f:
