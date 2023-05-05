@@ -2,13 +2,11 @@ from datetime import datetime
 import json
 from src.parsers.tidepool_parser import TidepoolParser
 from src.models.loop_model import LoopModel
-from src.metrics.rmse import RMSE
-from src.metrics.bayer import Bayer
-from src.metrics.kovatchev import Kovatchev
+from src.plots.prediction_trajectories import PredictionTrajectories
 
 # Fetch training data from Tidepool API
-start_date = datetime(2023, 5, 3)
-end_date = datetime(2023, 5, 3)
+start_date = datetime(2023, 5, 4)
+end_date = datetime(2023, 5, 4)
 
 # Load data from Tidepool API
 with open('credentials.json', 'r') as f:
@@ -19,16 +17,9 @@ password = credentials['tidepool_api']['password']
 tidepool_parser = TidepoolParser()
 df_glucose, df_bolus, df_basal, df_carbs = tidepool_parser(start_date, end_date, username, password)
 
-output_offset = 30
+output_offset = None
 model = LoopModel()
 y_pred, y_true = model.predict(df_glucose, df_bolus, df_basal, df_carbs, output_offset=output_offset)
 
-# Print different error metrics
-rmse = RMSE()
-bayer = Bayer()
-kovatchev = Kovatchev()
-
-print("Error metrics after " + str(output_offset) + " minutes:")
-print("RMSE: ", rmse(y_true, y_pred))
-print("Bayer: ", bayer(y_true, y_pred))
-print("Kovatchev: ", kovatchev(y_true, y_pred))
+plot = PredictionTrajectories()
+plot(y_true, y_pred)

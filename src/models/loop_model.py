@@ -51,6 +51,8 @@ class LoopModel(BaseModel):
     def predict(self, df_glucose, df_bolus, df_basal, df_carbs, output_offset=30):
         """
         output_offset -- The amount of minutes ahead you want to predict. If None, a list of all the predicted trajectories will be returned
+
+        When returning a trajectory, the reference value is included in the output.
         """
 
         # TODO: Accounting for time zones in the predictions
@@ -107,11 +109,11 @@ class LoopModel(BaseModel):
                 else:
                     y_true.append(df_glucose['value'][i+index])
             else:
-                y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
+                y_pred.append(output_dict.get("predicted_glucose_values")[0:73])
                 if df_glucose['units'][0] == 'mmol/L':
-                    y_true.append([value * 18.0182 for value in df_glucose['value'][i:i+72]])
+                    y_true.append([value * 18.0182 for value in df_glucose['value'][i-1:i+72]])
                 else:
-                    y_true.append(df_glucose['value'][i:i+72])
+                    y_true.append(df_glucose['value'][i-1:i+72])
         return y_pred, y_true
 
     def get_glucose_data(self, df):
