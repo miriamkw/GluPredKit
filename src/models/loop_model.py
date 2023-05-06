@@ -16,41 +16,13 @@ class LoopModel(BaseModel):
         # Manually adjust the therapy settings at the bottom of this file to adjust the prediction model
         return self
 
-    def get_prediction_output(self, df_glucose, df_bolus, df_basal, df_carbs):
-        input_dict = self.get_input_dict()
 
-        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus,
-                                                                                                      df_basal)
-        input_dict["dose_types"] = dose_types
-        input_dict["dose_start_times"] = start_times
-        input_dict["dose_end_times"] = end_times
-        input_dict["dose_values"] = dose_values
-        input_dict["dose_delivered_units"] = dose_delivered_units
-
-        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(df_carbs)
-        input_dict["carb_dates"] = carb_dates
-        input_dict["carb_values"] = carb_values
-        input_dict["carb_absorption_times"] = carb_absorption_times
-
-        # Sort glucose values
-        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
-
-        #time_to_calculate = df_glucose["time"][-1]
-        time_to_calculate = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
-        input_dict["time_to_calculate_at"] = time_to_calculate
-
-        print("Time calculate: ", time_to_calculate)
-
-        # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
-        glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
-        input_dict["glucose_dates"] = glucose_dates
-        input_dict["glucose_values"] = glucose_values
-
-        return update(input_dict)
 
     def predict(self, df_glucose, df_bolus, df_basal, df_carbs, output_offset=30):
         """
         output_offset -- The amount of minutes ahead you want to predict. If None, a list of all the predicted trajectories will be returned
+
+        When returning a trajectory, the reference value is included in the output.
         """
 
         # TODO: Accounting for time zones in the predictions
@@ -107,12 +79,74 @@ class LoopModel(BaseModel):
                 else:
                     y_true.append(df_glucose['value'][i+index])
             else:
-                y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
+                y_pred.append(output_dict.get("predicted_glucose_values")[0:73])
                 if df_glucose['units'][0] == 'mmol/L':
-                    y_true.append([value * 18.0182 for value in df_glucose['value'][i:i+72]])
+                    y_true.append([value * 18.0182 for value in df_glucose['value'][i-1:i+72]])
                 else:
-                    y_true.append(df_glucose['value'][i:i+72])
+                    y_true.append(df_glucose['value'][i-1:i+72])
         return y_pred, y_true
+
+    def predict_one_prediction(self, df_glucose, df_bolus, df_basal, df_carbs):
+        input_dict = self.get_input_dict()
+
+        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus,
+                                                                                                      df_basal)
+        input_dict["dose_types"] = dose_types
+        input_dict["dose_start_times"] = start_times
+        input_dict["dose_end_times"] = end_times
+        input_dict["dose_values"] = dose_values
+        input_dict["dose_delivered_units"] = dose_delivered_units
+
+        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(df_carbs)
+        input_dict["carb_dates"] = carb_dates
+        input_dict["carb_values"] = carb_values
+        input_dict["carb_absorption_times"] = carb_absorption_times
+
+        # Sort glucose values
+        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+
+        # time_to_calculate = df_glucose["time"][-1]
+        time_to_calculate = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+        input_dict["time_to_calculate_at"] = time_to_calculate
+
+        # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
+        glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
+        input_dict["glucose_dates"] = glucose_dates
+        input_dict["glucose_values"] = glucose_values
+
+        output_dict = update(input_dict)
+
+        return output_dict.get("predicted_glucose_values")[1:73]
+
+    def get_prediction_output(self, df_glucose, df_bolus, df_basal, df_carbs):
+        input_dict = self.get_input_dict()
+
+        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_bolus,
+                                                                                                      df_basal)
+        input_dict["dose_types"] = dose_types
+        input_dict["dose_start_times"] = start_times
+        input_dict["dose_end_times"] = end_times
+        input_dict["dose_values"] = dose_values
+        input_dict["dose_delivered_units"] = dose_delivered_units
+
+        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(df_carbs)
+        input_dict["carb_dates"] = carb_dates
+        input_dict["carb_values"] = carb_values
+        input_dict["carb_absorption_times"] = carb_absorption_times
+
+        # Sort glucose values
+        df_glucose = df_glucose.sort_values(by='time', ascending=True).reset_index(drop=True)
+
+        #time_to_calculate = df_glucose["time"][-1]
+        time_to_calculate = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
+        input_dict["time_to_calculate_at"] = time_to_calculate
+
+        # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
+        glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
+        input_dict["glucose_dates"] = glucose_dates
+        input_dict["glucose_values"] = glucose_values
+
+        return update(input_dict)
 
     def get_glucose_data(self, df):
         # Sort glucose values
@@ -125,6 +159,9 @@ class LoopModel(BaseModel):
         return glucose_dates, glucose_values
 
     def get_insulin_data(self, df_bolus, df_basal):
+        df_bolus = df_bolus.copy()
+        df_basal = df_basal.copy()
+
         # Merge datasets:
         df_bolus['delivery_type'] = "bolus"
         df_bolus['duration[ms]'] = 0.0

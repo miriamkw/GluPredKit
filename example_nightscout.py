@@ -47,7 +47,6 @@ async def main():
     # Get entries from the last six hours
     # The predictions will not be correct with too few values, but the exact number is currently unknown
     entries = api.get_sgvs({'count': 12*6})
-    print(len(entries))
 
     # Dataframe Glucose
     # time | units | value |
@@ -108,7 +107,40 @@ async def main():
             rates.append(treatment.rate)
             types.append('basal')
     df_basal = pd.DataFrame({'time': times, 'duration[ms]': durations, 'rate[U/hr]': rates, 'delivery_type': types})
-    print(df_basal)
+
+    # ADDING SHEDULED BASAL RATES AS NIGHTSCOUT DOES NOT REGISTER THIS AS A TREATMENT
+
+    # Convert the "date" column to datetime
+    df_basal['time'] = pd.to_datetime(df_basal['time'])
+
+    # Convert the "duration" column from milliseconds to seconds
+    df_basal['duration[ms]'] = df_basal['duration[ms]'] / 1000
+
+    # Define the tolerance value for the time difference
+    tolerance = 1  # second
+
+    # Create an empty dataframe to store the new rows
+    new_rows = pd.DataFrame(columns=df_basal.columns)
+
+    # Loop through the rows of the dataframe and check for gaps
+    for i, row in df_basal.iterrows():
+        if i == len(df_basal) - 1:  # last row
+            continue
+
+        next_row = df_basal.iloc[i + 1]
+        time_diff = (row['time'] - next_row['time']).total_seconds()
+        if time_diff > (next_row['duration[ms]'] + tolerance):
+            # There is a gap, add a new row with default value
+            new_date = next_row['time'] + pd.Timedelta(milliseconds=row['duration[ms]'] * 1000)
+            new_duration = time_diff - next_row['duration[ms]']
+            new_row = pd.DataFrame([[new_date, new_duration, 0.7, 'temp']], columns=df_basal.columns)
+            new_rows = new_rows.append(new_row, ignore_index=True)
+
+    # Sort the dataframe in ascending order based on "date"
+    df_basal = df_basal.sort_values(by='time', ascending=False)
+
+    # Convert duration back to ms
+    df_basal['duration[ms]'] = df_basal['duration[ms]'] * 1000
 
     model = LoopModel()
     recommendations = model.get_prediction_output(df_glucose, df_bolus, df_basal, df_carbs)
@@ -170,7 +202,8 @@ async def main():
     print("")
     print("Final insulin: ", insulin_values[-1])
     print("Final carbs: ", carb_values[-1])
-    print("Final momentum: ", momentum_values[-1])
+    if not len(momentum_values) == 0:
+        print("Final momentum: ", momentum_values[-1])
     if not len(retrospective_values) == 0:
         print("Final retrospective: ", retrospective_values[-1])
 
