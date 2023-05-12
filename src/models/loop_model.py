@@ -63,7 +63,8 @@ class LoopModel(BaseModel):
                 print("Not enough predictions. Skipping iteration...")
                 continue
             else:
-                y_pred.append(output_dict.get("predicted_glucose_values")[0:73])
+                # Starting from index 1 to skip the reference value in the predicted trajectory
+                y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
         return y_pred
 
     def get_prediction_output(self, df_glucose, df_bolus, df_basal, df_carbs):
