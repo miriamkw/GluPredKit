@@ -32,18 +32,18 @@ model.fit(df_glucose, df_bolus, df_basal, df_carbs)
 start_date = datetime(2023, 3, 2)
 end_date = datetime(2023, 3, 2)
 df_glucose, df_bolus, df_basal, df_carbs = tidepool_parser(start_date, end_date, username, password)
-y_pred, y_test = model.predict(df_glucose, df_bolus, df_basal, df_carbs)
-y_test = y_test.to_numpy()
+y_pred = model.predict(df_glucose, df_bolus, df_basal, df_carbs)
+_, y_true = model.process_data(df_glucose)
 
 # Convert to mg/dL before fetching metrics
 y_pred = np.multiply(y_pred, 18)
-y_test = np.multiply(y_test, 18)
+y_true = np.multiply(y_true, 18)
 
 # Print different error metrics
 rmse = RMSE()
 bayer = Bayer()
 kovatchev = Kovatchev()
 
-print("RMSE: ", rmse(y_test, y_pred))
-print("Bayer: ", bayer(y_test, y_pred))
-print("Kovatchev: ", kovatchev(y_test, y_pred))
+print("RMSE: ", rmse(y_true, y_pred))
+print("Bayer: ", bayer(y_true, y_pred))
+print("Kovatchev: ", kovatchev(y_true, y_pred))
