@@ -2,8 +2,9 @@
 This linear regressor is provided as a simple example of how this framework can be used.
 """
 from sklearn.linear_model import LinearRegression
-from src.models.base_model import BaseModel
+from .base_model import BaseModel
 from typing import List
+
 
 class LinearRegressor(BaseModel):
     def __init__(self, output_offset=30):

@@ -1,4 +1,4 @@
-from src.models.base_model import BaseModel
+from .base_model import BaseModel
 from typing import List
 import datetime
 from pyloopkit.loop_data_manager import update
