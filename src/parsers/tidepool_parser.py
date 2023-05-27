@@ -35,12 +35,18 @@ class TidepoolParser(BaseParser):
                                                       ]]
             df_carbs = pd.json_normalize(carb_data)[['time', 'nutrition.carbohydrate.units','nutrition.carbohydrate.net', 'payload.com.loopkit.AbsorptionTime']]
 
-            # Rename columns (add units if its not obvious)
+            # Rename columns
             df_glucose.rename(columns={"origin.payload.sourceRevision.source.name": "device_name"}, inplace=True)
             df_bolus.rename(columns={"normal": "dose[IU]", "origin.payload.device.name": "device_name"}, inplace=True)
             df_basal.rename(columns={"duration": "duration[ms]", "rate": "rate[U/hr]", "origin.payload.device.name": "device_name",
                                      "payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate": "scheduled_basal", "deliveryType": "delivery_type"}, inplace=True)
             df_carbs.rename(columns={"nutrition.carbohydrate.units": "units", "nutrition.carbohydrate.net": "value", "payload.com.loopkit.AbsorptionTime": "absorption_time[s]"}, inplace=True)
+
+            # If blood glucose values in mmol/L, convert to mg/dL
+            if not df_glucose.empty:
+                if df_glucose.loc[0, 'units'] == 'mmol/L':
+                    df_glucose['value'] = df_glucose['value'] * 18.0182
+                    df_glucose['units'] = 'mg/dL'
 
             # Convert time to datetime object
             for df in [df_glucose, df_bolus, df_basal, df_carbs]:

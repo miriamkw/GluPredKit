@@ -68,9 +68,11 @@ Blood glucose measurements (`df_glucose`):
 
 | time                 | units  | value   | device_name |
 |----------------------|--------|---------|-------------|
-| 2023-02-09T23:57:00Z | mmol/L | 8.43714 | Dexcom G6   |
-| 2023-02-09T23:51:59Z | mmol/L | 8.27061 | Dexcom G6   |
-| 2023-02-09T23:46:59Z | mmol/L | 8.21511 | Dexcom G6   |
+| 2023-02-09T23:57:00Z | mg/dL  | 8.43714 | Dexcom G6   |
+| 2023-02-09T23:51:59Z | mg/dL  | 8.27061 | Dexcom G6   |
+| 2023-02-09T23:46:59Z | mg/dL  | 8.21511 | Dexcom G6   |
+
+Note that all parsers default return glucose values in mg/dL.
 
 Bolus doses of insulin (`df_bolus`):
 

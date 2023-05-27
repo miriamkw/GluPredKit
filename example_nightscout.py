@@ -51,8 +51,8 @@ async def main():
     # Dataframe Glucose
     # time | units | value |
     times = [entry.date for entry in entries]
-    units = ['mmol/L' for _ in entries]
-    values = [entry.sgv / 18.0182 for entry in entries]
+    units = ['mg/dL' for _ in entries]
+    values = [entry.sgv for entry in entries]
     df_glucose = pd.DataFrame({'time': times, 'units': units, 'value': values})
     print(df_glucose)
 

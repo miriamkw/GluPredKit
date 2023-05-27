@@ -104,10 +104,7 @@ class LoopModel(BaseModel):
         # Sort glucose values
         df = df.sort_values(by='time', ascending=True).reset_index(drop=True)
         glucose_dates = [timestamp for timestamp in df['time'].to_numpy()]
-        if df['units'][0] == 'mmol/L':
-            glucose_values = [value * 18.0182 for value in df['value'].to_numpy()]
-        else:
-            glucose_values = df['value'].to_numpy()
+        glucose_values = df['value'].to_numpy()
         return glucose_dates, glucose_values
 
     def get_insulin_data(self, df_bolus, df_basal):
