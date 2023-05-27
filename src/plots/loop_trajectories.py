@@ -99,7 +99,7 @@ class LoopTrajectories(BasePlot):
 
         plt.axhspan(100 / unit_const, 113 / unit_const, facecolor='b', alpha=0.2)
 
-        ax.set(xlabel='Time (minutes)', ylabel='Blood Glucose (mg/dL)',
+        ax.set(xlabel='Time (minutes)', ylabel='Blood Glucose (' + glucose_unit + ')',
                title='Measured vs one trajectory of predicted values')
         ax.grid()
         plt.legend(loc='best')
