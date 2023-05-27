@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 class PredictionTrajectories(BasePlot):
     def __init__(self):
-        super().__init__('MAE')
+        super().__init__()
 
     def _draw_plot(self, y_true, y_pred, output_offset=None):
         """

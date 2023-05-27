@@ -3,7 +3,6 @@ This linear regressor is provided as a simple example of how this framework can 
 """
 from sklearn.linear_model import LinearRegression
 from src.models.base_model import BaseModel
-from typing import List
 
 class LinearRegressor(BaseModel):
     def __init__(self, output_offset=30):
@@ -22,10 +21,10 @@ class LinearRegressor(BaseModel):
         return self
 
     def predict(self, df_glucose, df_bolus, df_basal, df_carbs):
-        X_test, y_test = self.process_data(df_glucose)
-        y_pred = self.model.predict(X_test)
+        X, y = self.process_data(df_glucose)
+        y_pred = self.model.predict(X)
 
-        return y_pred, y_test
+        return y_pred
 
     def process_data(self, df_glucose):
         # Assuming only one output, finding the index of the offset
