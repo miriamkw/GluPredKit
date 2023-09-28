@@ -25,7 +25,7 @@ class TidepoolParser(BaseParser):
             tp_api.logout()
 
             # Sort data into one dataframe each data type, and retreive only the essential information
-            (glucose_data, bolus_data, basal_data, carb_data) = self.parse_json(user_data)
+            (glucose_data, bolus_data, basal_data, carb_data, workout_data) = self.parse_json(user_data)
 
             df_glucose = pd.json_normalize(glucose_data)[['time', 'units', 'value', 'origin.payload.sourceRevision.source.name']]
             df_bolus = pd.json_normalize(bolus_data)[['time', 'normal', 'origin.payload.device.name']]
@@ -35,8 +35,12 @@ class TidepoolParser(BaseParser):
                                                       ]]
             df_carbs = pd.json_normalize(carb_data)[['time', 'nutrition.carbohydrate.units','nutrition.carbohydrate.net', 'payload.com.loopkit.AbsorptionTime']]
 
+            if not len(workout_data) == 0:
+                df_workouts = pd.json_normalize(workout_data)[['time', 'duration.value', 'name']]
+            else:
+                df_workouts = pd.DataFrame()
+
             # Rename columns
-            df_glucose.rename(columns={"origin.payload.sourceRevision.source.name": "device_name"}, inplace=True)
             df_bolus.rename(columns={"normal": "dose[IU]", "origin.payload.device.name": "device_name"}, inplace=True)
             df_basal.rename(columns={"duration": "duration[ms]", "rate": "rate[U/hr]", "origin.payload.device.name": "device_name",
                                      "payload.com.loopkit.InsulinKit.MetadataKeyScheduledBasalRate": "scheduled_basal", "deliveryType": "delivery_type"}, inplace=True)
@@ -44,18 +48,27 @@ class TidepoolParser(BaseParser):
 
             # If blood glucose values in mmol/L, convert to mg/dL
             if not df_glucose.empty:
+                df_glucose.rename(columns={"origin.payload.sourceRevision.source.name": "device_name"}, inplace=True)
+
                 if df_glucose.loc[0, 'units'] == 'mmol/L':
                     df_glucose['value'] = df_glucose['value'] * 18.0182
                     df_glucose['units'] = 'mg/dL'
+
+            if not df_workouts.empty:
+                df_workouts.rename(columns={"duration.value": "duration[s]"}, inplace=True)
+                df_workouts['name'] = df_workouts['name'].apply(lambda x: x.split()[0])
+                df_workouts.time = pd.to_datetime(df_workouts.time)
 
             # Convert time to datetime object
             for df in [df_glucose, df_bolus, df_basal, df_carbs]:
                 df.time = pd.to_datetime(df.time)
 
-            return df_glucose, df_bolus, df_basal, df_carbs
+            return df_glucose, df_bolus, df_basal, df_carbs, df_workouts
 
         except Exception as e:
             print(f"Error fetching data: {str(e)}")
+            print("Most likely, there is no data available in the dataframe.")
+            print("Make sure that data is synced in the given time frame.")
             return []
 
     def parse_json(self, user_data):
@@ -72,6 +85,7 @@ class TidepoolParser(BaseParser):
         bolus_data = []
         basal_data = []
         carb_data = []
+        workout_data = []
 
         # Sort data types into lists
         for data in user_data:
@@ -83,7 +97,9 @@ class TidepoolParser(BaseParser):
                 basal_data.append(data)
             elif data['type'] == 'food':
                 carb_data.append(data)
+            elif data['type'] == 'physicalActivity':
+                workout_data.append(data)
             else:
                 print('Unknown type is not yet supported: ', data['type'])
 
-        return (glucose_data, bolus_data, basal_data, carb_data)
+        return (glucose_data, bolus_data, basal_data, carb_data, workout_data)

@@ -6,27 +6,54 @@ import datetime
 import pytz
 import pandas as pd
 
-class InteractivePrediction(BasePlot):
-    def __init__(self):
-        super().__init__('MAE')
 
-    def __call__(self, model, df_glucose, df_bolus, df_basal, df_carbs):
+class InteractivePrediction(BasePlot):
+
+    def __call__(self, model, df, interval=5, use_mgdl=True, history_samples=36):
         """
-        It is expected that y_pred is one predicted trajectory
-        In case of only one predicted value, output_offset cannot be None.
+        A plot of a prediction, where you can change the carbohydrate and insulin input with a slider, and observe
+        how the model reacts.
+
+        model -- a prediction model implementing the base_model
+        df -- a dataframe that the prediction model can use as input to get a prediction
+        interval -- the interval between each prediction in the trajectory
+        use_mgdl -- whether to present results in mg/dL or mmol/L
+        history_samples -- how much previous blood glucose samples to include in the plot
         """
-        # To do to start: predict one trajectory and predicted
-        t = np.arange(0.0, (12 + 72)*5, 5)
-        y_pred = model.predict_one_prediction(df_glucose, df_bolus, df_basal, df_carbs)
-        if df_glucose['units'][0] == 'mmol/L':
-            glucose_values = [value * 18.0182 for value in df_glucose['value'][:12].to_numpy()[::-1]]
+        if use_mgdl:
+            k = 1
         else:
-            glucose_values = df_glucose['value'][:12].to_numpy()[::-1]
+            k = 18.0182
+
+        y_pred = model.predict(df)
+        n_predictions = len(y_pred[0])
+        n_intervals = int(interval / 5)  # Intervals from minutes to number of elements
+
+        t = np.arange(-history_samples * 5 + 5, (n_predictions * n_intervals) * 5, 5)
 
         fig, ax = plt.subplots()
         fig.subplots_adjust(bottom=0.25)
-        l = ax.scatter(t[:12], glucose_values)
-        l2, = ax.plot(t[12:], y_pred, linestyle='--')
+
+        non_zero_insulin_t = [x for x, y in zip(t[:history_samples], df['insulin'][-history_samples:]) if y != 0]
+        non_zero_insulin = [y * 18.0182 / k for y in df['insulin'][-history_samples:] if y != 0]
+        for i in range(len(non_zero_insulin)):
+            if non_zero_insulin[i] < 1:
+                text = ''
+            else:
+                text = f'{non_zero_insulin[i] * k / 18.0182:.1f} IU'
+            plt.text(non_zero_insulin_t[i], non_zero_insulin[i], text, ha='center', va='bottom')
+
+        non_zero_carbs_t = [x for x, y in zip(t[:history_samples], df['carbs'][-history_samples:]) if y != 0]
+        non_zero_carbs = [y / k * 2 for y in df['carbs'][-history_samples:] if y != 0]
+        for i in range(len(non_zero_carbs)):
+            text = f'{non_zero_carbs[i] * k / 2:.0f} g'
+            plt.text(non_zero_carbs_t[i], non_zero_carbs[i], text, ha='center', va='bottom')
+
+        l_measurements = ax.scatter(t[:history_samples], [el/k for el in df['CGM'][-history_samples:]], label='Blood glucose measurements')
+        l_insulin = ax.scatter(non_zero_insulin_t, non_zero_insulin, label='Insulin')
+        l_carbohydrates = ax.scatter(non_zero_carbs_t, non_zero_carbs, label='Carbohydrates')
+
+        l2, = ax.plot(t[history_samples - 1:n_intervals * n_predictions + history_samples:n_intervals], [el/k for el in y_pred[-1]], linestyle='--', label='Blood glucose predictions')
 
         ax_insulin = fig.add_axes([0.25, 0.1, 0.65, 0.03])
         ax_carbs = fig.add_axes([0.25, 0.15, 0.65, 0.03])
@@ -43,28 +70,24 @@ class InteractivePrediction(BasePlot):
             valinit=0, valstep=10,
             initcolor='none'  # Remove the line marking the valinit position.
         )
+
         def update(val):
             insulin = s_insulin.val
             carbs = s_carbs.val
-            time = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
 
-            new_row_insulin = pd.DataFrame({'time': time, 'dose[IU]': insulin}, index=[0])
-            new_row_carbs = pd.DataFrame({'time': time, 'units': 'grams', 'value': carbs, 'absorption_time[s]': 10800}, index=[0])
+            last_row_index = df.index[-1]
 
-            df_carbs_copy = pd.concat([df_carbs, new_row_carbs], axis=0)
-            df_bolus_copy = pd.concat([df_bolus, new_row_insulin], axis=0)
+            df.at[last_row_index, 'carbs'] = carbs
+            df.at[last_row_index, 'insulin'] = insulin
 
-            df_carbs_copy.reset_index(inplace=True)
-            df_bolus_copy.reset_index(inplace=True)
-            y_pred = model.predict_one_prediction(df_glucose,
-                                                  df_bolus_copy,
-                                                  df_basal,
-                                                  df_carbs_copy)
-            l2.set_ydata(y_pred)
+            y_pred_new = model.predict(df)
+            l2.set_ydata([el/k for el in y_pred_new[-1]])
             fig.canvas.draw_idle()
 
         s_insulin.on_changed(update)
         s_carbs.on_changed(update)
+
+        ax.axhspan(70 / k, 180 / k, facecolor='blue', alpha=0.2)
 
         ax_reset = fig.add_axes([0.8, 0.025, 0.1, 0.04])
         button = Button(ax_reset, 'Reset', hovercolor='0.975')
@@ -75,4 +98,8 @@ class InteractivePrediction(BasePlot):
 
         button.on_clicked(reset)
 
+        plt.legend(handles=[l_measurements, l2, l_insulin, l_carbohydrates], bbox_to_anchor=(-0.6, 10), loc='upper left')
+
         plt.show()
+
+
