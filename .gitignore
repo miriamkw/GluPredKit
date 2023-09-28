@@ -6,11 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
-# Credentials
+# Credentials and settings
 credentials.json
+config.json
 
 # Virtual environment
-loop-scoring/
+bgp-evaluation/
 
 # Distribution / packaging
 .Python

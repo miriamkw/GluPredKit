@@ -20,7 +20,7 @@ This repository provides a framework for training, testing, and evaluating blood
 * [Disclaimers](#disclaimers)
 
 ## Setup
-1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation`.
+1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation` or `python3 -m venv bgp-evaluation`.
 2. Activate the virtual environment by running the following command: `source bgp-evaluation/bin/activate`.
 3. Install the required packages by running the following command: `pip install -r requirements.txt`.
 
@@ -43,16 +43,6 @@ Create a file named `credentials.json` in the root directory. Copy and paste the
   }
 }`
 
-#### Example linear regression
-Using Tidepool API to train a simple linear regression. Input is the current CGM measurement, and output is the CGM measurement 30 minutes later.
-
-#### Example loop model
-Using Tidepool API to predict blood glucose using the Loop prediction model. Error metrics are printed for predictions after 30 minutes.
-
-#### Example nightscout
-Using Nightscout API to predict blood glucose using the Loop prediction model, with the most recent data. A plot for all the components of the prediction is shown: carbohydrates,
-momentum, retrospective correction and insulin. This script can be used to compare with the predictions in the Loop app in real-time to confirm that this repository is 
-predicting correctly.
 
 
 ### Implementing BGP Models
@@ -113,13 +103,6 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 |-------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Root Mean Squared Error                         | RMSE      | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
 | Mean Absolute Error                             | MAE       | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
-| Bayer                                           | Bayer     | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
-| Cao                                             | Cao       | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
-| Kovatchev                                       | Kovatchev | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
-| Van Herpe                                       | VanHerpe  | Penalty function. The lower, the better.                                                                                                                                                                                                                           | 
-| Temporal Gain (to do!)                          | TG        | Takes prediction horizon into account. The amount of average time gained for early detection of a potential hypo/hyper glycemia event using the model (https://ieeexplore.ieee.org/document/6157604). The higher value, the better.                                | 
-| Energy of the second-order differences (to do!) | ESOD      | Takes prediction horizon into account. Reflects the presence of spurious oscillations in the predicted time series, and thus the risk of generating false hypo/hyper alerts. The closer to 1, the better (https://ieeexplore.ieee.org/document/6157604).           | 
-| J (to do!)                                      | J         | Takes prediction horizon into account. Simultaneously takes into account two merit criteria (TG and ESOD), the regularity of the predicted profile and the time gained thanks to prediction (https://ieeexplore.ieee.org/document/6157604). The lower, the better. | 
 | Pearson's Correlation Coefficient               | PCC       | a measure of the linear relationship between two variables X and Y, giving a value between -1 and +1. A value of +1 indicates a perfect positive correlation, 0 indicates no correlation, and -1 indicates a perfect negative correlation.                         | 
 
 ## Disclaimers
