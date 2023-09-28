@@ -7,3 +7,4 @@ pandas==1.5.3
 python_nightscout @ git+https://github.com/ps2/python-nightscout.git@master
 scikit-learn
 numpy
+aiohttp

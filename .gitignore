@@ -6,9 +6,20 @@ __pycache__/
 # C extensions
 *.so
 
-# Credentials and settings
+# Data, results, credentials and settings
 credentials.json
 config.json
+data/processed/*
+# Keep the directory itself
+!data/processed/
+data/models/*
+!data/models/
+data/raw/*
+!data/raw/
+results/figures/*
+!results/figures/
+results/reports/*
+!results/reports/
 
 # Virtual environment
 bgp-evaluation/
