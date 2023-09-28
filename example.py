@@ -32,13 +32,17 @@ async def main():
     start_date = end_date - timedelta(days=1)
 
     parser = NightscoutParser()
-    df_glucose, df_bolus, df_basal, df_carbs = parser(start_date=start_date, end_date=end_date, nightscout_url=NIGHTSCOUT_URL, api_secret=API_SECRET)
+    df = parser(start_date=start_date, end_date=end_date, nightscout_url=NIGHTSCOUT_URL, api_secret=API_SECRET)
+
+    print(df)
+
+    output_offset = 15
 
     # Train linear regression model
     model = LinearRegressor(output_offset=output_offset)
-    model.fit(df_glucose, df_bolus, df_basal, df_carbs)
-    y_pred = model.predict(df_glucose, df_bolus, df_basal, df_carbs)
-    _, y_true = model.process_data(df_glucose)
+    model.fit(df)
+    y_pred = model.predict(df)
+    _, y_true = model.process_data(df)
 
     plot = LoopTrajectories()
     plot._draw_plot(y_pred, glucose_unit='mg/dL')
