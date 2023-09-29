@@ -51,7 +51,7 @@ def parse(parser, username, password, file_name):
     if file_name is not None:
         file_name = file_name
     else:
-        file_name = (parser + ' ' + start_date.strftime(date_format) + ' to ' + end_date.strftime(date_format)
+        file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format)
                      + '.csv')
 
     click.echo("Storing data as CSV...")
