@@ -87,6 +87,11 @@ class NightscoutParser(BaseParser):
             df_bolus = df_bolus.resample('5T', label='right').sum()
             df = pd.merge(df, df_bolus, on="date", how='outer')
 
+            # The reason why NS basal data is different from Tidepool and Apple health,
+            # Is that the stored data is not based on actually delivered basal units (like in Apple health)
+            # Nor is it the derived temperal basal rate from the actually delivered doses (like in Tidepool),
+            # But NS is based on the "programmed temperal basal rate (see metadata apple health),
+            # Which is unfortunately quite unaccurate compared to the delivered doses from the pump.
             df_basal = df_basal.resample('5T', label='right').last()
             df_basal['basal_rate'] = df_basal['basal_rate'] / 60 * 5  # From U/hr to U (5-minutes)
             df = pd.merge(df, df_basal, on="date", how='outer')

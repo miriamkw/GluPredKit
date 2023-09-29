@@ -105,7 +105,8 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 | Mean Absolute Error                             | MAE       | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
 | Pearson's Correlation Coefficient               | PCC       | a measure of the linear relationship between two variables X and Y, giving a value between -1 and +1. A value of +1 indicates a perfect positive correlation, 0 indicates no correlation, and -1 indicates a perfect negative correlation.                         | 
 
-## Disclaimers
+## Disclaimers and limitations
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
 * Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
 * Metrics assumes mg/dL for the input.
+* Note that the difference between how basal rates are registered. Bolus doses are however consistent across. Hopefully it is negligable.

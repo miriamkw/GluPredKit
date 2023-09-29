@@ -1,7 +1,6 @@
 import asyncio
 from datetime import timedelta, datetime
 from src.models.linear_regressor import LinearRegressor
-from src.plots.loop_trajectories import LoopTrajectories
 from src.parsers.tidepool_parser import TidepoolParser
 import json
 import numpy as np
@@ -21,6 +20,9 @@ API_SECRET = credentials['nightscout_api']['api_secret']
 username = credentials['tidepool_api']['email']
 password = credentials['tidepool_api']['password']
 
+end_date = datetime.now()
+end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+start_date = end_date - timedelta(days=1)
 
 """
 In this example we use nightscout to get most recent data and print prediction so we can compare to Loop in real-time.
@@ -28,16 +30,14 @@ In this example we use nightscout to get most recent data and print prediction s
 
 async def main():
 
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=1)
-
     parser = NightscoutParser()
     df = parser(start_date=start_date, end_date=end_date, nightscout_url=NIGHTSCOUT_URL, api_secret=API_SECRET)
 
-    print(df)
+    #print(df.head(15))
 
     output_offset = 15
 
+    """
     # Train linear regression model
     model = LinearRegressor(output_offset=output_offset)
     model.fit(df)
@@ -46,6 +46,7 @@ async def main():
 
     plot = LoopTrajectories()
     plot._draw_plot(y_pred, glucose_unit='mg/dL')
+    """
 
 
 asyncio.run(main())
@@ -61,8 +62,9 @@ end_date = datetime(2023, 3, 1)
 
 tidepool_parser = TidepoolParser()
 
-df_glucose, df_bolus, df_basal, df_carbs = tidepool_parser(start_date, end_date, username, password)
+df = tidepool_parser(start_date, end_date, username, password)
 
+"""
 # Define the output offset to 30 minutes into the future
 output_offset = 30
 
@@ -87,7 +89,7 @@ mae = MAE()
 
 print("RMSE: ", rmse(y_true, y_pred))
 print("MAE: ", mae(y_true, y_pred))
-
+"""
 
 
 
