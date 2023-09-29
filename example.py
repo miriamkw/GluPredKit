@@ -1,10 +1,10 @@
 import asyncio
 from datetime import timedelta, datetime
 from src.models.linear_regressor import LinearRegressor
-from src.parsers.tidepool_parser import TidepoolParser
+from src.parsers.tidepool import TidepoolParser
 import json
 import numpy as np
-from src.parsers.nightscout_parser import NightscoutParser
+from src.parsers.nightscout import NightscoutParser
 from src.metrics.rmse import RMSE
 from src.metrics.mae import MAE
 

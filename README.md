@@ -20,79 +20,71 @@ This repository provides a framework for training, testing, and evaluating blood
 * [Disclaimers](#disclaimers)
 
 ## Setup
-1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation` or `python3 -m venv bgp-evaluation`.
+1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation`.
 2. Activate the virtual environment by running the following command: `source bgp-evaluation/bin/activate`.
 3. Install the required packages by running the following command: `pip install -r requirements.txt`.
 
-## Usage
+## Usage of Command Line Interface (CLI)
 
-### Command line interface
+A Command Line Interface (CLI) is developed to facilitate the process of fetching data, preprocessing data, training prediction models to report the results. 
+Definitions:
+- **Parsing**: Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. The parsed datasets are stored in 'data/raw/'.
+- **Preprocessing**: Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc. The preprocessed datasets are stored in 'data/preprocessed'.
+- **Model training**: Refers to using preprocessed data to train a blood glucose prediction model. The trained models are stored in 'data/models/'.
+- **Metrics**: Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model. The evaluation metrics are stored in tables 'results/reports/'.
+- **Plots**: Different types of plots that can illustrate blood glucose predictions together with actual measured values. The plotted results are stored in 'results/figures/'.
 
-### Running examples
+### Parse Command
 
-#### Credentials
-Create a file named `credentials.json` in the root directory. Copy and paste the following information and adjust the information with your credentials:
+The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory.
 
-`{ "tidepool_api": 
-    { "email": "YOUR_TIDEPOOL_USERNAME", 
-    "password": "YOUR_TIDEPOOL_PASSWORD" 
-  },
-  "nightscout_api": {
-    "url": "https://diabetes.neethan.net/",
-    "api_secret": "wD6KB2HvJ5ZL3FZphKjbPLdHb5C1zEix"
-  }
-}`
+`python your_cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
 
+#### Options
+`--parser`: Choose a parser for data parsing. Supported parsers include 'tidepool' and 'nightscout'.
 
+`--file-name`: (Optional) Specify an optional file name for the output CSV file.
 
-### Implementing BGP Models
-To implement your own BGP model, create a new class that inherits from the BaseModel class in `src/models/base_model.py`. 
+#### Arguments
+`<username>`: The username required for data parsing.
 
-The `fit` and `predict` methods in the model takes some dataframes as inputs. These dataframes can be custom made or retrieved from real user data using one of the parsers in `src/parsers/`.
+`<password>`: The password required for data parsing.
 
-The four dataframe inputs represent blood glucose measurements, bolus doses of insulin, basal rate deliveries of insulin and carbohydrate intakes.
+#### Example
 
-In the following tables are the columns and some example data for each one of the dataframes:
+To parse data using the 'tidepool' parser with a custom output file name:
 
-Blood glucose measurements (`df_glucose`):
+`python cli.py parse --parser tidepool my_username my_password --file-name custom_output.csv`
 
-| time                 | units  | value | device_name |
-|----------------------|--------|-------|-------------|
-| 2023-02-09T23:57:00Z | mg/dL  | 105.3 | Dexcom G6   |
-| 2023-02-09T23:51:59Z | mg/dL  | 106.1 | Dexcom G6   |
-| 2023-02-09T23:46:59Z | mg/dL  | 106.9 | Dexcom G6   |
+#### Example Output
 
-Note that all parsers default return glucose values in mg/dL.
+The parsed data will be stored as a .csv and look something like the table below:
 
-Bolus doses of insulin (`df_bolus`):
+| date                      | CGM        | insulin | carbs |
+|---------------------------|------------|---------|-------|
+| 2023-03-01 02:30:00+02:00 | 150.021695 | 0.06    | 30    |    
+| 2023-03-01 02:35:00+02:00 | 146.021114 | 0.06    | 0     |      
+| 2023-03-01 02:40:00+02:00 | 143.020724 | 0.06    | 0     |
 
-| time                 | dose[IU] | device_name  | 
-|----------------------|----------|--------------|
-| 2023-02-09T23:57:00Z | 1        | Omnipod-Dash |
-| 2023-02-09T23:51:59Z | 2.5      | Omnipod-Dash |
-| 2023-02-09T23:46:59Z | 2.1      | Omnipod-Dash |
+Additional columns is possible. 
 
+## Contributing with code
 
-Basal rates of insulin (`df_basal`):
+TODO: Describe the file structure.
 
-| time                 | duration[ms] | rate[U/hr] | device_name   | scheduled_basal | delivery_type |
-|----------------------|--------------|------------|---------------|-----------------|---------------|
-| 2023-02-09T23:57:00Z | 4505492      | 0.759073   | Omnipod-Dash  | 0.75 IU/hr      | basal         |
-| 2023-02-09T23:51:59Z | 133717       | 0.0        | Omnipod-Dash  | 0.75 IU/hr      | temp          | 
-| 2023-02-09T23:46:59Z | 1198603      | 0.0        | Omnipod-Dash  | 0.75 IU/hr      | temp          |
+### Adding Data Source Parsers
 
-Carbohydrate intakes (`df_carbs`):
+### Adding Data Preprocessors
 
-| time                 | units  | value | absorption_time\[s] |
-|----------------------|--------|-------|---------------------|
-| 2023-02-09T23:57:00Z | grams  | 30    | 10800               |
-| 2023-02-09T23:51:59Z | grams  | 50    | 10800               |
-| 2023-02-09T23:46:59Z | grams  | 45    | 10800               |
+### Adding Machine Learning Prediction Models
 
-
-
-### Implementing BGP Evaluation Metrics
+### Adding Evaluation Metrics
 To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
+
+
+### Adding Evaluation Plots
+
+
 
 ### Testing
 To run the tests, write `python tests/test_all.py` in the terminal.
