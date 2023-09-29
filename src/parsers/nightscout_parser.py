@@ -4,7 +4,7 @@ and return the data in a format that can be used as input to the blood glucose p
 """
 from aiohttp import ClientError, ClientConnectorError, ClientResponseError
 import nightscout
-from src.parsers.base_parser import BaseParser
+from base_parser import BaseParser
 import pandas as pd
 import datetime
 

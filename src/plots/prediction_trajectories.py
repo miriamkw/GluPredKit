@@ -1,7 +1,6 @@
-from src.plots.base_plot import BasePlot
+from base_plot import BasePlot
 import numpy as np
 import matplotlib.pyplot as plt
-
 class PredictionTrajectories(BasePlot):
     def __init__(self):
         super().__init__()

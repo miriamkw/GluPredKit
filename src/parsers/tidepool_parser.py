@@ -5,7 +5,7 @@ and return the data in a format that can be used as input to the blood glucose p
 from tidepool_data_science_project.makedata.tidepool_api import TidepoolAPI
 import datetime
 import pandas as pd
-from src.parsers.base_parser import BaseParser
+from base_parser import BaseParser
 
 
 class TidepoolParser(BaseParser):
