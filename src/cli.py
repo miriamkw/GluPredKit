@@ -7,7 +7,7 @@ import pandas as pd
 
 def store_data_as_csv(df, output_path, file_name):
     file_path = output_path + file_name
-    df.to_csv(file_path)  # Set 'index' to False to exclude the index column
+    df.to_csv(file_path)
 
 
 # cli.py

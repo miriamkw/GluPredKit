@@ -79,8 +79,10 @@ TODO: Describe the file structure.
 ### Adding Data Source Parsers
 
 ### Adding Data Preprocessors
+Note: targets from presossors will be named "target".
 
 ### Adding Machine Learning Prediction Models
+Note: targets from presossors will be named "target".
 
 ### Adding Evaluation Metrics
 To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
