@@ -26,7 +26,8 @@ This repository provides a framework for training, testing, and evaluating blood
 
 ## Usage of Command Line Interface (CLI)
 
-A Command Line Interface (CLI) is developed to facilitate the process of fetching data, preprocessing data, training prediction models to report the results. 
+A Command Line Interface (CLI) is developed to facilitate the process of fetching data, preprocessing data, training prediction models to report the results. Commands are executed from the `src/` directory.
+
 Definitions:
 - **Parsing**: Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. The parsed datasets are stored in 'data/raw/'.
 - **Preprocessing**: Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc. The preprocessed datasets are stored in 'data/preprocessed'.
@@ -34,9 +35,12 @@ Definitions:
 - **Metrics**: Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model. The evaluation metrics are stored in tables 'results/reports/'.
 - **Plots**: Different types of plots that can illustrate blood glucose predictions together with actual measured values. The plotted results are stored in 'results/figures/'.
 
+### Getting Started
+Make sure you are located in the `src/` directory in the terminal, where `cli.py` is located. 
+
 ### Parse Command
 
-The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory. Commands are executed from the `src/` directory.
+The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory. 
 
 `python cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
 
