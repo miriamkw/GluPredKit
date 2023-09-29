@@ -36,9 +36,9 @@ Definitions:
 
 ### Parse Command
 
-The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory.
+The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory. Commands are executed from the `src/` directory.
 
-`python your_cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
+`python cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
 
 #### Options
 `--parser`: Choose a parser for data parsing. Supported parsers include 'tidepool' and 'nightscout'.
