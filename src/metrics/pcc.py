@@ -1,5 +1,5 @@
 import numpy as np
-from src.metrics.base_metric import BaseMetric
+from base_metric import BaseMetric
 
 class PCC(BaseMetric):
     def __init__(self):
