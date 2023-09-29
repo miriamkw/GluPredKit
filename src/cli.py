@@ -21,7 +21,8 @@ from datetime import timedelta, datetime
 @click.option('--parser', type=click.Choice(['tidepool', 'nightscout']), help='Choose a parser') # TODO: Make the list of parsers dynamic to the files in the parsers folder
 @click.argument('username', type=str)
 @click.argument('password', type=str)
-def parse(parser, username, password):
+@click.option('--file-name', type=click.Path(exists=True), help='Optional file name of output')
+def parse(parser, username, password, file_name):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -43,11 +44,15 @@ def parse(parser, username, password):
     # Perform parsing using the chosen parser
     parsed_data = chosen_parser(start_date, end_date, username, password)
 
-    print(parsed_data)
     output_path = '../data/raw/'
     date_format = "%d-%m-%Y"
-    file_name = (parser + ' ' + start_date.strftime(date_format) + ' to ' + end_date.strftime(date_format)
-                 + '.csv')
+
+    # Add default file name if input is not provided
+    if file_name is not None:
+        file_name = file_name
+    else:
+        file_name = (parser + ' ' + start_date.strftime(date_format) + ' to ' + end_date.strftime(date_format)
+                     + '.csv')
 
     click.echo("Storing data as CSV...")
     store_data_as_csv(parsed_data, output_path, file_name)
