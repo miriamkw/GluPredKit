@@ -107,6 +107,51 @@ This command will preprocess a file named 'my_data.csv' in 'data/raw/' and save 
 - Ensure that the 'data/raw/' folder contains the necessary file for the given file name.
 - The prediction horizon must be divisible by 5.
 
+### Train Model Command
+
+#### Description
+This command trains the model with the given options and arguments, saves the trained model instance, and prints out the trained model's hyperparameters if available.
+
+#### Usage
+```sh
+python cli.py --model [MODEL] INPUT-FILE-NAME --prediction-horizon [PREDICTION_HORIZON] --num_features [NUM_FEATURES] --cat_features [CAT_FEATURES]
+```
+
+#### Options and Arguments
+- `--model`: The name of the model file to be trained (without `.py`).
+    - This is a required option.
+    - Example: `--model huber`
+
+- `INPUT-FILE-NAME` (Positional Argument): The name of the input file (located in `../data/processed/`) containing the training data.
+    - This is a required argument.
+    - Example: `input_file.csv`
+
+- `--prediction-horizon`: The prediction horizon for the model.
+    - Default is `60`.
+    - Example: `--prediction-horizon 30`
+
+- `--num_features`: List of numerical features, separated by a comma.
+    - Default is `'CGM,insulin,carbs'`.
+    - Example: `--num_features feature1,feature2`
+
+- `--cat_features`: List of categorical features, separated by a comma.
+    - Default is an empty string `''` (i.e., no categorical features).
+    - Example: `--cat_features category1,category2`
+
+#### Example Command
+```sh
+python cli.py --model huber input_file.csv --prediction-horizon 30 --num_features CGM,insulin --cat_features carbs
+```
+
+#### Outputs
+- Prints out the progress and status of model training.
+- If available, prints out the model hyperparameters.
+- Saves the trained model instance to `../data/models/` directory with the name in the format `[model]_ph-[prediction-horizon].pkl`.
+
+#### Notes
+- Ensure the input file is correctly placed in the `../data/processed/` directory.
+- The selected model must inherit from `BaseModel`.
+
 
 ## Contributing with code
 

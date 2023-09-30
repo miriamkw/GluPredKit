@@ -178,8 +178,9 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         dill.dump(model_instance, f)
 
     click.echo(f"Model {model} trained successfully!")
-    # TODO: Add best_params into base_model
-    click.echo(f"Model hyperparamaters: {model_instance.best_params()}")
+
+    if hasattr(model_instance, 'best_params'):
+        click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
 if __name__ == "__main__":
