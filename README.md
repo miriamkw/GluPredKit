@@ -40,6 +40,8 @@ Make sure you are located in the `src/` directory in the terminal, where `cli.py
 
 ### Parse Command
 
+#### Description
+
 The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory. 
 
 `python cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
@@ -72,15 +74,58 @@ The parsed data will be stored as a .csv and look something like the table below
 
 Additional columns is possible. 
 
+### Preprocess Command
+
+#### Description
+
+The `preprocess` command allows you to preprocess data from an input CSV file (must be parsed, and located in 'data/raw/') and store train and test data into CSV files. You can choose the preprocessor and specify various options for preprocessing.
+
+`python cli.py preprocess [OPTIONS] INPUT-FILE-NAME`
+
+#### Options
+
+`--preprocessor`: Choose the preprocessor type (default: scikit_learn). Available options are dynamically generated based on the parsers found in the parsers folder.
+`INPUT-FILE-NAME`: Input CSV file containing the data.
+
+#### Additional Options
+
+`--prediction-horizon`: The prediction horizon for the target value in minutes (default: 60). Must be divisible by 5.
+`--num-lagged-features`: The number of samples of time-lagged features (default: 12).
+`--include-hour`: Include the hour of the day as an input feature (default: True).
+`--test-size`: Fraction of data to reserve for testing (default: 0.2).
+
+#### Example
+
+`python cli.py preprocess --preprocessor scikit_learn my_data.csv`
+
+This command will preprocess a file named 'my_data.csv' in 'data/raw/' and save the training and testing datasets in the 'data/processed/' directory with filenames indicating the preprocessor and selected options. The generated files would be stored as:
+
+- `train-data_scikit_learn_ph-60_lag-12.csv`
+- `test-data_scikit_learn_ph-60_lag-12.csv`
+
+#### Notes
+- Ensure that the 'data/raw/' folder contains the necessary file for the given file name.
+- The prediction horizon must be divisible by 5.
+
+
 ## Contributing with code
 
 TODO: Describe the file structure.
 
 ### Adding Data Source Parsers
+Note: Parser must have class name Parser.
+
+Note: add new file to the CLI alternatives.
 
 ### Adding Data Preprocessors
+Note: targets from preprocessors will be named "target".
+
+Note: Preprocessors must have class name Preprocessor
+
+Note: add new file to the CLI alternatives.
 
 ### Adding Machine Learning Prediction Models
+Note: targets from presossors will be named "target".
 
 ### Adding Evaluation Metrics
 To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
