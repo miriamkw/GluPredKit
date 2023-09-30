@@ -24,7 +24,7 @@ def add_time_lagged_features(col_name, df, num_lagged_features):
 
 class Preprocessor(BasePreprocessor):
     def __init__(self):
-        super().__init__
+        super().__init__()
 
     def __call__(self, df, prediction_horizon=60, num_lagged_features=12, include_hour=True, test_size=0.2):
         """
@@ -61,10 +61,12 @@ class Preprocessor(BasePreprocessor):
             raise ValueError("Prediction horizon must be divisible by 5.")
         df['target'] = df.CGM.shift(-target_index)
 
+        df = df.dropna()
+
         # Train and test split
-        split_index = int(len(df) * (1 - test_size))
         # Adding a margin of 24 hours to the train and the test data to avoid memory leak
-        margin = 12 * 24 + num_lagged_features + target_index
+        margin = int((12 * 24 + num_lagged_features + target_index) / 2)
+        split_index = int((len(df) - margin) * (1 - test_size))
 
         # Split the data into train and test sets
         train_data = df[:split_index - margin]

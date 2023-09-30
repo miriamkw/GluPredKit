@@ -10,7 +10,7 @@ import datetime
 
 class Parser(BaseParser):
     def __init__(self):
-        super().__init__
+        super().__init__()
 
     def __call__(self, start_date, end_date, nightscout_url: str, api_secret: str):
         """

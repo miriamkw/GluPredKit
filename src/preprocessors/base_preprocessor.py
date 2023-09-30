@@ -1,16 +1,15 @@
 class BasePreprocessor:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
+        pass
 
     def __call__(self, data, **kwargs):
         """
-        start_date -- start date for dataset
-        end_date -- end date for dataset
-        optional additional parameters such as api username and key
+        data -- raw data input
+        optional additional parameters
 
-        Returns four dataframes on the format specified in the README.
+        Returns two dataframes: The training data and the test data.
         """
-        raise NotImplementedError("Metric not implemented!")
+        raise NotImplementedError("Preprocessor not implemented!")
 
     def __repr__(self):
         return self.__class__.__name__
