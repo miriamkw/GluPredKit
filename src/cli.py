@@ -17,7 +17,7 @@ def store_data_as_csv(df, output_path, file_name):
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout']), help='Choose a parser') # TODO: Make the list of parsers dynamic to the files in the parsers folder
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout']), help='Choose a parser')
 @click.argument('username', type=str)
 @click.argument('password', type=str)
 @click.option('--file-name', type=str, help='Optional file name of output')
@@ -72,13 +72,17 @@ def parse(parser, username, password, file_name, start_date, end_date):
 
 
 @click.command()
-@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'other']), default='scikit_learn',
-              help='Choose a preprocessor') # TODO: Make the list of parsers dynamic to the files in the parsers folder
+@click.option('--preprocessor', type=click.Choice(['scikit_learn']), default='scikit_learn',
+              help='Choose a preprocessor (default: scikit_learn)')
+# TODO: Make the list of parsers dynamic to the files in the parsers folder
 @click.argument('input-file_name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
-@click.option('--num-lagged-features', type=int, default=12)
-@click.option('--include-hour', type=bool, default=True)
-@click.option('--test-size', type=float, default=0.2)
+@click.option('--num-lagged-features', type=int, default=12,
+              help='The number of samples of time-lagged features (default: 12).')
+@click.option('--include-hour', type=bool, default=True,
+              help='Include hour of day as an input feature (default: True).')
+@click.option('--test-size', type=float, default=0.2,
+              help='Fraction of data to reserve for testing (default: 0.2).')
 def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, include_hour, test_size):
     """
     Preprocess data from an input CSV file and store train and test data into CSV files.
@@ -86,7 +90,10 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     Args:
         preprocessor (str): Type of preprocessor from the preprocessor module.
         input_file_name (str): Input CSV file containing the data.
-        test_size (float): Fraction of data to reserve for testing (default: 0.2).
+        prediction_horizon (int): The prediction horizon for the target value in minutes.
+        num_lagged_features (int): The number of samples of time-lagged features.
+        include_hour (bool): Whether to include hour of day as an input feature.
+        test_size (float): Fraction of data to reserve for testing.
     """
     if prediction_horizon % 5 != 0:
         raise click.BadParameter('Prediction horizon must be divisible by 5.')
