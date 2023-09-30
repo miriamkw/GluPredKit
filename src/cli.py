@@ -21,8 +21,11 @@ def store_data_as_csv(df, output_path, file_name):
 @click.argument('username', type=str)
 @click.argument('password', type=str)
 @click.option('--file-name', type=str, help='Optional file name of output')
-# TODO: Add start and end dates as input
-def parse(parser, username, password, file_name):
+@click.option('--start-date', type=str,
+              help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
+@click.option('--end-date', type=str,
+              help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
+def parse(parser, username, password, file_name, start_date, end_date):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -37,9 +40,17 @@ def parse(parser, username, password, file_name):
 
     click.echo(f"Parsing data using {parser}...")
 
-    end_date = datetime.now()
-    end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_date = end_date - timedelta(days=14)
+    date_format = "%d-%m-%Y"
+
+    if not end_date:
+        end_date = datetime.now()
+    else:
+        end_date = datetime.strptime(end_date, date_format)
+
+    if not start_date:
+        start_date = end_date - timedelta(days=14)
+    else:
+        start_date = datetime.strptime(start_date, date_format)
 
     # Perform parsing using the chosen parser
     parsed_data = chosen_parser(start_date, end_date, username, password)
@@ -60,13 +71,15 @@ def parse(parser, username, password, file_name):
     click.echo(f"Data has the shape: {parsed_data.shape}")
 
 
-# TODO: Preprocessor alternatives: prediction_horizon=60, num_lagged_features=12, include_hour=True, test_size=0.2, optional file name
-
 @click.command()
-@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'other']), help='Choose a preprocessor') # TODO: Make the list of parsers dynamic to the files in the parsers folder
-@click.argument('input_file_name', type=str)
-# @click.option('--test-size', type=float, default=0.2, help='Fraction of data to reserve for testing (default: 0.2)')
-def preprocess(preprocessor, input_file_name):
+@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'other']), default='scikit_learn',
+              help='Choose a preprocessor') # TODO: Make the list of parsers dynamic to the files in the parsers folder
+@click.argument('input-file_name', type=str)
+@click.option('--prediction-horizon', type=int, default=60)
+@click.option('--num-lagged-features', type=int, default=12)
+@click.option('--include-hour', type=bool, default=True)
+@click.option('--test-size', type=float, default=0.2)
+def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, include_hour, test_size):
     """
     Preprocess data from an input CSV file and store train and test data into CSV files.
 
@@ -75,6 +88,8 @@ def preprocess(preprocessor, input_file_name):
         input_file_name (str): Input CSV file containing the data.
         test_size (float): Fraction of data to reserve for testing (default: 0.2).
     """
+    if prediction_horizon % 5 != 0:
+        raise click.BadParameter('Prediction horizon must be divisible by 5.')
 
     # Load the chosen parser dynamically based on user input
     preprocessor_module = importlib.import_module(f'preprocessors.{preprocessor}')
@@ -93,13 +108,12 @@ def preprocess(preprocessor, input_file_name):
     data = read_data_from_csv(input_path, input_file_name)
 
     # Perform data preprocessing using your preprocessor
-    train_data, test_data = chosen_preprocessor(data)
+    train_data, test_data = chosen_preprocessor(data, prediction_horizon, num_lagged_features, include_hour, test_size)
 
     # Define output file names
-    # TODO: add more descriptive names
     output_path = "../data/processed/"
-    train_output_file = f"train_data.csv"
-    test_output_file = f"test_data.csv"
+    train_output_file = f"train-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
+    test_output_file = f"test-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
 
     # Store train and test data as CSV files
     store_data_as_csv(train_data, output_path, train_output_file)

@@ -77,9 +77,12 @@ Additional columns is possible.
 TODO: Describe the file structure.
 
 ### Adding Data Source Parsers
+Note: Parser must have class name Parser.
 
 ### Adding Data Preprocessors
 Note: targets from presossors will be named "target".
+
+Note: Preprocessors must have class name Preprocessor.
 
 ### Adding Machine Learning Prediction Models
 Note: targets from presossors will be named "target".
