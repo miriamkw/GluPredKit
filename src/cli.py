@@ -1,8 +1,10 @@
 import click
+import dill
 import importlib
 import pandas as pd
 from parsers.base_parser import BaseParser
 from preprocessors.base_preprocessor import BasePreprocessor
+from models.base_model import BaseModel
 from datetime import timedelta, datetime
 
 
@@ -14,6 +16,13 @@ def read_data_from_csv(input_path, file_name):
 def store_data_as_csv(df, output_path, file_name):
     file_path = output_path + file_name
     df.to_csv(file_path)
+
+
+def split_string(input_string):
+    return [] if not input_string else input_string.split(',')
+
+
+# TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
 
 
 @click.command()
@@ -75,7 +84,7 @@ def parse(parser, username, password, file_name, start_date, end_date):
 @click.option('--preprocessor', type=click.Choice(['scikit_learn']), default='scikit_learn',
               help='Choose a preprocessor (default: scikit_learn)')
 # TODO: Make the list of parsers dynamic to the files in the parsers folder
-@click.argument('input-file_name', type=str)
+@click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
 @click.option('--num-lagged-features', type=int, default=12,
               help='The number of samples of time-lagged features (default: 12).')
@@ -130,11 +139,55 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     click.echo(f"Test data saved as '{test_output_file}', with shape {test_data.shape}")
 
 
+@click.command()
+@click.option('--model', prompt='Model name', help='Name of the model file (without .py) to be trained.')
+@click.argument('input-file-name', type=str)
+@click.option('--prediction-horizon', type=int, default=60)
+@click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
+@click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
+def train_model(model, input_file_name, prediction_horizon, num_features, cat_features):
+    # Convert comma-separated string of features to list
+    num_features = split_string(num_features)
+    cat_features = split_string(cat_features)
+
+    # Load the chosen parser dynamically based on user input
+    model_module = importlib.import_module(f'models.{model}')
+
+    # Ensure the chosen parser inherits from BaseParser
+    if not issubclass(model_module.Model, BaseModel):
+        raise click.ClickException(f"The selected model '{model}' must inherit from BaseModel.")
+
+    # Create an instance of the chosen parser
+    chosen_model = model_module.Model(prediction_horizon, num_features, cat_features)
+
+    input_path = "../data/processed/"
+    click.echo(f"Training model {model} with training data from {input_path}{input_file_name}...")
+
+    # Load the input CSV file into a DataFrame
+    train_data = read_data_from_csv(input_path, input_file_name)
+    x_train = train_data.drop('target', axis=1)
+    y_train = train_data['target']
+
+    # Initialize and train the model
+    model_instance = chosen_model.fit(x_train, y_train)
+
+    # Assuming model_instance is your class instance
+    output_path = "../data/models/"
+    output_file_name = f'{model}_ph-{prediction_horizon}.pkl'
+    with open(f'{output_path}{output_file_name}', 'wb') as f:
+        dill.dump(model_instance, f)
+
+    click.echo(f"Model {model} trained successfully!")
+    # TODO: Add best_params into base_model
+    click.echo(f"Model hyperparamaters: {model_instance.best_params()}")
+
+
 if __name__ == "__main__":
     # Create a Click group and add the commands to it
     cli = click.Group(commands={
         'parse': parse,
-        'preprocess': preprocess
+        'preprocess': preprocess,
+        'train_model': train_model,
     })
 
     cli()
