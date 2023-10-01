@@ -1,10 +1,12 @@
 import click
 import dill
+import os
 import importlib
 import pandas as pd
 from parsers.base_parser import BaseParser
 from preprocessors.base_preprocessor import BasePreprocessor
 from models.base_model import BaseModel
+from metrics.base_metric import BaseMetric
 from datetime import timedelta, datetime
 
 
@@ -183,12 +185,57 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
+# TODO: add possibility list of models
+# TODO: add possibility list of metrics (and store in one report)
+# TODO: add possibility list of plots (and store in figures)
+# TODO: Handle different units (REMEMBER TO TEST)
+@click.command()
+@click.option('--model-file', prompt='Model file name',
+              help='Name of the file (with .pkl) containing the trained model.')
+@click.option('--metric', prompt='Metric name', help='Name of the metric to be computed.')
+@click.argument('test-file-name', type=str)
+def evaluate_model(model_file, metric, test_file_name):
+
+    model_path = "../data/models/"
+
+    # Ensure the model file exists
+    if not os.path.exists(model_path + model_file):
+        raise click.ClickException(f"Model file {model_file} does not exist.")
+
+    # Load the model
+    with open(model_path + model_file, 'rb') as f:
+        model_instance = dill.load(f)
+
+    # Load the test data
+    test_file_path = "../data/processed/"
+    test_data = read_data_from_csv(test_file_path, test_file_name)  # Adjust as per your actual logic to load data
+    x_test = test_data.drop('target', axis=1)
+    y_test = test_data['target']
+
+    # Get predictions
+    y_pred = model_instance.predict(x_test)
+
+    # Load the chosen metric dynamically based on user input
+    metric_module = importlib.import_module(f'metrics.{metric}')
+
+    # Ensure the chosen metric inherits from BaseMetric
+    if not issubclass(metric_module.Metric, BaseMetric):
+        raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
+
+    chosen_metric = metric_module.Metric()
+    score = chosen_metric(y_test, y_pred)
+
+    # TODO: Store metrics in reports
+    click.echo(f"{metric} for model {model_file}: {score}")
+
+
 if __name__ == "__main__":
     # Create a Click group and add the commands to it
     cli = click.Group(commands={
         'parse': parse,
         'preprocess': preprocess,
         'train_model': train_model,
+        'evaluate_model': evaluate_model,
     })
 
     cli()

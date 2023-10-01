@@ -1,8 +1,10 @@
 import numpy as np
-from base_metric import BaseMetric
+from .base_metric import BaseMetric
 
-class PCC(BaseMetric):
-    def __init__(self):
+
+class Metric(BaseMetric):
+    def __init__(self, name):
+        super().__init__(name)
         self.name = "PCC"
 
     def _calculate_metric(self, y_true, y_pred):

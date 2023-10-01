@@ -1,7 +1,8 @@
-from base_metric import BaseMetric
+from .base_metric import BaseMetric
 import numpy as np
 
-class MAE(BaseMetric):
+
+class Metric(BaseMetric):
     def __init__(self):
         super().__init__('MAE')
 
