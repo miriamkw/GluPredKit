@@ -188,49 +188,56 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
 # TODO: Handle different units (REMEMBER TO TEST)
 # TODO: add example plots (SEG, trajectories)
 # TODO: add support for plot here
-# TODO: add possibility list of models (default all???)
-# TODO: add possibility list of metrics (and store in one report)  (default all???)
 # TODO: add possibility list of plots (and store in figures)
 # TODO: Add documentation in readme
 @click.command()
-@click.option('--model-file', prompt='Model file name',
-              help='Name of the file (with .pkl) containing a specific trained model. '
-                   'By default all models will be included. ')
-@click.option('--metric', prompt='Metric name', help='Name of a specific metric to be computed. '
-                                                     'By default all metrics will be computed. ')
+@click.option('--model-files', prompt='Model file names',
+              help='List of trained models ( filenames without .pkl), separated by comma. ')
+@click.option('--metrics', help='List of metrics to be computed, separated by comma. '
+                                'By default all metrics will be computed. ')
 @click.argument('test-file-name', type=str)
-def evaluate_model(model_file, metric, test_file_name):
+def evaluate_model(model_files, metrics, test_file_name):
     model_path = "../data/models/"
-
-    # Ensure the model file exists
-    if not os.path.exists(model_path + model_file):
-        raise click.ClickException(f"Model file {model_file} does not exist.")
-
-    # Load the model
-    with open(model_path + model_file, 'rb') as f:
-        model_instance = dill.load(f)
-
-    # Load the test data
+    metrics_path = "metrics/"
+    results_path = "../results/reports/"
     test_file_path = "../data/processed/"
-    test_data = read_data_from_csv(test_file_path, test_file_name)  # Adjust as per your actual logic to load data
-    x_test = test_data.drop('target', axis=1)
-    y_test = test_data['target']
 
-    # Get predictions
-    y_pred = model_instance.predict(x_test)
+    # Prepare a list of models
+    models = split_string(model_files)
 
-    # Load the chosen metric dynamically based on user input
-    metric_module = importlib.import_module(f'metrics.{metric}')
+    # Prepare a list of metrics
+    metrics = split_string(metrics) if metrics else [file.split('.')[0]
+                                                     for file in os.listdir(metrics_path) if file.endswith('.py')
+                                                     and file != '__init__.py'
+                                                     and file != 'base_metric.py']
 
-    # Ensure the chosen metric inherits from BaseMetric
-    if not issubclass(metric_module.Metric, BaseMetric):
-        raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
+    results = []
+    for model_file in models:
+        with open(model_path + model_file + '.pkl', 'rb') as f:
+            model_instance = dill.load(f)
 
-    chosen_metric = metric_module.Metric()
-    score = chosen_metric(y_test, y_pred)
+        test_data = read_data_from_csv(test_file_path, test_file_name)
+        x_test = test_data.drop('target', axis=1)
+        y_test = test_data['target']
+        y_pred = model_instance.predict(x_test)
 
-    # TODO: Store metrics in reports
-    click.echo(f"{metric} for model {model_file}: {score}")
+        for metric in metrics:
+            metric_module = importlib.import_module(f'metrics.{metric}')
+            if not issubclass(metric_module.Metric, BaseMetric):
+                raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
+
+            chosen_metric = metric_module.Metric()
+            score = chosen_metric(y_test, y_pred)
+            results.append({'Model': model_file, 'Metric': metric, 'Score': score})
+            # click.echo(f"{metric} for model {model_file}: {score}")
+
+    # Convert results to DataFrame and save as CSV
+    df_results = pd.DataFrame(results)
+    os.makedirs(results_path, exist_ok=True)
+    results_file_name = f'{test_file_name}.csv'
+    df_results.to_csv(results_path + results_file_name, index=False)
+
+    click.echo(f"{metrics} for models {models} are stored in '{results_path}' as '{results_file_name}'")
 
 
 if __name__ == "__main__":
