@@ -185,17 +185,21 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
-# TODO: add possibility list of models
-# TODO: add possibility list of metrics (and store in one report)
-# TODO: add possibility list of plots (and store in figures)
 # TODO: Handle different units (REMEMBER TO TEST)
+# TODO: add example plots (SEG, trajectories)
+# TODO: add support for plot here
+# TODO: add possibility list of models (default all???)
+# TODO: add possibility list of metrics (and store in one report)  (default all???)
+# TODO: add possibility list of plots (and store in figures)
+# TODO: Add documentation in readme
 @click.command()
 @click.option('--model-file', prompt='Model file name',
-              help='Name of the file (with .pkl) containing the trained model.')
-@click.option('--metric', prompt='Metric name', help='Name of the metric to be computed.')
+              help='Name of the file (with .pkl) containing a specific trained model. '
+                   'By default all models will be included. ')
+@click.option('--metric', prompt='Metric name', help='Name of a specific metric to be computed. '
+                                                     'By default all metrics will be computed. ')
 @click.argument('test-file-name', type=str)
 def evaluate_model(model_file, metric, test_file_name):
-
     model_path = "../data/models/"
 
     # Ensure the model file exists
