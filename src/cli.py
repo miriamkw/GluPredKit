@@ -277,17 +277,9 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
 
         chosen_plot = plot_module.Plot(prediction_horizon)
-        plt = chosen_plot(models_data, y_test)
-        filename = f'{plot}_ph-{prediction_horizon}.png'
-
-        plt.savefig(plot_results_path + filename)
-        plt.show()
+        chosen_plot(models_data, y_test)
 
     click.echo(f"{plots} for models {models} are stored in '{plot_results_path}'")
-
-
-
-
 
 
 if __name__ == "__main__":

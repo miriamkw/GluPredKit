@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import itertools
+import os
 from .base_plot import BasePlot
 
 
@@ -18,6 +19,7 @@ class Plot(BasePlot):
         markers = itertools.cycle(('o', 's', '^', 'v', 'D', '<', '>'))
 
         plt.figure(figsize=(10, 8))
+
         for model_data in models_data:
             model_name = model_data.get('name')
             y_pred = model_data.get('y_pred')
@@ -32,6 +34,10 @@ class Plot(BasePlot):
         plt.ylabel("Predicted Blood Glucose")
         plt.title(f"Accuracy of {self.prediction_horizon}-minutes ahead predictions")
         plt.legend(loc='upper left')
-        #plt.show()
 
-        return plt
+        file_path = "../results/figures/"
+        os.makedirs(file_path, exist_ok=True)
+
+        file_name = f'scatter_plot_ph-{self.prediction_horizon}.png'
+        plt.savefig(file_path + file_name)
+        plt.show()
