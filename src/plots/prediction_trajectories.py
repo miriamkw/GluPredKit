@@ -5,7 +5,7 @@ class PredictionTrajectories(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def _draw_plot(self, y_true, y_pred, output_offset=None):
+    def _draw_plot(self, y_true, y_pred, prediction_horizon):
         """
         It is expected that y_pred is either a list of predicted values, or a list of lists of predicted trajectories.
         In case of only one predicted value, output_offset cannot be None.

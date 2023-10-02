@@ -7,6 +7,7 @@ from parsers.base_parser import BaseParser
 from preprocessors.base_preprocessor import BasePreprocessor
 from models.base_model import BaseModel
 from metrics.base_metric import BaseMetric
+from plots.base_plot import BasePlot
 from datetime import timedelta, datetime
 
 
@@ -186,8 +187,9 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
 
 
 # TODO: Handle different units (REMEMBER TO TEST)
-# TODO: add example plots (SEG, trajectories)
-# TODO: add support for plot here
+# TODO: add example plots (scatter plot)
+# TODO: add the SEG analysis, but maybe as a metric that can be written to reports (one file each zone?)
+# TODO: add support for plot here (finished when both scatter and trajectories is working and figures are stored to results)
 # TODO: add possibility list of plots (and store in figures)
 # TODO: Add documentation in readme
 @click.command()
@@ -195,11 +197,21 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
               help='List of trained models ( filenames without .pkl), separated by comma. ')
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
                                 'By default all metrics will be computed. ')
+@click.option('--plots', help='List of plots to be computed, separated by comma. '
+                              'By default all plots will be drawn. ')
 @click.argument('test-file-name', type=str)
-def evaluate_model(model_files, metrics, test_file_name):
+@click.option('--prediction-horizon', type=int, default=60)
+def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horizon):
+    """
+    This command is only capable of comparing metrics given one specific prediction horizon at a time, because
+    it only takes in one test file at a time. Hence, giving correct information about prediction horizon and
+    test file is crucial.
+    """
     model_path = "../data/models/"
     metrics_path = "metrics/"
-    results_path = "../results/reports/"
+    plots_path = "plots/"
+    metric_results_path = "../results/reports/"
+    plot_results_path = "../results/figures/"
     test_file_path = "../data/processed/"
 
     # Prepare a list of models
@@ -211,15 +223,25 @@ def evaluate_model(model_files, metrics, test_file_name):
                                                      and file != '__init__.py'
                                                      and file != 'base_metric.py']
 
+    # Prepare a list of plots
+    plots = split_string(plots) if plots else [file.split('.')[0]
+                                               for file in os.listdir(plots_path) if file.endswith('.py')
+                                               and file != '__init__.py'
+                                               and file != 'base_plot.py']
+
+    test_data = read_data_from_csv(test_file_path, test_file_name)
+    x_test = test_data.drop('target', axis=1)
+    y_test = test_data['target']
+
     results = []
+    y_preds = []
+    click.echo(f"Calculating metrics...")
     for model_file in models:
         with open(model_path + model_file + '.pkl', 'rb') as f:
             model_instance = dill.load(f)
 
-        test_data = read_data_from_csv(test_file_path, test_file_name)
-        x_test = test_data.drop('target', axis=1)
-        y_test = test_data['target']
         y_pred = model_instance.predict(x_test)
+        y_preds.append(y_pred)
 
         for metric in metrics:
             metric_module = importlib.import_module(f'metrics.{metric}')
@@ -230,14 +252,42 @@ def evaluate_model(model_files, metrics, test_file_name):
             score = chosen_metric(y_test, y_pred)
             results.append({'Model': model_file, 'Metric': metric, 'Score': score})
             # click.echo(f"{metric} for model {model_file}: {score}")
-
     # Convert results to DataFrame and save as CSV
     df_results = pd.DataFrame(results)
-    os.makedirs(results_path, exist_ok=True)
-    results_file_name = f'{test_file_name}.csv'
-    df_results.to_csv(results_path + results_file_name, index=False)
+    os.makedirs(metric_results_path, exist_ok=True)
+    results_file_name = f'{test_file_name}'
+    df_results.to_csv(metric_results_path + results_file_name, index=False)
 
-    click.echo(f"{metrics} for models {models} are stored in '{results_path}' as '{results_file_name}'")
+    click.echo(f"{metrics} for models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
+
+    models_data = []
+    for model_name, y_pred in zip(models, y_preds):
+        model_data = {
+            'name': model_name,
+            'y_pred': y_pred
+        }
+        models_data.append(model_data)
+
+    # Draw plots
+    click.echo(f"Drawing plots...")
+    os.makedirs(plot_results_path, exist_ok=True)
+    for plot in plots:
+        plot_module = importlib.import_module(f'plots.{plot}')
+        if not issubclass(plot_module.Plot, BasePlot):
+            raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
+
+        chosen_plot = plot_module.Plot(prediction_horizon)
+        plt = chosen_plot(models_data, y_test)
+        filename = f'{plot}_ph-{prediction_horizon}.png'
+
+        plt.savefig(plot_results_path + filename)
+        plt.show()
+
+    click.echo(f"{plots} for models {models} are stored in '{plot_results_path}'")
+
+
+
+
 
 
 if __name__ == "__main__":
