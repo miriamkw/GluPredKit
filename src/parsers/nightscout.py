@@ -1,6 +1,6 @@
 """
 The nightscout parser uses nightscout API to fetch some data using user credentials
-and return the data in a format that can be used as input to the blood glucose prediction models.
+and return the data in a format that can be used as input to the blood glucose prediction trained_models.
 """
 from aiohttp import ClientError, ClientConnectorError, ClientResponseError
 import nightscout

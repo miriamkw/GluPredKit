@@ -2,13 +2,17 @@ import click
 import dill
 import os
 import importlib
+import json
 import pandas as pd
-from parsers.base_parser import BaseParser
-from preprocessors.base_preprocessor import BasePreprocessor
-from models.base_model import BaseModel
-from metrics.base_metric import BaseMetric
-from plots.base_plot import BasePlot
 from datetime import timedelta, datetime
+
+# Modules from this repository
+from .parsers.base_parser import BaseParser
+from .preprocessors.base_preprocessor import BasePreprocessor
+from .models.base_model import BaseModel
+from .metrics.base_metric import BaseMetric
+from .plots.base_plot import BasePlot
+from .config_manager import config_manager
 
 
 def read_data_from_csv(input_path, file_name):
@@ -154,7 +158,7 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
     cat_features = split_string(cat_features)
 
     # Load the chosen parser dynamically based on user input
-    model_module = importlib.import_module(f'models.{model}')
+    model_module = importlib.import_module(f'src.models.{model}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(model_module.Model, BaseModel):
@@ -163,7 +167,7 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
     # Create an instance of the chosen parser
     chosen_model = model_module.Model(prediction_horizon, num_features, cat_features)
 
-    input_path = "../data/processed/"
+    input_path = "data/processed/"
     click.echo(f"Training model {model} with training data from {input_path}{input_file_name}...")
 
     # Load the input CSV file into a DataFrame
@@ -175,7 +179,7 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
     model_instance = chosen_model.fit(x_train, y_train)
 
     # Assuming model_instance is your class instance
-    output_path = "../data/models/"
+    output_path = "data/trained_models/"
     output_file_name = f'{model}_ph-{prediction_horizon}.pkl'
     with open(f'{output_path}{output_file_name}', 'wb') as f:
         dill.dump(model_instance, f)
@@ -186,15 +190,12 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
-# TODO: Handle different units (REMEMBER TO TEST)
-# TODO: add example plots (scatter plot)
+# TODO: Handle different units (REMEMBER TO TEST), ADD CLI TO CHANGE SETTINGS!
 # TODO: add the SEG analysis, but maybe as a metric that can be written to reports (one file each zone?)
-# TODO: add support for plot here (finished when both scatter and trajectories is working and figures are stored to results)
-# TODO: add possibility list of plots (and store in figures)
 # TODO: Add documentation in readme
 @click.command()
 @click.option('--model-files', prompt='Model file names',
-              help='List of trained models ( filenames without .pkl), separated by comma. ')
+              help='List of trained trained_models ( filenames without .pkl), separated by comma. ')
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
                                 'By default all metrics will be computed. ')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
@@ -207,15 +208,15 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     it only takes in one test file at a time. Hence, giving correct information about prediction horizon and
     test file is crucial.
     """
-    model_path = "../data/models/"
-    metrics_path = "metrics/"
-    plots_path = "plots/"
-    metric_results_path = "../results/reports/"
-    plot_results_path = "../results/figures/"
-    test_file_path = "../data/processed/"
+    model_path = "data/trained_models/"
+    metrics_path = "src/metrics/"
+    plots_path = "src/plots/"
+    metric_results_path = "results/reports/"
+    plot_results_path = "results/figures/"
+    test_file_path = "data/processed/"
 
-    # Prepare a list of models
-    models = split_string(model_files)
+    # Prepare a list of trained_models
+    trained_models = split_string(model_files)
 
     # Prepare a list of metrics
     metrics = split_string(metrics) if metrics else [file.split('.')[0]
@@ -236,7 +237,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     results = []
     y_preds = []
     click.echo(f"Calculating metrics...")
-    for model_file in models:
+    for model_file in trained_models:
         with open(model_path + model_file + '.pkl', 'rb') as f:
             model_instance = dill.load(f)
 
@@ -244,7 +245,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
         y_preds.append(y_pred)
 
         for metric in metrics:
-            metric_module = importlib.import_module(f'metrics.{metric}')
+            metric_module = importlib.import_module(f'src.metrics.{metric}')
             if not issubclass(metric_module.Metric, BaseMetric):
                 raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
 
@@ -258,10 +259,10 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     results_file_name = f'{test_file_name}'
     df_results.to_csv(metric_results_path + results_file_name, index=False)
 
-    click.echo(f"{metrics} for models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
+    click.echo(f"{metrics} for trained_models {model_files} are stored in '{metric_results_path}' as '{results_file_name}'")
 
     models_data = []
-    for model_name, y_pred in zip(models, y_preds):
+    for model_name, y_pred in zip(trained_models, y_preds):
         model_data = {
             'name': model_name,
             'y_pred': y_pred
@@ -272,14 +273,23 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     click.echo(f"Drawing plots...")
     os.makedirs(plot_results_path, exist_ok=True)
     for plot in plots:
-        plot_module = importlib.import_module(f'plots.{plot}')
+        plot_module = importlib.import_module(f'src.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
 
         chosen_plot = plot_module.Plot(prediction_horizon)
         chosen_plot(models_data, y_test)
 
-    click.echo(f"{plots} for models {models} are stored in '{plot_results_path}'")
+    click.echo(f"{plots} for trained_models {trained_models} are stored in '{plot_results_path}'")
+
+
+@click.command()
+@click.option('--use-mgdl', type=bool, help='Set whether to use mg/dL or mmol/L')
+def set_config(use_mgdl):
+
+    # Update the config
+    config_manager.use_mgdl = use_mgdl
+    click.echo(f'Set unit to {"mg/dL" if use_mgdl else "mmol/L"}.')
 
 
 if __name__ == "__main__":
@@ -289,6 +299,7 @@ if __name__ == "__main__":
         'preprocess': preprocess,
         'train_model': train_model,
         'evaluate_model': evaluate_model,
+        'set_config': set_config,
     })
 
     cli()
