@@ -23,6 +23,7 @@ This repository provides a framework for training, testing, and evaluating blood
 1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation`.
 2. Activate the virtual environment by running the following command: `source bgp-evaluation/bin/activate`.
 3. Install the required packages by running the following command: `pip install -r requirements.txt`.
+4. Add the required submodules: `git submodule update --init --recursive`.
 
 ## Usage of Command Line Interface (CLI)
 

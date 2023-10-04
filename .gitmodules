@@ -1,0 +1,6 @@
+[submodule "master"]
+	path = master
+	url = https://github.com/kriventsov/Clarke-and-Parkes-Error-Grids.git
+[submodule "error_grids"]
+	path = error_grids
+	url = https://github.com/kriventsov/Clarke-and-Parkes-Error-Grids.git
