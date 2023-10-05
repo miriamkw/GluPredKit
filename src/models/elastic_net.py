@@ -2,7 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import ElasticNet
 from .base_model import BaseModel
 
 
@@ -41,18 +41,19 @@ class Model(BaseModel):
         # Define the model
         pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('regressor', HuberRegressor(max_iter=1000, tol=1))
+            ('regressor', ElasticNet(tol=1))
         ])
 
         # Define the parameter grid
         param_grid = {
-            'regressor__epsilon': [1.3, 1.35, 1.5, 1.75],
-            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
+            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1],
+            'regressor__l1_ratio': [0.0, 0.3, 0.5, 1.0]
         }
 
         # Define GridSearchCV
         self.model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
         self.model.fit(x_train, y_train)
+
         return self
 
     def predict(self, x_test):

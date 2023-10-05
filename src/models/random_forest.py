@@ -2,7 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.linear_model import HuberRegressor
+from sklearn.ensemble import RandomForestRegressor
 from .base_model import BaseModel
 
 
@@ -41,13 +41,14 @@ class Model(BaseModel):
         # Define the model
         pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('regressor', HuberRegressor(max_iter=1000, tol=1))
+            ('regressor', RandomForestRegressor())
         ])
 
         # Define the parameter grid
         param_grid = {
-            'regressor__epsilon': [1.3, 1.35, 1.5, 1.75],
-            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
+            'regressor__n_estimators': [50, 100, 300, 500],
+            'regressor__min_samples_split': [2, 20, 40, 80],
+            'regressor__max_depth': [None, 10, 30, 50],
         }
 
         # Define GridSearchCV

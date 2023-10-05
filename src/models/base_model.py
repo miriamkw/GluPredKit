@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
+
 class BaseModel(BaseEstimator, TransformerMixin):
     def __init__(self, prediction_horizon, numerical_features, categorical_features):
         self.prediction_horizon = prediction_horizon
@@ -23,3 +24,6 @@ class BaseModel(BaseEstimator, TransformerMixin):
         # Return the predictions
         raise NotImplementedError("Model has not implemented predict method!")
 
+    def best_params(self):
+        # Return the best parameters found by GridSearchCV
+        raise NotImplementedError("Model has not implemented predict method!")

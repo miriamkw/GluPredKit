@@ -2,7 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import LinearRegression
 from .base_model import BaseModel
 
 
@@ -32,7 +32,7 @@ class Model(BaseModel):
         # Define the preprocessing for numeric and categorical features
         transformers = [
             ('num', StandardScaler(), self.numerical_features),
-            ('cat', OneHotEncoder(), self.categorical_features)
+            ('cat', OneHotEncoder(drop='first'), self.categorical_features)
         ]
 
         # Combine all transformers into a ColumnTransformer
@@ -41,25 +41,19 @@ class Model(BaseModel):
         # Define the model
         pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('regressor', HuberRegressor(max_iter=1000, tol=1))
+            ('regressor', LinearRegression())
         ])
 
-        # Define the parameter grid
-        param_grid = {
-            'regressor__epsilon': [1.3, 1.35, 1.5, 1.75],
-            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
-        }
-
         # Define GridSearchCV
-        self.model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
+        self.model = pipeline
         self.model.fit(x_train, y_train)
         return self
 
     def predict(self, x_test):
         # Use the best estimator found by GridSearchCV to make predictions
-        y_pred = self.model.best_estimator_.predict(x_test)
+        y_pred = self.model.predict(x_test)
         return y_pred
 
     def best_params(self):
         # Return the best parameters found by GridSearchCV
-        return self.model.best_params_
+        return None

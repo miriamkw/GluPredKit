@@ -2,7 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.linear_model import HuberRegressor
+import xgboost as xgb
 from .base_model import BaseModel
 
 
@@ -19,12 +19,9 @@ def extend_feature_names(feature_names, df):
 class Model(BaseModel):
     def __init__(self, prediction_horizon, numerical_features, categorical_features):
         super().__init__(prediction_horizon, numerical_features, categorical_features)
-
         self.model = None
 
     def fit(self, x_train, y_train):
-        # Perform grid search to find the best parameters and fit the model
-
         # Extend feature names to include time-lagged features
         self.numerical_features = extend_feature_names(self.numerical_features, x_train)
         self.categorical_features = extend_feature_names(self.categorical_features, x_train)
@@ -41,13 +38,14 @@ class Model(BaseModel):
         # Define the model
         pipeline = Pipeline([
             ('preprocessor', preprocessor),
-            ('regressor', HuberRegressor(max_iter=1000, tol=1))
+            ('regressor', xgb.XGBRegressor())
         ])
 
         # Define the parameter grid
         param_grid = {
-            'regressor__epsilon': [1.3, 1.35, 1.5, 1.75],
-            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
+            'regressor__n_estimators': [50, 300, 3000],
+            'regressor__max_depth': [3, 10, 30],
+            'regressor__gamma': [0, 0.001, 0.1, 1]
         }
 
         # Define GridSearchCV
