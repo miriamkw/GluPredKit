@@ -29,15 +29,10 @@ This repository provides a framework for training, testing, and evaluating blood
 
 A Command Line Interface (CLI) is developed to facilitate the process of fetching data, preprocessing data, training prediction models to report the results. Commands are executed from the `src/` directory.
 
-Definitions:
-- **Parsing**: Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. The parsed datasets are stored in 'data/raw/'.
-- **Preprocessing**: Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc. The preprocessed datasets are stored in 'data/preprocessed'.
-- **Model training**: Refers to using preprocessed data to train a blood glucose prediction model. The trained models are stored in 'data/models/'.
-- **Metrics**: Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model. The evaluation metrics are stored in tables 'results/reports/'.
-- **Plots**: Different types of plots that can illustrate blood glucose predictions together with actual measured values. The plotted results are stored in 'results/figures/'.
 
 ### Getting Started
-Make sure you are located in the `src/` directory in the terminal, where `cli.py` is located. 
+Make sure you are located in the root directory of this repository in the terminal. Every call to the CLI starts with
+`python -m src.cli <COMMAND>`.
 
 ### Parse Command
 
@@ -158,10 +153,20 @@ python cli.py --model huber input_file.csv --prediction-horizon 30 --num_feature
 
 TODO: Describe the file structure.
 
+Definitions:
+- **Parsing**: Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. The parsed datasets are stored in 'data/raw/'.
+- **Preprocessing**: Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc. The preprocessed datasets are stored in 'data/preprocessed'.
+- **Model training**: Refers to using preprocessed data to train a blood glucose prediction model. The trained models are stored in 'data/models/'.
+- **Metrics**: Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model. The evaluation metrics are stored in tables 'results/reports/'.
+- **Plots**: Different types of plots that can illustrate blood glucose predictions together with actual measured values. The plotted results are stored in 'results/figures/'.
+
+
 ### Adding Data Source Parsers
 Note: Parser must have class name Parser.
 
 Note: add new file to the CLI alternatives.
+
+Note: Clearly define requirements for data inputs.
 
 ### Adding Data Preprocessors
 Note: targets from preprocessors will be named "target".
