@@ -2,7 +2,6 @@ import click
 import dill
 import os
 import importlib
-import json
 import pandas as pd
 from datetime import timedelta, datetime
 
@@ -15,9 +14,12 @@ from .plots.base_plot import BasePlot
 from .config_manager import config_manager
 
 
-def read_data_from_csv(input_path, file_name):
+def read_data_from_csv(input_path, file_name, parse_dates=True):
     file_path = input_path + file_name
-    return pd.read_csv(file_path, index_col="date", parse_dates=True)
+    if parse_dates:
+        return pd.read_csv(file_path, index_col="date", parse_dates=True)
+    else:
+        return pd.read_csv(file_path)
 
 
 def store_data_as_csv(df, output_path, file_name):
@@ -88,7 +90,7 @@ def parse(parser, username, password, file_name, start_date, end_date):
 
 
 @click.command()
-@click.option('--preprocessor', type=click.Choice(['scikit_learn']), default='scikit_learn',
+@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'tf_keras']), default='scikit_learn',
               help='Choose a preprocessor (default: scikit_learn)')
 # TODO: Make the list of parsers dynamic to the files in the parsers folder
 @click.argument('input-file-name', type=str)
@@ -115,7 +117,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
         raise click.BadParameter('Prediction horizon must be divisible by 5.')
 
     # Load the chosen parser dynamically based on user input
-    preprocessor_module = importlib.import_module(f'preprocessors.{preprocessor}')
+    preprocessor_module = importlib.import_module(f'src.preprocessors.{preprocessor}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(preprocessor_module.Preprocessor, BasePreprocessor):
@@ -124,7 +126,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     # Create an instance of the chosen parser
     chosen_preprocessor = preprocessor_module.Preprocessor()
 
-    input_path = "../data/raw/"
+    input_path = "data/raw/"
     click.echo(f"Preprocessing data using {preprocessor} from file {input_path}{input_file_name}...")
 
     # Load the input CSV file into a DataFrame
@@ -134,7 +136,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     train_data, test_data = chosen_preprocessor(data, prediction_horizon, num_lagged_features, include_hour, test_size)
 
     # Define output file names
-    output_path = "../data/processed/"
+    output_path = "data/processed/"
     train_output_file = f"train-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
     test_output_file = f"test-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
 
@@ -171,7 +173,7 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
     click.echo(f"Training model {model} with training data from {input_path}{input_file_name}...")
 
     # Load the input CSV file into a DataFrame
-    train_data = read_data_from_csv(input_path, input_file_name)
+    train_data = read_data_from_csv(input_path, input_file_name, parse_dates=False)
     x_train = train_data.drop('target', axis=1)
     y_train = train_data['target']
 
@@ -181,8 +183,11 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
     # Assuming model_instance is your class instance
     output_path = "data/trained_models/"
     output_file_name = f'{model}_ph-{prediction_horizon}.pkl'
-    with open(f'{output_path}{output_file_name}', 'wb') as f:
-        dill.dump(model_instance, f)
+    try:
+        with open(f'{output_path}{output_file_name}', 'wb') as f:
+            dill.dump(model_instance, f)
+    except Exception as e:
+        click.echo(f"Error saving model {model}: {e}")
 
     click.echo(f"Model {model} trained successfully!")
 
@@ -190,9 +195,6 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
-# TODO: Handle different units (REMEMBER TO TEST), ADD CLI TO CHANGE SETTINGS!
-# TODO: add the SEG analysis, but maybe as a metric that can be written to reports (one file each zone?)
-# TODO: Add documentation in readme
 @click.command()
 @click.option('--model-files', prompt='Model file names',
               help='List of trained trained_models ( filenames without .pkl), separated by comma. ')
@@ -230,7 +232,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
                                                and file != '__init__.py'
                                                and file != 'base_plot.py']
 
-    test_data = read_data_from_csv(test_file_path, test_file_name)
+    test_data = read_data_from_csv(test_file_path, test_file_name, parse_dates=False)
     x_test = test_data.drop('target', axis=1)
     y_test = test_data['target']
 
@@ -252,7 +254,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
             chosen_metric = metric_module.Metric()
             score = chosen_metric(y_test, y_pred)
             results.append({'Model': model_file, 'Metric': metric, 'Score': score})
-            # click.echo(f"{metric} for model {model_file}: {score}")
+
     # Convert results to DataFrame and save as CSV
     df_results = pd.DataFrame(results)
     os.makedirs(metric_results_path, exist_ok=True)

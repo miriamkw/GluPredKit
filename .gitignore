@@ -14,6 +14,8 @@ data/processed/*
 !data/processed/
 data/trained_models/*
 !data/trained_models/
+data/keras_models/*
+!data/keras_models/
 data/raw/*
 !data/raw/
 results/figures/*
