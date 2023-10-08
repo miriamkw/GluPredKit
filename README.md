@@ -1,152 +1,178 @@
-# Blood Glucose Prediction Evaluation
+# Blood Glucose Prediction-Kit
 
-This repository provides a framework for training, testing, and evaluating blood glucose prediction (BGP) models. The following features are provided:
-* Fetch user data from Tidepool (more data sources might be implemented in future versions).
-* Examples of BGP models in `loop_model_scoring/models`.
-* Base class for BGP models where users can implement their own prediction models.
-* Examples of BGP evaluation metrics in `loop_model_scoring/metrics`.
-* Base class for BGP evaluation metrics where users can implement their own evaluation metrics.
-* Graphic visualization alternatives of the performance of BGP.
+This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
+glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI).
 
-## Content
-* [Setup](#setup)
-* [Usage](#usage)
-  * [Command line interface](#command-line-interface)
-  * [Running examples](#running-examples)
-  * [Implementing BGP models](#implementing-bgp-models)
-  * [Implementing BGP evaluation metrics](#implementing-bgp-evaluation-metrics)
-  * [Testing](#testing)
-* [Error Metrics Overview](#error-metrics-overview)
-* [Disclaimers](#disclaimers)
+The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
+framework.
 
-## Setup
-1. Create a virtual environment by running the following command: `python -m venv bgp-evaluation`.
-2. Activate the virtual environment by running the following command: `source bgp-evaluation/bin/activate`.
-3. Install the required packages by running the following command: `pip install -r requirements.txt`.
-4. Add the required submodules: `git submodule update --init --recursive`.
-
-## Usage of Command Line Interface (CLI)
-
-A Command Line Interface (CLI) is developed to facilitate the process of fetching data, preprocessing data, training prediction models to report the results. Commands are executed from the `src/` directory.
+![img.png](figures/pipeline_overview.png)
 
 
-### Getting Started
-Make sure you are located in the root directory of this repository in the terminal. Every call to the CLI starts with
-`python -m src.cli <COMMAND>`.
+## Table of Contents
+1. [Setup and Installation](#setup-and-installation)
+2. [Usage of Command Line Interface](#usage-of-command-line-interface)
+   - [Parsing Data](#parsing-data)
+   - [Preprocessing Data](#preprocessing-data)
+   - [Train a Model](#train-a-model)
+   - [Evaluate Models](#evaluate-models)
+   - [Setting Configurations](#setting-configurations)
+3. [Contributing with Code](#contributing-with-code)
+   - [Adding Data Source Parsers](#adding-data-source-parsers)
+   - [Adding Data Preprocessors](#adding-data-preprocessors)
+   - [Adding Machine Learning Prediction Models](#adding-machine-learning-prediction-models)
+   - [Implementing Custom Evaluation Metrics](#implementing-custom-evaluation-metrics)
+   - [Adding Evaluation Plots](#adding-evaluation-plots)
+4. [Error Metrics Overview](#error-metrics-overview)
+5. [Disclaimers and Limitations](#disclaimers-and-limitations)
 
-### Parse Command
+## Setup and Installation
+1. **Virtual Environment Setup**:
+   - Create a virtual environment:
+     ```
+     python -m venv bgp-evaluation
+     ```
+   - Activate the virtual environment:
+     ```
+     source bgp-evaluation/bin/activate
+     ```
 
-#### Description
+2. **Dependency Installation**:
+   - Install the required packages:
+     ```
+     pip install -r requirements.txt
+     ```
 
-The `parse` command is used to parse data using a selected parser and store it as a CSV file in the "data/raw/" directory. 
+3. **Submodules Setup**:
+   - Add the required submodules:
+     ```
+     git submodule update --init --recursive
+     ```
 
-`python cli.py parse --parser <parser> <username> <password> [--file-name <file-name>]`
+4. **Initial Directory Setup**:
+   - Ensure you have the following directory structure in place:
+     - `data/`
+       - `raw/`
+       - `processed/`
+       - `models/`
+     - `results/`
+       - `reports/`
+       - `figures/`
 
-#### Options
-`--parser`: Choose a parser for data parsing. Supported parsers include 'tidepool' and 'nightscout'.
+Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
 
-`--file-name`: (Optional) Specify an optional file name for the output CSV file.
 
-#### Arguments
-`<username>`: The username required for data parsing.
 
-`<password>`: The password required for data parsing.
+
+
+
+## Usage of Command Line Interface
+
+The `src/cli.py` script is a command-line tool designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
+
+Note that running the commands below is assuming that you have already performed the steps above in "Setup and Installation",
+and that you are located in the root of this directory in the terminal. All calls to the CLI start with
+```
+python -m src.cli COMMAND
+```
+
+
+
+### Parsing Data
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you should store it in `data/raw` before preprocessing.
+
+```
+python -m src.cli parse --parser [tidepool|nightscout] USERNAME PASSWORD [--file-name FILE_NAME] [--start-date START_DATE] [--end-date END_DATE]
+```
+- `--parser`: Choose a parser between `tidepool` and `nightscout`.
+- `username`: Your username for the data source.
+- `password`: Your password for the data source.
+- `--file-name` (Optional): Provide a name for the output file.
+- `--start-date` (Optional): Start date for data retrieval, default is two weeks ago.
+- `--end-date` (Optional): End date for data retrieval, default is now.
 
 #### Example
 
-To parse data using the 'tidepool' parser with a custom output file name:
+```
+python -m src.cli parse --parser tidepool johndoe@example.com mypassword --file-name output.csv --start-date 2023-09-01 --end-date 2023-09-30
+```
 
-`python cli.py parse --parser tidepool my_username my_password --file-name custom_output.csv`
+---
 
-#### Example Output
+### Preprocessing Data
+**Description**: Preprocess data from an input CSV file and store the training and test data into separate CSV files.
 
-The parsed data will be stored as a .csv and look something like the table below:
-
-| date                      | CGM        | insulin | carbs |
-|---------------------------|------------|---------|-------|
-| 2023-03-01 02:30:00+02:00 | 150.021695 | 0.06    | 30    |    
-| 2023-03-01 02:35:00+02:00 | 146.021114 | 0.06    | 0     |      
-| 2023-03-01 02:40:00+02:00 | 143.020724 | 0.06    | 0     |
-
-Additional columns is possible. 
-
-### Preprocess Command
-
-#### Description
-
-The `preprocess` command allows you to preprocess data from an input CSV file (must be parsed, and located in 'data/raw/') and store train and test data into CSV files. You can choose the preprocessor and specify various options for preprocessing.
-
-`python cli.py preprocess [OPTIONS] INPUT-FILE-NAME`
-
-#### Options
-
-`--preprocessor`: Choose the preprocessor type (default: scikit_learn). Available options are dynamically generated based on the parsers found in the parsers folder.
-`INPUT-FILE-NAME`: Input CSV file containing the data.
-
-#### Additional Options
-
-`--prediction-horizon`: The prediction horizon for the target value in minutes (default: 60). Must be divisible by 5.
-`--num-lagged-features`: The number of samples of time-lagged features (default: 12).
-`--include-hour`: Include the hour of the day as an input feature (default: True).
-`--test-size`: Fraction of data to reserve for testing (default: 0.2).
+```
+python -m src.cli preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--include-hour INCLUDE_HOUR] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
+```
+- `--preprocessor`: Choose between scikit_learn and tf_keras for preprocessing.
+- `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be lodated in `data/raw`.
+- `--prediction-horizon` (Optional): Prediction into the future given in time in minutes.
+- `--num-lagged-features` (Optional): The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
+- `--include-hour` (Optional): Whether to include hour of day as a feature.
+- `--test-size` (Optional): The fraction in float to how much of the data shall be used as test data.
+- `--num_features` (Optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--cat_features` (Optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
 
 #### Example
 
-`python cli.py preprocess --preprocessor scikit_learn my_data.csv`
-
-This command will preprocess a file named 'my_data.csv' in 'data/raw/' and save the training and testing datasets in the 'data/processed/' directory with filenames indicating the preprocessor and selected options. The generated files would be stored as:
-
-- `train-data_scikit_learn_ph-60_lag-12.csv`
-- `test-data_scikit_learn_ph-60_lag-12.csv`
-
-#### Notes
-- Ensure that the 'data/raw/' folder contains the necessary file for the given file name.
-- The prediction horizon must be divisible by 5.
-
-### Train Model Command
-
-#### Description
-This command trains the model with the given options and arguments, saves the trained model instance, and prints out the trained model's hyperparameters if available.
-
-#### Usage
-```sh
-python cli.py --model [MODEL] INPUT-FILE-NAME --prediction-horizon [PREDICTION_HORIZON] --num_features [NUM_FEATURES] --cat_features [CAT_FEATURES]
+```
+python -m src.cli preprocess tidepool_16-09-2023_to_30-09-2023.csv --num_features CGM,insulin --cat_features hour
 ```
 
-#### Options and Arguments
-- `--model`: The name of the model file to be trained (without `.py`).
-    - This is a required option.
-    - Example: `--model huber`
 
-- `INPUT-FILE-NAME` (Positional Argument): The name of the input file (located in `../data/processed/`) containing the training data.
-    - This is a required argument.
-    - Example: `input_file.csv`
+---
 
-- `--prediction-horizon`: The prediction horizon for the model.
-    - Default is `60`.
-    - Example: `--prediction-horizon 30`
+### Train a Model
+**Description**: Train a model using the specified training data.
+```
+python -m src.cli train_model --model MODEL_NAME INPUT_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+```
+- `--model`: Name of the model file (without .py) to be trained. The file name must exist in `src/models`.
+- `input-file-name`: Name of the CSV file containing training data. The file name must exist in `data/processed`.
+- `--prediction-horizon` (Optional): The prediction horizon for the target value in minutes.
 
-- `--num_features`: List of numerical features, separated by a comma.
-    - Default is `'CGM,insulin,carbs'`.
-    - Example: `--num_features feature1,feature2`
+#### Example
+```
+python -m src.cli train_model --model ridge train-data_scikit_learn_ph-60_lag-12.csv
+```
+---
 
-- `--cat_features`: List of categorical features, separated by a comma.
-    - Default is an empty string `''` (i.e., no categorical features).
-    - Example: `--cat_features category1,category2`
+### Evaluate Models
+**Description**: Evaluate one or more trained models using the specified test data, compute metrics and generate plots. The results will be 
+stored in `results/reports` for evaluation metrics and in `results/figures` for plots.
 
-#### Example Command
-```sh
-python cli.py --model huber input_file.csv --prediction-horizon 30 --num_features CGM,insulin --cat_features carbs
+```
+python -m src.cli evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRICS] [--plots PLOTS] TEST_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+```
+- `--model-files`: List of trained model filenames from `data/trained_models` (without .pkl), separated by comma.
+- `--metrics` (Optional): List of metrics from `src/metrics` to be computed, separated by comma.
+- `--plots` (Optional): List of plots from `src/plots` to be generated, separated by comma. 
+- `test-file-name`: Name of the CSV file containing test data.
+
+#### Example
+```
+python -m src.cli evaluate_model --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
 ```
 
-#### Outputs
-- Prints out the progress and status of model training.
-- If available, prints out the model hyperparameters.
-- Saves the trained model instance to `../data/models/` directory with the name in the format `[model]_ph-[prediction-horizon].pkl`.
+---
+### Setting Configurations
 
-#### Notes
-- Ensure the input file is correctly placed in the `../data/processed/` directory.
-- The selected model must inherit from `BaseModel`.
+```
+python -m src.cli set_config --use-mgdl [True|False]
+```
+**Description**: Set whether to use mg/dL or mmol/L for units.
+
+---
+
+That's it! You can now run the desired command with the mentioned arguments. Always refer back to this guide for the correct usage.
+
+
+
+
+
+
+
 
 
 ## Contributing with code
