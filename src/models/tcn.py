@@ -1,9 +1,13 @@
+"""
+This Temporal Convolutional Network (TCN) should be used together with data preprocessed using tf_keras.py.
+"""
 import numpy as np
 import tensorflow as tf
 import ast
 from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 from sklearn.model_selection import TimeSeriesSplit
+from tcn import TCN
 from .base_model import BaseModel
 
 
@@ -12,7 +16,7 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
         # The recommended approach for saving and loading Keras models is to use Keras's built-in .save() and
         # Using legacy .h5 file type because .keras threw error with M1 Mac chip
-        self.model_path = f"data/keras_models/lstm_ph-{prediction_horizon}.h5"
+        self.model_path = f"data/keras_models/tcn_ph-{prediction_horizon}.h5"
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
@@ -23,14 +27,15 @@ class Model(BaseModel):
 
         # Model architecture
         input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
-        lstm = LSTM(50, return_sequences=True)(input_layer)
-        lstm = LSTM(50, return_sequences=True)(lstm)
-        lstm = LSTM(50, return_sequences=False)(lstm)
-        output_layer = Dense(1)(lstm)
+
+        # TCN layer
+        tcn_out = TCN(nb_filters=50, return_sequences=False)(input_layer)
+
+        output_layer = Dense(1)(tcn_out)
 
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
         model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.9, clipnorm=1.0),
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.999, beta_2=0.999, clipnorm=1.0),
             loss='mse')
 
         # Callbacks
@@ -56,7 +61,8 @@ class Model(BaseModel):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
 
-        model = tf.keras.models.load_model(self.model_path, custom_objects={"Adam": tf.keras.optimizers.legacy.Adam})
+        model = tf.keras.models.load_model(self.model_path, custom_objects={"Adam": tf.keras.optimizers.legacy.Adam,
+                                                                            "TCN": TCN})
         predictions = model.predict(sequences)
 
         return [val[0] for val in predictions]
