@@ -23,8 +23,7 @@ framework.
    - [Adding Machine Learning Prediction Models](#adding-machine-learning-prediction-models)
    - [Implementing Custom Evaluation Metrics](#implementing-custom-evaluation-metrics)
    - [Adding Evaluation Plots](#adding-evaluation-plots)
-4. [Error Metrics Overview](#error-metrics-overview)
-5. [Disclaimers and Limitations](#disclaimers-and-limitations)
+4. [Disclaimers and Limitations](#disclaimers-and-limitations)
 
 ## Setup and Installation
 1. **Virtual Environment Setup**:
@@ -79,7 +78,7 @@ python -m src.cli COMMAND
 
 
 ### Parsing Data
-**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you should store it in `data/raw` before preprocessing.
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing.
 
 ```
 python -m src.cli parse --parser [tidepool|nightscout] USERNAME PASSWORD [--file-name FILE_NAME] [--start-date START_DATE] [--end-date END_DATE]
@@ -94,7 +93,7 @@ python -m src.cli parse --parser [tidepool|nightscout] USERNAME PASSWORD [--file
 #### Example
 
 ```
-python -m src.cli parse --parser tidepool johndoe@example.com mypassword --file-name output.csv --start-date 2023-09-01 --end-date 2023-09-30
+python -m src.cli parse --parser tidepool johndoe@example.com mypassword --start-date 2023-09-01 --end-date 2023-09-30
 ```
 
 ---
@@ -177,51 +176,49 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 
 ## Contributing with code
 
-TODO: Describe the file structure.
+In this section we will explain how you can contribute with enhancing the implementation of parsers, preprocessors, models, evaluation metrics and plots.
 
-Definitions:
-- **Parsing**: Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. The parsed datasets are stored in 'data/raw/'.
-- **Preprocessing**: Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc. The preprocessed datasets are stored in 'data/preprocessed'.
-- **Model training**: Refers to using preprocessed data to train a blood glucose prediction model. The trained models are stored in 'data/models/'.
-- **Metrics**: Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model. The evaluation metrics are stored in tables 'results/reports/'.
-- **Plots**: Different types of plots that can illustrate blood glucose predictions together with actual measured values. The plotted results are stored in 'results/figures/'.
+### Contributing With New Components
 
+Regardless of the component type you're contributing, follow these general steps:
 
-### Adding Data Source Parsers
-Note: Parser must have class name Parser.
+1. Navigate to the corresponding directory in `src/`.
+2. Create a new Python file for your component.
+3. Implement your component class, inheriting from the appropriate base class.
+4. Add necessary tests and update the documentation.
 
-Note: add new file to the CLI alternatives.
+Here are specifics for various component types:
 
-Note: Clearly define requirements for data inputs.
+#### Parsers
+Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. 
+   - Directory: `src/parsers`
+   - Base Class: `BaseParser`
 
-### Adding Data Preprocessors
-Note: targets from preprocessors will be named "target".
+#### Preprocessors
+Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc.
+   - Directory: `src/preprocessors`
+   - Base Class: `BasePreprocessor`
 
-Note: Preprocessors must have class name Preprocessor
+#### Machine Learning Prediction Models
+Refers to using preprocessed data to train a blood glucose prediction model.
+   - Directory: `src/models`
+   - Base Class: `BaseModel`
 
-Note: add new file to the CLI alternatives.
+#### Evaluation Metrics
+Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model.    - Directory: `src/metrics`
+   - Base Class: `BaseMetric`
 
-### Adding Machine Learning Prediction Models
-Note: targets from presossors will be named "target".
+#### Evaluation Plots
+Different types of plots that can illustrate blood glucose predictions together with actual measured values.
+   - Directory: `src/plots`
+   - Base Class: `BasePlot`
 
-### Adding Evaluation Metrics
-To implement your own BGP evaluation metric, create a new class that inherits from the BaseMetric class in `src/metrics/base_metric.py`. Your new class should implement the `__call__` method, which takes two lists of glucose values (the true values and the predicted values) as input and returns a single value representing the performance of the metric.
-
-
-### Adding Evaluation Plots
-
+Remember to adhere to our coding and documentation standards when contributing!
 
 
 ### Testing
 To run the tests, write `python tests/test_all.py` in the terminal.
 
-## Error Metrics Overview
-
-| Name                                            | Class     | Description                                                                                                                                                                                                                                                        |
-|-------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Root Mean Squared Error                         | RMSE      | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
-| Mean Absolute Error                             | MAE       | Returns a value between [0, inf]. Treats high and low values equally.                                                                                                                                                                                              | 
-| Pearson's Correlation Coefficient               | PCC       | a measure of the linear relationship between two variables X and Y, giving a value between -1 and +1. A value of +1 indicates a perfect positive correlation, 0 indicates no correlation, and -1 indicates a perfect negative correlation.                         | 
 
 ## Disclaimers and limitations
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
