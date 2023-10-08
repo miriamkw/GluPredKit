@@ -2,10 +2,10 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class BaseModel(BaseEstimator, TransformerMixin):
-    def __init__(self, prediction_horizon, numerical_features, categorical_features):
-        self.prediction_horizon = prediction_horizon
-        self.numerical_features = numerical_features
-        self.categorical_features = categorical_features
+    def __init__(self, prediction_horizon):
+        # TODO: Do we need this?
+        # self.prediction_horizon = prediction_horizon
+        pass
 
     def fit(self, x_train, y_train):
         # Perform any additional processing of the input features here

@@ -101,7 +101,10 @@ def parse(parser, username, password, file_name, start_date, end_date):
               help='Include hour of day as an input feature (default: True).')
 @click.option('--test-size', type=float, default=0.2,
               help='Fraction of data to reserve for testing (default: 0.2).')
-def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, include_hour, test_size):
+@click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
+@click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
+def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, include_hour, test_size,
+               num_features, cat_features):
     """
     Preprocess data from an input CSV file and store train and test data into CSV files.
 
@@ -112,6 +115,8 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
         num_lagged_features (int): The number of samples of time-lagged features.
         include_hour (bool): Whether to include hour of day as an input feature.
         test_size (float): Fraction of data to reserve for testing.
+        num_features (str): List of numerical features, separated with comma without spaces
+        cat_features (str): List of categorical features, separated with comma without spaces
     """
     if prediction_horizon % 5 != 0:
         raise click.BadParameter('Prediction horizon must be divisible by 5.')
@@ -123,8 +128,13 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     if not issubclass(preprocessor_module.Preprocessor, BasePreprocessor):
         raise click.ClickException(f"The selected preprocessor '{preprocessor}' must inherit from BasePreprocessor.")
 
+    # Convert comma-separated string of features to list
+    num_features = split_string(num_features)
+    cat_features = split_string(cat_features)
+
     # Create an instance of the chosen parser
-    chosen_preprocessor = preprocessor_module.Preprocessor()
+    chosen_preprocessor = preprocessor_module.Preprocessor(num_features, cat_features, prediction_horizon,
+                                                           num_lagged_features, test_size, include_hour)
 
     input_path = "data/raw/"
     click.echo(f"Preprocessing data using {preprocessor} from file {input_path}{input_file_name}...")
@@ -133,7 +143,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
     data = read_data_from_csv(input_path, input_file_name)
 
     # Perform data preprocessing using your preprocessor
-    train_data, test_data = chosen_preprocessor(data, prediction_horizon, num_lagged_features, include_hour, test_size)
+    train_data, test_data = chosen_preprocessor(data)
 
     # Define output file names
     output_path = "data/processed/"
@@ -152,8 +162,8 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
 @click.option('--model', prompt='Model name', help='Name of the model file (without .py) to be trained.')
 @click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
-@click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
-@click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
+# @click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
+# @click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
 def train_model(model, input_file_name, prediction_horizon, num_features, cat_features):
     # Convert comma-separated string of features to list
     num_features = split_string(num_features)
