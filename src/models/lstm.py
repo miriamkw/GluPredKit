@@ -8,8 +8,8 @@ from .base_model import BaseModel
 
 
 class Model(BaseModel):
-    def __init__(self, prediction_horizon, numerical_features, categorical_features):
-        super().__init__(prediction_horizon, numerical_features, categorical_features)
+    def __init__(self, prediction_horizon):
+        super().__init__(prediction_horizon)
         # The recommended approach for saving and loading Keras models is to use Keras's built-in .save() and
         # Using legacy .h5 file type because .keras threw error with M1 Mac chip
         self.model_path = f"data/keras_models/lstm_ph-{prediction_horizon}.h5"

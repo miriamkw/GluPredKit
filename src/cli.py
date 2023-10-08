@@ -14,12 +14,9 @@ from .plots.base_plot import BasePlot
 from .config_manager import config_manager
 
 
-def read_data_from_csv(input_path, file_name, parse_dates=True):
+def read_data_from_csv(input_path, file_name):
     file_path = input_path + file_name
-    if parse_dates:
-        return pd.read_csv(file_path, index_col="date", parse_dates=True)
-    else:
-        return pd.read_csv(file_path)
+    return pd.read_csv(file_path, index_col="date", parse_dates=True)
 
 
 def store_data_as_csv(df, output_path, file_name):
@@ -162,12 +159,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
 @click.option('--model', prompt='Model name', help='Name of the model file (without .py) to be trained.')
 @click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
-# @click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
-# @click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
-def train_model(model, input_file_name, prediction_horizon, num_features, cat_features):
-    # Convert comma-separated string of features to list
-    num_features = split_string(num_features)
-    cat_features = split_string(cat_features)
+def train_model(model, input_file_name, prediction_horizon):
 
     # Load the chosen parser dynamically based on user input
     model_module = importlib.import_module(f'src.models.{model}')
@@ -177,13 +169,13 @@ def train_model(model, input_file_name, prediction_horizon, num_features, cat_fe
         raise click.ClickException(f"The selected model '{model}' must inherit from BaseModel.")
 
     # Create an instance of the chosen parser
-    chosen_model = model_module.Model(prediction_horizon, num_features, cat_features)
+    chosen_model = model_module.Model(prediction_horizon)
 
     input_path = "data/processed/"
     click.echo(f"Training model {model} with training data from {input_path}{input_file_name}...")
 
     # Load the input CSV file into a DataFrame
-    train_data = read_data_from_csv(input_path, input_file_name, parse_dates=False)
+    train_data = read_data_from_csv(input_path, input_file_name)
     x_train = train_data.drop('target', axis=1)
     y_train = train_data['target']
 
@@ -242,7 +234,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
                                                and file != '__init__.py'
                                                and file != 'base_plot.py']
 
-    test_data = read_data_from_csv(test_file_path, test_file_name, parse_dates=False)
+    test_data = read_data_from_csv(test_file_path, test_file_name)
     x_test = test_data.drop('target', axis=1)
     y_test = test_data['target']
 

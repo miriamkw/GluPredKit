@@ -3,9 +3,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class BaseModel(BaseEstimator, TransformerMixin):
     def __init__(self, prediction_horizon):
-        # TODO: Do we need this?
-        # self.prediction_horizon = prediction_horizon
-        pass
+        self.prediction_horizon = prediction_horizon
 
     def fit(self, x_train, y_train):
         # Perform any additional processing of the input features here
