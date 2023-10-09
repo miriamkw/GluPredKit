@@ -5,6 +5,10 @@ matplotlib==3.6.3
 pandas==1.5.3
 python_nightscout @ git+https://github.com/ps2/python-nightscout.git@master
 scikit-learn
+xgboost
+tensorflow
+keras-tcn
 numpy
 aiohttp
 click
+dill

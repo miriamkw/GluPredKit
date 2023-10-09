@@ -1,9 +1,10 @@
 import numpy as np
-from base_metric import BaseMetric
+from .base_metric import BaseMetric
 
-class PCC(BaseMetric):
+
+class Metric(BaseMetric):
     def __init__(self):
-        self.name = "PCC"
+        super().__init__("PCC")
 
     def _calculate_metric(self, y_true, y_pred):
         corr_coef = np.corrcoef(y_true, y_pred)[0, 1]
