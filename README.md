@@ -25,43 +25,17 @@ framework.
    - [Adding Evaluation Plots](#adding-evaluation-plots)
 4. [Disclaimers and Limitations](#disclaimers-and-limitations)
 
+
+
 ## Setup and Installation
-1. **Virtual Environment Setup**:
-   - Create a virtual environment:
-     ```
-     python -m venv bgp-evaluation
-     ```
-   - Activate the virtual environment:
-     ```
-     source bgp-evaluation/bin/activate
-     ```
 
-2. **Dependency Installation**:
-   - Install the required packages:
-     ```
-     pip install -r requirements.txt
-     ```
+To setup the repository with all requirements, simply run the following command:
 
-3. **Submodules Setup**:
-   - Add the required submodules:
-     ```
-     git submodule update --init --recursive
-     ```
-
-4. **Initial Directory Setup**:
-   - Ensure you have the following directory structure in place:
-     - `data/`
-       - `raw/`
-       - `processed/`
-       - `models/`
-     - `results/`
-       - `reports/`
-       - `figures/`
+```
+./install.sh
+```
 
 Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
-
-
-
 
 
 
