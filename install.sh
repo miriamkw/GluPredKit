@@ -1,7 +1,7 @@
 #!/bin/bash 
 
 # Check if python is installed command 
--v python >/dev/null 2>&1 || { echo >&2 "Python required but it's not installed. Aborting."; exit 1; } 
+command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || { echo >&2 "Python required but it's not installed. Aborting."; exit 1; } 
 
 # Set up the virtual environment 
 echo "Setting up virtual environment..." 
