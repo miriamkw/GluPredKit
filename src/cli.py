@@ -32,7 +32,7 @@ def split_string(input_string):
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout']), help='Choose a parser')
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser')
 @click.argument('username', type=str)
 @click.argument('password', type=str)
 @click.option('--file-name', type=str, help='Optional file name of output')
@@ -44,7 +44,7 @@ def parse(parser, username, password, file_name, start_date, end_date):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
-    parser_module = importlib.import_module(f'parsers.{parser}')
+    parser_module = importlib.import_module(f'src.parsers.{parser}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(parser_module.Parser, BaseParser):
@@ -70,7 +70,7 @@ def parse(parser, username, password, file_name, start_date, end_date):
     # Perform parsing using the chosen parser
     parsed_data = chosen_parser(start_date, end_date, username, password)
 
-    output_path = '../data/raw/'
+    output_path = 'data/raw/'
     date_format = "%d-%m-%Y"
 
     # Add default file name if input is not provided
