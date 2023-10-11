@@ -29,7 +29,7 @@ if [ ! -d "data" ]; then
 fi 
 
 if [ ! -d "results" ]; then 
-	mkdir results/reports 
+	mkdir -p results/reports 
 	mkdir results/figures 
 fi 
 
