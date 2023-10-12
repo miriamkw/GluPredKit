@@ -20,7 +20,3 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/miriamkw/GluPredKit"
 "Bug Tracker" = "https://github.com/miriamkw/GluPredKit/issues"
-
-[project.scripts]
-glupredkit = "glupredkit.cli:cli"
-

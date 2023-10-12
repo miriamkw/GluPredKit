@@ -18,6 +18,8 @@ setup(
     package_dir={package_name: package_name},
     long_description=readme,
     python_requires='>=3.6',
+    licence='MIT',
+
     install_requires=[
         "matplotlib==3.6.3",
         "pandas==1.5.3",

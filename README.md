@@ -24,6 +24,7 @@ framework.
    - [Implementing Custom Evaluation Metrics](#implementing-custom-evaluation-metrics)
    - [Adding Evaluation Plots](#adding-evaluation-plots)
 4. [Disclaimers and Limitations](#disclaimers-and-limitations)
+5. [License](#license)
 
 
 
@@ -199,3 +200,10 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 * Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
 * Metrics assumes mg/dL for the input.
 * Note that the difference between how basal rates are registered. Bolus doses are however consistent across. Hopefully it is negligable.
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details
+
+
