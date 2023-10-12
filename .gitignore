@@ -6,11 +6,25 @@ __pycache__/
 # C extensions
 *.so
 
-# Credentials
+# Data, results, credentials and settings
 credentials.json
+config.json
+data/processed/*
+# Keep the directory itself
+!data/processed/
+data/trained_models/*
+!data/trained_models/
+data/keras_models/*
+!data/keras_models/
+data/raw/*
+!data/raw/
+results/figures/*
+!results/figures/
+results/reports/*
+!results/reports/
 
 # Virtual environment
-loop-scoring/
+bgp-evaluation/
 
 # Distribution / packaging
 .Python

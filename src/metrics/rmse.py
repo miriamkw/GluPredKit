@@ -1,12 +1,19 @@
-from src.metrics.base_metric import BaseMetric
+from .base_metric import BaseMetric
 import numpy as np
+from ..config_manager import config_manager
 
-class RMSE(BaseMetric):
+
+class Metric(BaseMetric):
     def __init__(self):
         super().__init__('RMSE')
 
-    def _calculate_metric(self, y_true, y_pred):
+    def __call__(self, y_true, y_pred):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        return np.sqrt(np.mean(np.square(y_true - y_pred)))
+        rmse = np.sqrt(np.mean(np.square(y_true - y_pred)))
+
+        if config_manager.use_mgdl:
+            return rmse
+        else:
+            return config_manager.convert_value(rmse)
