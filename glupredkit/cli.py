@@ -44,7 +44,7 @@ def parse(parser, username, password, file_name, start_date, end_date):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
-    parser_module = importlib.import_module(f'src.parsers.{parser}')
+    parser_module = importlib.import_module(f'glupredkit.parsers.{parser}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(parser_module.Parser, BaseParser):
@@ -119,7 +119,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
         raise click.BadParameter('Prediction horizon must be divisible by 5.')
 
     # Load the chosen parser dynamically based on user input
-    preprocessor_module = importlib.import_module(f'src.preprocessors.{preprocessor}')
+    preprocessor_module = importlib.import_module(f'glupredkit.preprocessors.{preprocessor}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(preprocessor_module.Preprocessor, BasePreprocessor):
@@ -162,7 +162,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
 def train_model(model, input_file_name, prediction_horizon):
 
     # Load the chosen parser dynamically based on user input
-    model_module = importlib.import_module(f'src.models.{model}')
+    model_module = importlib.import_module(f'glupredkit.models.{model}')
 
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(model_module.Model, BaseModel):
@@ -213,8 +213,8 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     test file is crucial.
     """
     model_path = "data/trained_models/"
-    metrics_path = "src/metrics/"
-    plots_path = "src/plots/"
+    metrics_path = "glupredkit/metrics/"
+    plots_path = "glupredkit/plots/"
     metric_results_path = "results/reports/"
     plot_results_path = "results/figures/"
     test_file_path = "data/processed/"
@@ -249,7 +249,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
         y_preds.append(y_pred)
 
         for metric in metrics:
-            metric_module = importlib.import_module(f'src.metrics.{metric}')
+            metric_module = importlib.import_module(f'glupredkit.metrics.{metric}')
             if not issubclass(metric_module.Metric, BaseMetric):
                 raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
 
@@ -277,7 +277,7 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     click.echo(f"Drawing plots...")
     os.makedirs(plot_results_path, exist_ok=True)
     for plot in plots:
-        plot_module = importlib.import_module(f'src.plots.{plot}')
+        plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
 
@@ -296,14 +296,15 @@ def set_config(use_mgdl):
     click.echo(f'Set unit to {"mg/dL" if use_mgdl else "mmol/L"}.')
 
 
-if __name__ == "__main__":
-    # Create a Click group and add the commands to it
-    cli = click.Group(commands={
-        'parse': parse,
-        'preprocess': preprocess,
-        'train_model': train_model,
-        'evaluate_model': evaluate_model,
-        'set_config': set_config,
-    })
+# Create a Click group and add the commands to it
+cli = click.Group(commands={
+    'parse': parse,
+    'preprocess': preprocess,
+    'train_model': train_model,
+    'evaluate_model': evaluate_model,
+    'set_config': set_config,
+})
 
+
+if __name__ == "__main__":
     cli()
