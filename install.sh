@@ -25,7 +25,7 @@ echo "Setting up directory structure..."
 if [ ! -d "data" ]; then 
 	mkdir -p data/raw 
 	mkdir data/processed 
-	mkdir data/models 
+	mkdir data/trained_models
 fi 
 
 if [ ! -d "results" ]; then 

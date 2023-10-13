@@ -30,11 +30,35 @@ framework.
 
 ## Setup and Installation
 
-To setup the repository with all requirements, simply run the following command:
+To setup and install this platform, there are two options:
+1) **Install using pip:** If you want to access the command line interface (CLI) without reading or modifying the code, choose this option.
+
+
+2) **Install using the cloned repository:** This is the choice if you want to use the repository and have the code visible, and to potentially edit the code.
+
+Choose which one is relevant for you, and follow the instructions below.
+
+----
+### Install using pip
+Open your terminal and go to an empty folder in your command line. Creating a virtual environment is optional, but recommended. Note that all the data storage, trained models and results will be stored in this folder.
+To set up the CLI, simply run the following command:
+
+```
+pip install glupredkit
+```
+
+
+----
+### Install using the cloned repository
+
+First, clone the repository and make sure you are located in the root of the directory in your command line.
+To set up the repository with all requirements, simply run the following command:
 
 ```
 ./install.sh
 ```
+
+----
 
 Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
 
