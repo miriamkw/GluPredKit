@@ -1,6 +1,6 @@
-[submodule "master"]
-	path = master
-	url = https://github.com/kriventsov/Clarke-and-Parkes-Error-Grids.git
 [submodule "error_grids"]
-	path = error_grids
+	path = submodules/error_grids
 	url = https://github.com/kriventsov/Clarke-and-Parkes-Error-Grids.git
+[submodule "submodules/tidepool_api"]
+	path = submodules/tidepool_api
+	url = https://github.com/miriamkw/data-science-tidepool-api-python.git
