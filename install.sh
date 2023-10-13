@@ -1,11 +1,17 @@
 #!/bin/bash 
+# Automatically exit script if an error appears
+set -e
 
-# Check if python is installed command 
-command -v python >/dev/null 2>&1 || command -v python3 >/dev/null 2>&1 || { echo >&2 "Python required but it's not installed. Aborting."; exit 1; } 
+# Check if python is installed command
+if ! command -v python3 &> /dev/null
+then
+    echo "python3 required but could not be found. Aborting."
+    exit
+fi
 
 # Set up the virtual environment 
 echo "Setting up virtual environment..." 
-python -m venv bgp-evaluation 
+python3 -m venv bgp-evaluation
 
 # Activate the virtual environment 
 echo "Activating the virtual environment..." 
@@ -20,18 +26,16 @@ echo "Initializing and updating submodules..."
 git submodule update --init --recursive 
 
 # Ensure directory structure is in place 
-echo "Setting up directory structure..." 
+echo "Setting up directory structure..."
 
-if [ ! -d "data" ]; then 
-	mkdir -p data/raw 
-	mkdir data/processed 
-	mkdir data/trained_models
-fi 
-
-if [ ! -d "results" ]; then 
-	mkdir -p results/reports 
-	mkdir results/figures 
-fi 
+# TODO: Make identical to folders created in setup.py
+if [ ! -d "data" ]; then
+	mkdir -p data/raw
+	mkdir data/.processed
+	mkdir data/.trained_models
+	mkdir data/figures
+	mkdir data/reports
+fi
 
 echo "Installation complete. Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels."
 		

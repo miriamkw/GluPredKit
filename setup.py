@@ -1,4 +1,6 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+import os
 
 project_name = "GluPredKit"
 version = "0.0.1"
@@ -9,6 +11,23 @@ package_name = "glupredkit"  # The package name on pip install
 with open('README.md', encoding='utf-8') as f:
     readme = f.read()
 
+
+class CustomInstall(install):
+    def run(self):
+        # Create directories
+        cwd = os.getcwd()
+
+        folder_name = 'data'
+        os.makedirs(os.path.join(cwd, folder_name, 'raw'), exist_ok=True)
+        os.makedirs(os.path.join(cwd, folder_name, '.processed'), exist_ok=True)
+        os.makedirs(os.path.join(cwd, folder_name, '.trained_models'), exist_ok=True)
+        os.makedirs(os.path.join(cwd, folder_name, 'figures'), exist_ok=True)
+        os.makedirs(os.path.join(cwd, folder_name, 'reports'), exist_ok=True)
+
+        # Call the original installation command
+        super().run()
+
+
 setup(
     name=project_name,
     version=version,
@@ -18,11 +37,10 @@ setup(
     package_dir={package_name: package_name},
     long_description=readme,
     python_requires='>=3.6',
-    licence='MIT',
-
+    license='MIT',
     install_requires=[
-        "matplotlib==3.6.3",
-        "pandas==1.5.3",
+        "matplotlib>=3.6.3",
+        "pandas>=1.5.3",
         "tidepool_data_science_project @ git+https://github.com/miriamkw/data-science-tidepool-api-python.git@0.2",
         "python_nightscout @ git+https://github.com/ps2/python-nightscout.git@master",
         "scikit-learn",
@@ -34,9 +52,13 @@ setup(
         "click",
         "dill"
     ],
+    cmdclass={
+        'install': CustomInstall,
+    },
     entry_points={
         'console_scripts': [
             'glupredkit = glupredkit.cli:cli',
         ],
     }
 )
+

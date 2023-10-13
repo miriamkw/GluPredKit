@@ -30,11 +30,11 @@ framework.
 
 ## Setup and Installation
 
-To setup and install this platform, there are two options:
-1) **Install using pip:** If you want to access the command line interface (CLI) without reading or modifying the code, choose this option.
+To setup and install this platform, there are two options depending on whether you are a regular user or a developer:
+1) **Install using pip (regular users):** If you want to access the command line interface (CLI) without reading or modifying the code, choose this option.
 
 
-2) **Install using the cloned repository:** This is the choice if you want to use the repository and have the code visible, and to potentially edit the code.
+2) **Install using the cloned repository (developers):** This is the choice if you want to use the repository and have the code visible, and to potentially edit the code.
 
 Choose which one is relevant for you, and follow the instructions below.
 
@@ -57,6 +57,8 @@ To set up the repository with all requirements, simply run the following command
 ```
 ./install.sh
 ```
+
+Make sure that the virtual environment `bgp-evaluation` is activated before you proceed. If not, call `source bgp-evaluation/bin/activate`.
 
 ----
 
