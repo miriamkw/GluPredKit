@@ -1,10 +1,11 @@
 import json
+import pkg_resources
 
 
 class ConfigManager:
-    def __init__(self, config_file='config.json'):
-        self.config_file = config_file
-        with open(config_file) as f:
+    def __init__(self):
+        self.config_file = pkg_resources.resource_filename('glupredkit', 'config.json')
+        with open(self.config_file) as f:
             self.config = json.load(f)
 
     @property

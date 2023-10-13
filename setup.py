@@ -1,9 +1,10 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import os
+import json
 
 project_name = "GluPredKit"
-version = "0.0.1"
+version = "0.0.3"
 author = "Miriam K. Wolff"
 author_email = "miriamkwolff@outlook.com"
 package_name = "glupredkit"  # The package name on pip install
@@ -14,7 +15,7 @@ with open('README.md', encoding='utf-8') as f:
 
 class CustomInstall(install):
     def run(self):
-        # Create directories
+        # Get path of current working directory
         cwd = os.getcwd()
 
         folder_path= 'data'
@@ -36,13 +37,12 @@ setup(
     packages=find_packages(),
     package_dir={package_name: package_name},
     long_description=readme,
+    long_description_content_type="text/markdown",
     python_requires='>=3.6',
     license='MIT',
     install_requires=[
         "matplotlib>=3.6.3",
         "pandas>=1.5.3",
-        "tidepool_data_science_project @ git+https://github.com/miriamkw/data-science-tidepool-api-python.git@0.2",
-        "python_nightscout @ git+https://github.com/ps2/python-nightscout.git@master",
         "scikit-learn",
         "xgboost",
         "tensorflow",
@@ -54,6 +54,9 @@ setup(
     ],
     cmdclass={
         'install': CustomInstall,
+    },
+    package_data={
+        'glupredkit': ['config.json'],
     },
     entry_points={
         'console_scripts': [

@@ -4,3 +4,6 @@
 [submodule "submodules/tidepool_api"]
 	path = submodules/tidepool_api
 	url = https://github.com/miriamkw/data-science-tidepool-api-python.git
+[submodule "submodules/nightscout_api"]
+	path = submodules/nightscout_api
+	url = https://github.com/ps2/python-nightscout.git

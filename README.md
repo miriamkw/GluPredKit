@@ -59,7 +59,10 @@ data/
 
 ----
 ### Regular users: Install using pip
-Open your terminal and go to an empty folder in your command line. Creating a virtual environment is optional, but recommended. Note that all the data storage, trained models and results will be stored in this folder.
+Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
+
+Creating a virtual environment is optional, but recommended. Create a virtual environment with the command `python3 -m venv glupredkit_venv`, and activate it with `python3 -m venv bgp-evaluation`.
+
 To set up the CLI, simply run the following command:
 
 ```

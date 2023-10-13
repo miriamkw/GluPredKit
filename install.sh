@@ -15,7 +15,7 @@ python3 -m venv bgp-evaluation
 
 # Activate the virtual environment 
 echo "Activating the virtual environment..." 
-source bgp-evaluation/bin/activate 
+source bgp-evaluation/bin/activate
 
 # Install the required packages 
 echo "Installing dependencies..." 

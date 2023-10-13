@@ -8,8 +8,8 @@ __pycache__/
 
 # Data, results, credentials and settings
 credentials.json
-config.json
 data/processed/*
+
 # Keep the directory itself
 !data/processed/
 data/trained_models/*
