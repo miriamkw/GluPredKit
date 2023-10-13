@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import os
-import json
 
 project_name = "GluPredKit"
 version = "0.0.3"
@@ -18,12 +17,16 @@ class CustomInstall(install):
         # Get path of current working directory
         cwd = os.getcwd()
 
+        print("Creating directories...")
+
         folder_path= 'data'
         folder_names = ['raw', '.processed', '.trained_models', 'figures', 'reports']
 
         for folder_name in folder_names:
             path = os.path.join(cwd, folder_path, folder_name)
             os.makedirs(path, exist_ok=True)
+
+        print("Directories created for usage of GluPredKit.")
 
         # Call the original installation command
         super().run()

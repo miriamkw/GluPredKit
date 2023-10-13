@@ -6,8 +6,8 @@ glucose prediction models in Python. Access all features via the integrated Comm
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
 
+<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
 ![img.png](figures/pipeline_overview.png)
-
 
 ## Table of Contents
 1. [Setup and Installation](#setup-and-installation)
