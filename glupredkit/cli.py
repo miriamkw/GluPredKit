@@ -33,7 +33,8 @@ def split_string(input_string):
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser')
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser',
+              required=True)
 @click.argument('username', type=str)
 @click.argument('password', type=str)
 @click.option('--file-name', type=str, help='Optional file name of output')
@@ -88,8 +89,8 @@ def parse(parser, username, password, file_name, start_date, end_date):
 
 
 @click.command()
-@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'tf_keras']), default='scikit_learn',
-              help='Choose a preprocessor (default: scikit_learn)')
+@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'tf_keras']),
+              help='Choose a preprocessor', required=True)
 # TODO: Make the list of parsers dynamic to the files in the parsers folder
 @click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)

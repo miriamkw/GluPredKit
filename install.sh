@@ -28,7 +28,6 @@ git submodule update --init --recursive
 # Ensure directory structure is in place 
 echo "Setting up directory structure..."
 
-# TODO: Make identical to folders created in setup.py
 if [ ! -d "data" ]; then
 	mkdir -p data/raw
 	mkdir data/.processed

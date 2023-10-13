@@ -17,12 +17,12 @@ class CustomInstall(install):
         # Create directories
         cwd = os.getcwd()
 
-        folder_name = 'data'
-        os.makedirs(os.path.join(cwd, folder_name, 'raw'), exist_ok=True)
-        os.makedirs(os.path.join(cwd, folder_name, '.processed'), exist_ok=True)
-        os.makedirs(os.path.join(cwd, folder_name, '.trained_models'), exist_ok=True)
-        os.makedirs(os.path.join(cwd, folder_name, 'figures'), exist_ok=True)
-        os.makedirs(os.path.join(cwd, folder_name, 'reports'), exist_ok=True)
+        folder_path= 'data'
+        folder_names = ['raw', '.processed', '.trained_models', 'figures', 'reports']
+
+        for folder_name in folder_names:
+            path = os.path.join(cwd, folder_path, folder_name)
+            os.makedirs(path, exist_ok=True)
 
         # Call the original installation command
         super().run()

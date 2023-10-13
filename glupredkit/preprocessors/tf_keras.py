@@ -1,6 +1,5 @@
 """
-The scikit learn preprocessor takes in a parsed dataset in a 5-minute time grid and returns a dataset ready to be
-trained with a model that builds on the scikit learn library.
+The tf_keras is preprocessing data that can be used in training of models that are built on tensorflow keras library.
 
 Users can customize:
 - History length
@@ -21,8 +20,6 @@ def create_dataframe(sequences, targets, dates):
     # Create a new DataFrame to store sequences and targets
 
     # Convert sequences to lists
-    # sequences_as_lists = [list(seq) for seq in sequences]
-    # sequences_as_strings = [str(seq) for seq in sequences]
     sequences_as_strings = [str(list(map(list, seq))) for seq in sequences]
 
     dataset_df = pd.DataFrame({

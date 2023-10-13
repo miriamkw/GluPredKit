@@ -38,8 +38,27 @@ To setup and install this platform, there are two options depending on whether y
 
 Choose which one is relevant for you, and follow the instructions below.
 
+**Important note about the install scripts:**
+
+Upon installation, the following directory structure will be created under the directory where you execute the installation:
+
+```
+data/
+│
+├── raw/
+│
+├── .processed/
+│
+├── .trained_models/
+│
+├── figures/
+│
+└── reports/
+```
+
+
 ----
-### Install using pip
+### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line. Creating a virtual environment is optional, but recommended. Note that all the data storage, trained models and results will be stored in this folder.
 To set up the CLI, simply run the following command:
 
@@ -49,7 +68,7 @@ pip install glupredkit
 
 
 ----
-### Install using the cloned repository
+### Developers: Install using the cloned repository
 
 First, clone the repository and make sure you are located in the root of the directory in your command line.
 To set up the repository with all requirements, simply run the following command:
@@ -73,18 +92,22 @@ The `src/cli.py` script is a command-line tool designed to streamline the end-to
 Note that running the commands below is assuming that you have already performed the steps above in "Setup and Installation",
 and that you are located in the root of this directory in the terminal. All calls to the CLI start with
 ```
-python -m src.cli COMMAND
+glupredkit COMMAND
 ```
-
+for regular users. The examples below will be using that syntax. However, if you are working directly in the directory
+as a developer, you may use the following syntax instead:
+```
+python -m glupredkit.cli COMMAND
+```
 
 
 ### Parsing Data
 **Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing.
 
 ```
-python -m src.cli parse --parser [tidepool|nightscout] USERNAME PASSWORD [--file-name FILE_NAME] [--start-date START_DATE] [--end-date END_DATE]
+glupredkit parse --parser [tidepool|nightscout|apple_health] USERNAME PASSWORD [--file-name FILE_NAME] [--start-date START_DATE] [--end-date END_DATE]
 ```
-- `--parser`: Choose a parser between `tidepool` and `nightscout`.
+- `--parser`: Choose a parser between `tidepool`, `nightscout` or `apple_health`.
 - `username`: Your username for the data source.
 - `password`: Your password for the data source.
 - `--file-name` (Optional): Provide a name for the output file.
@@ -94,7 +117,7 @@ python -m src.cli parse --parser [tidepool|nightscout] USERNAME PASSWORD [--file
 #### Example
 
 ```
-python -m src.cli parse --parser tidepool johndoe@example.com mypassword --start-date 2023-09-01 --end-date 2023-09-30
+glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 2023-09-01 --end-date 2023-09-30
 ```
 
 ---
@@ -103,7 +126,7 @@ python -m src.cli parse --parser tidepool johndoe@example.com mypassword --start
 **Description**: Preprocess data from an input CSV file and store the training and test data into separate CSV files.
 
 ```
-python -m src.cli preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--include-hour INCLUDE_HOUR] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
+glupredkit preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--include-hour INCLUDE_HOUR] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
 ```
 - `--preprocessor`: Choose between scikit_learn and tf_keras for preprocessing.
 - `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be lodated in `data/raw`.
@@ -117,7 +140,7 @@ python -m src.cli preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_ke
 #### Example
 
 ```
-python -m src.cli preprocess tidepool_16-09-2023_to_30-09-2023.csv --num_features CGM,insulin --cat_features hour
+glupredkit preprocess tidepool_16-09-2023_to_30-09-2023.csv --num_features CGM,insulin --cat_features hour
 ```
 
 
@@ -126,7 +149,7 @@ python -m src.cli preprocess tidepool_16-09-2023_to_30-09-2023.csv --num_feature
 ### Train a Model
 **Description**: Train a model using the specified training data.
 ```
-python -m src.cli train_model --model MODEL_NAME INPUT_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+glupredkit train_model --model MODEL_NAME INPUT_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
 ```
 - `--model`: Name of the model file (without .py) to be trained. The file name must exist in `src/models`.
 - `input-file-name`: Name of the CSV file containing training data. The file name must exist in `data/processed`.
@@ -134,7 +157,7 @@ python -m src.cli train_model --model MODEL_NAME INPUT_FILE_NAME [--prediction-h
 
 #### Example
 ```
-python -m src.cli train_model --model ridge train-data_scikit_learn_ph-60_lag-12.csv
+glupredkit train_model --model ridge train-data_scikit_learn_ph-60_lag-12.csv
 ```
 ---
 
@@ -143,7 +166,7 @@ python -m src.cli train_model --model ridge train-data_scikit_learn_ph-60_lag-12
 stored in `results/reports` for evaluation metrics and in `results/figures` for plots.
 
 ```
-python -m src.cli evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRICS] [--plots PLOTS] TEST_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+glupredkit evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRICS] [--plots PLOTS] TEST_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
 ```
 - `--model-files`: List of trained model filenames from `data/trained_models` (without .pkl), separated by comma.
 - `--metrics` (Optional): List of metrics from `src/metrics` to be computed, separated by comma.
@@ -152,14 +175,14 @@ python -m src.cli evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRI
 
 #### Example
 ```
-python -m src.cli evaluate_model --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
+glupredkit evaluate_model --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
 ```
 
 ---
 ### Setting Configurations
 
 ```
-python -m src.cli set_config --use-mgdl [True|False]
+glupredkit set_config --use-mgdl [True|False]
 ```
 **Description**: Set whether to use mg/dL or mmol/L for units.
 
