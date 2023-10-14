@@ -33,6 +33,23 @@ def split_string(input_string):
 
 
 @click.command()
+def setup_directories():
+    """Set up necessary directories for GluPredKit."""
+    cwd = os.getcwd()
+    print("Creating directories...")
+
+    folder_path = 'data'
+    folder_names = ['raw', 'processed', 'trained_models', 'figures', 'reports']
+
+    for folder_name in folder_names:
+        path = os.path.join(cwd, folder_path, folder_name)
+        os.makedirs(path, exist_ok=True)
+        print(f"Created directory {path}.")
+
+    print("Directories created for usage of GluPredKit.")
+
+
+@click.command()
 @click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser',
               required=True)
 @click.argument('username', type=str)
@@ -91,7 +108,6 @@ def parse(parser, username, password, file_name, start_date, end_date):
 @click.command()
 @click.option('--preprocessor', type=click.Choice(['scikit_learn', 'tf_keras']),
               help='Choose a preprocessor', required=True)
-# TODO: Make the list of parsers dynamic to the files in the parsers folder
 @click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
 @click.option('--num-lagged-features', type=int, default=12,
@@ -162,7 +178,6 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
 @click.argument('input-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
 def train_model(model, input_file_name, prediction_horizon):
-
     # Load the chosen parser dynamically based on user input
     model_module = importlib.import_module(f'glupredkit.models.{model}')
 
@@ -265,7 +280,8 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     results_file_name = f'{test_file_name}'
     df_results.to_csv(metric_results_path + results_file_name, index=False)
 
-    click.echo(f"{metrics} for trained_models {model_files} are stored in '{metric_results_path}' as '{results_file_name}'")
+    click.echo(
+        f"{metrics} for trained_models {model_files} are stored in '{metric_results_path}' as '{results_file_name}'")
 
     models_data = []
     for model_name, y_pred in zip(trained_models, y_preds):
@@ -292,7 +308,6 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
 @click.command()
 @click.option('--use-mgdl', type=bool, help='Set whether to use mg/dL or mmol/L')
 def set_config(use_mgdl):
-
     # Update the config
     config_manager.use_mgdl = use_mgdl
     click.echo(f'Set unit to {"mg/dL" if use_mgdl else "mmol/L"}.')
@@ -300,13 +315,13 @@ def set_config(use_mgdl):
 
 # Create a Click group and add the commands to it
 cli = click.Group(commands={
+    'setup_directories': setup_directories,
     'parse': parse,
     'preprocess': preprocess,
     'train_model': train_model,
     'evaluate_model': evaluate_model,
     'set_config': set_config,
 })
-
 
 if __name__ == "__main__":
     cli()

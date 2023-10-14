@@ -47,9 +47,9 @@ data/
 │
 ├── raw/
 │
-├── .processed/
+├── processed/
 │
-├── .trained_models/
+├── trained_models/
 │
 ├── figures/
 │
@@ -82,26 +82,39 @@ To set up the repository with all requirements, simply run the following command
 
 Make sure that the virtual environment `bgp-evaluation` is activated before you proceed. If not, call `source bgp-evaluation/bin/activate`.
 
-----
-
-Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
-
 
 
 ## Usage of Command Line Interface
 
-The `src/cli.py` script is a command-line tool designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
+The command-line tool is designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
 
-Note that running the commands below is assuming that you have already performed the steps above in "Setup and Installation",
-and that you are located in the root of this directory in the terminal. All calls to the CLI start with
-```
-glupredkit COMMAND
-```
-for regular users. The examples below will be using that syntax. However, if you are working directly in the directory
-as a developer, you may use the following syntax instead:
-```
-python -m glupredkit.cli COMMAND
-```
+Getting started:
+1) First, follow the instructions above in "Setup and Installation". 
+2) Then, navigate to a desired folder in your command line. 
+This is the folder where the datasets, models and results will be stored.
+3) Set up the necessary directories for the GluPredKit CLI by running the following command:
+   * For regular users: `glupredkit setup_directories`
+   * For developers: `python3 -m glupredkit.cli setup_directories`
+
+You should now have the following file structure in your desired folder:
+   ```
+   data/
+   │
+   ├── raw/
+   │
+   ├── processed/
+   │
+   ├── trained_models/
+   │
+   ├── figures/
+   │
+   └── reports/
+   ```
+
+Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
+
+Note that the prefix for all the commands will be either `glupredkit` for regular users, or `python -m glupredkit.cli` for developers.
+In the examples below we will use `glupredkit`.
 
 
 ### Parsing Data
