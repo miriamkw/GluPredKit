@@ -1,5 +1,5 @@
 from .base_plot import BasePlot
-from error_grids.error_grids import zone_accuracy
+from submodules.error_grids.error_grids import zone_accuracy
 import matplotlib.pyplot as plt
 import os
 
@@ -45,7 +45,7 @@ class Plot(BasePlot):
         table.auto_set_column_width(col=0)
 
         # Save table as figure
-        file_path = "results/figures/"
+        file_path = "data/figures/"
         os.makedirs(file_path, exist_ok=True)
         file_name = f'clarke_error_grid_table_ph-{self.prediction_horizon}.png'
 

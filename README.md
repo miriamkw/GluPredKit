@@ -11,7 +11,10 @@ framework.
 
 ## Table of Contents
 1. [Setup and Installation](#setup-and-installation)
+   - [Regular users: Install using pip](#regular-users-install-using-pip)
+   - [Developers: Install using the cloned repository](#developers-install-using-the-cloned-repository)
 2. [Usage of Command Line Interface](#usage-of-command-line-interface)
+   - [Getting Started](#getting-started)
    - [Parsing Data](#parsing-data)
    - [Preprocessing Data](#preprocessing-data)
    - [Train a Model](#train-a-model)
@@ -37,24 +40,6 @@ To setup and install this platform, there are two options depending on whether y
 2) **Install using the cloned repository (developers):** This is the choice if you want to use the repository and have the code visible, and to potentially edit the code.
 
 Choose which one is relevant for you, and follow the instructions below.
-
-**Important note about the install scripts:**
-
-Upon installation, the following directory structure will be created under the directory where you execute the installation:
-
-```
-data/
-│
-├── raw/
-│
-├── processed/
-│
-├── trained_models/
-│
-├── figures/
-│
-└── reports/
-```
 
 
 ----
@@ -88,7 +73,7 @@ Make sure that the virtual environment `bgp-evaluation` is activated before you 
 
 The command-line tool is designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
 
-Getting started:
+### Getting started
 1) First, follow the instructions above in "Setup and Installation". 
 2) Then, navigate to a desired folder in your command line. 
 This is the folder where the datasets, models and results will be stored.
@@ -126,14 +111,13 @@ glupredkit parse --parser [tidepool|nightscout|apple_health] USERNAME PASSWORD [
 - `--parser`: Choose a parser between `tidepool`, `nightscout` or `apple_health`.
 - `username`: Your username for the data source.
 - `password`: Your password for the data source.
-- `--file-name` (Optional): Provide a name for the output file.
-- `--start-date` (Optional): Start date for data retrieval, default is two weeks ago.
-- `--end-date` (Optional): End date for data retrieval, default is now.
+- `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
+- `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 
 #### Example
 
 ```
-glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 2023-09-01 --end-date 2023-09-30
+glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 01-09-2023 --end-date 30-09-2023
 ```
 
 ---
@@ -145,18 +129,17 @@ glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 2
 glupredkit preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--include-hour INCLUDE_HOUR] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
 ```
 - `--preprocessor`: Choose between scikit_learn and tf_keras for preprocessing.
-- `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be lodated in `data/raw`.
+- `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw`.
 - `--prediction-horizon` (Optional): Prediction into the future given in time in minutes.
 - `--num-lagged-features` (Optional): The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--include-hour` (Optional): Whether to include hour of day as a feature.
 - `--test-size` (Optional): The fraction in float to how much of the data shall be used as test data.
-- `--num_features` (Optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
-- `--cat_features` (Optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--num-features` (Optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--cat-features` (Optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
 
 #### Example
 
 ```
-glupredkit preprocess tidepool_16-09-2023_to_30-09-2023.csv --num_features CGM,insulin --cat_features hour
+glupredkit preprocess tidepool_16-09-2023_to_30-09-2023.csv --num-features CGM,insulin --cat-features hour
 ```
 
 

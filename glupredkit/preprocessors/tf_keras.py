@@ -5,7 +5,6 @@ Users can customize:
 - History length
 - Prediction horizon for target
 - Test size
-- Whether to include hour of day
 - Numerical features
 - Categorical features
 """
@@ -44,10 +43,8 @@ def _prepare_sequences(data, labels, window_size, step_size=1):
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size,
-                 include_hour):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size,
-                         include_hour)
+    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
         self.scalers = {}
 
 
@@ -62,9 +59,7 @@ class Preprocessor(BasePreprocessor):
         df['CGM'] = df.CGM.ffill(limit=1)
 
         # Add hour of day
-        if self.include_hour:
-            # df['hour'] = df.index.copy().to_series().apply(lambda x: x.hour)
-            df['hour'] = df.index.hour
+        df['hour'] = df.index.hour
 
         # Add target column
         target_index = self.prediction_horizon // 5
@@ -72,7 +67,7 @@ class Preprocessor(BasePreprocessor):
             raise ValueError("Prediction horizon must be divisible by 5.")
         df['target'] = df.CGM.shift(-target_index)
 
-        df = df.dropna()
+        df = df[self.categorical_features + self.numerical_features + ['target']].dropna()
 
         df_X, df_y = df.drop("target", axis=1), df["target"]
         processed_data = self._preprocess_data(df_X)

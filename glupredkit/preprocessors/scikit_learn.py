@@ -6,7 +6,6 @@ Users can customize:
 - History length
 - Prediction horizon for target
 - Test size
-- Whether to include hour of day
 - A list of categorical features
 - A list of numerical features
 """
@@ -25,10 +24,8 @@ def add_time_lagged_features(col_name, df, num_lagged_features):
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size,
-                 include_hour):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size,
-                         include_hour)
+    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
 
     def __call__(self, df):
 
@@ -36,8 +33,7 @@ class Preprocessor(BasePreprocessor):
         df['CGM'] = df.CGM.ffill(limit=1)
 
         # Add hour of day
-        if self.include_hour:
-            df['hour'] = df.index.copy().to_series().apply(lambda x: x.hour)
+        df['hour'] = df.index.copy().to_series().apply(lambda x: x.hour)
 
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]

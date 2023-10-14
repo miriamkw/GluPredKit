@@ -12,7 +12,7 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
         # The recommended approach for saving and loading Keras models is to use Keras's built-in .save() and
         # Using legacy .h5 file type because .keras threw error with M1 Mac chip
-        self.model_path = f"data/keras_models/lstm_ph-{prediction_horizon}.h5"
+        self.model_path = f"data/.keras_models/lstm_ph-{prediction_horizon}.h5"
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
@@ -20,6 +20,8 @@ class Model(BaseModel):
 
         sequences = np.array(sequences)
         targets = np.array(targets)
+
+        print(sequences.shape)
 
         # Model architecture
         input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
@@ -30,7 +32,8 @@ class Model(BaseModel):
 
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
         model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.9, clipnorm=1.0),
+            # optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.9, clipnorm=1.0),
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.9),
             loss='mse')
 
         # Callbacks
@@ -44,6 +47,11 @@ class Model(BaseModel):
         for train_idx, val_idx in tscv.split(sequences):
             train_X, val_X = sequences[train_idx], sequences[val_idx]
             train_Y, val_Y = targets[train_idx], targets[val_idx]
+
+            print("Train x", train_X.shape)
+            print("Train y", train_Y.shape)
+            print("val x", val_X.shape)
+            print("val y", val_Y.shape)
 
             model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
                       callbacks=[early_stopping, reduce_lr])

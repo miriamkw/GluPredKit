@@ -45,7 +45,7 @@ class Plot(BasePlot):
         table.auto_set_column_width(col=0)
 
         # Save table as figure
-        file_path = "results/figures/"
+        file_path = "data/figures/"
         os.makedirs(file_path, exist_ok=True)
         file_name = f'parkes_error_grid_table_ph-{self.prediction_horizon}.png'
 

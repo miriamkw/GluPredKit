@@ -2,6 +2,7 @@
 import click
 import dill
 import os
+import sys
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
@@ -29,6 +30,22 @@ def split_string(input_string):
     return [] if not input_string else input_string.split(',')
 
 
+def user_input_prompt(text):
+    # Prompt the user for confirmation
+    user_response = input(f"{text} (Y/n): ")
+
+    # Convert the user's response to lowercase and check against 'y' and 'n'
+    if user_response.lower() == 'y':
+        # Continue processing
+        print("Continuing processing...")
+    elif user_response.lower() == 'n':
+        # Stop or exit
+        print("Operation aborted by the user.")
+        sys.exit()
+    else:
+        print("Invalid input. Please respond with 'Y' or 'n'.")
+
+
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
 
 
@@ -54,12 +71,11 @@ def setup_directories():
               required=True)
 @click.argument('username', type=str)
 @click.argument('password', type=str)
-@click.option('--file-name', type=str, help='Optional file name of output')
 @click.option('--start-date', type=str,
               help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
 @click.option('--end-date', type=str,
               help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
-def parse(parser, username, password, file_name, start_date, end_date):
+def parse(parser, username, password, start_date, end_date):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -92,12 +108,8 @@ def parse(parser, username, password, file_name, start_date, end_date):
     output_path = 'data/raw/'
     date_format = "%d-%m-%Y"
 
-    # Add default file name if input is not provided
-    if file_name is not None:
-        file_name = file_name
-    else:
-        file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format)
-                     + '.csv')
+    file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format)
+                 + '.csv')
 
     click.echo("Storing data as CSV...")
     store_data_as_csv(parsed_data, output_path, file_name)
@@ -112,13 +124,11 @@ def parse(parser, username, password, file_name, start_date, end_date):
 @click.option('--prediction-horizon', type=int, default=60)
 @click.option('--num-lagged-features', type=int, default=12,
               help='The number of samples of time-lagged features (default: 12).')
-@click.option('--include-hour', type=bool, default=True,
-              help='Include hour of day as an input feature (default: True).')
 @click.option('--test-size', type=float, default=0.2,
               help='Fraction of data to reserve for testing (default: 0.2).')
-@click.option('--num_features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
-@click.option('--cat_features', default='', help='List of categorical features, separated by comma.')
-def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, include_hour, test_size,
+@click.option('--num-features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
+@click.option('--cat-features', default='', help='List of categorical features, separated by comma.')
+def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, test_size,
                num_features, cat_features):
     """
     Preprocess data from an input CSV file and store train and test data into CSV files.
@@ -128,7 +138,6 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
         input_file_name (str): Input CSV file containing the data.
         prediction_horizon (int): The prediction horizon for the target value in minutes.
         num_lagged_features (int): The number of samples of time-lagged features.
-        include_hour (bool): Whether to include hour of day as an input feature.
         test_size (float): Fraction of data to reserve for testing.
         num_features (str): List of numerical features, separated with comma without spaces
         cat_features (str): List of categorical features, separated with comma without spaces
@@ -149,7 +158,7 @@ def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_fea
 
     # Create an instance of the chosen parser
     chosen_preprocessor = preprocessor_module.Preprocessor(num_features, cat_features, prediction_horizon,
-                                                           num_lagged_features, test_size, include_hour)
+                                                           num_lagged_features, test_size)
 
     input_path = "data/raw/"
     click.echo(f"Preprocessing data using {preprocessor} from file {input_path}{input_file_name}...")
@@ -185,6 +194,13 @@ def train_model(model, input_file_name, prediction_horizon):
     if not issubclass(model_module.Model, BaseModel):
         raise click.ClickException(f"The selected model '{model}' must inherit from BaseModel.")
 
+    if input_file_name.startswith("test"):
+        user_input_prompt("This file starts with 'test', and not 'train'. Are you sure you want to continue?")
+
+    if str(prediction_horizon) not in input_file_name:
+        user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the input file name. "
+                          "Are you sure you want to continue?")
+
     # Create an instance of the chosen parser
     chosen_model = model_module.Model(prediction_horizon)
 
@@ -198,17 +214,17 @@ def train_model(model, input_file_name, prediction_horizon):
 
     # Initialize and train the model
     model_instance = chosen_model.fit(x_train, y_train)
+    click.echo(f"Model {model} trained successfully!")
 
     # Assuming model_instance is your class instance
     output_path = "data/trained_models/"
     output_file_name = f'{model}_ph-{prediction_horizon}.pkl'
     try:
         with open(f'{output_path}{output_file_name}', 'wb') as f:
+            click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
             dill.dump(model_instance, f)
     except Exception as e:
         click.echo(f"Error saving model {model}: {e}")
-
-    click.echo(f"Model {model} trained successfully!")
 
     if hasattr(model_instance, 'best_params'):
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
@@ -216,11 +232,11 @@ def train_model(model, input_file_name, prediction_horizon):
 
 @click.command()
 @click.option('--model-files', prompt='Model file names',
-              help='List of trained trained_models ( filenames without .pkl), separated by comma. ')
+              help='List of trained trained_models (filenames without .pkl), separated by comma. ')
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default all metrics will be computed. ')
+                                'By default all metrics will be computed. ', default='mae,rmse,pcc')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
-                              'By default all plots will be drawn. ')
+                              'By default a scatter plot will be drawn. ', default='scatter_plot')
 @click.argument('test-file-name', type=str)
 @click.option('--prediction-horizon', type=int, default=60)
 def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horizon):
@@ -229,27 +245,26 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     it only takes in one test file at a time. Hence, giving correct information about prediction horizon and
     test file is crucial.
     """
+    if test_file_name.startswith("train"):
+        user_input_prompt("This file starts with 'train', and not 'test'. Are you sure you want to continue?")
+
+    if str(prediction_horizon) not in test_file_name:
+        user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the input file name. "
+                          "Are you sure you want to continue?")
+
     model_path = "data/trained_models/"
-    metrics_path = "glupredkit/metrics/"
-    plots_path = "glupredkit/plots/"
-    metric_results_path = "results/reports/"
-    plot_results_path = "results/figures/"
+    metric_results_path = "data/reports/"
+    plot_results_path = "data/figures/"
     test_file_path = "data/processed/"
 
     # Prepare a list of trained_models
     trained_models = split_string(model_files)
 
     # Prepare a list of metrics
-    metrics = split_string(metrics) if metrics else [file.split('.')[0]
-                                                     for file in os.listdir(metrics_path) if file.endswith('.py')
-                                                     and file != '__init__.py'
-                                                     and file != 'base_metric.py']
+    metrics = split_string(metrics)
 
     # Prepare a list of plots
-    plots = split_string(plots) if plots else [file.split('.')[0]
-                                               for file in os.listdir(plots_path) if file.endswith('.py')
-                                               and file != '__init__.py'
-                                               and file != 'base_plot.py']
+    plots = split_string(plots)
 
     test_data = read_data_from_csv(test_file_path, test_file_name)
     x_test = test_data.drop('target', axis=1)
@@ -259,6 +274,10 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
     y_preds = []
     click.echo(f"Calculating metrics...")
     for model_file in trained_models:
+        if str(prediction_horizon) not in model_file:
+            user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the model file name. "
+                              "Are you sure you want to continue?")
+
         with open(model_path + model_file + '.pkl', 'rb') as f:
             model_instance = dill.load(f)
 

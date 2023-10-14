@@ -11,6 +11,13 @@ import pandas as pd
 def getDataframeForType(data, type, name):
     df = data[data.type == type]
     df = df.copy()
+
+    # Converting to mg/dL if necessary
+    if name == "CGM":
+        unit = df.iloc[0]['unit']
+        if str(unit).startswith('mmol'):
+            df['value'] = df['value'].apply(lambda x: x * 18.018)
+
     df.rename(columns={'value': name}, inplace=True)
     df.rename(columns={'startDate': 'date'}, inplace=True)
     df.drop(['type', 'sourceName', 'sourceVersion', 'unit', 'creationDate', 'device', 'endDate'], axis=1, inplace=True)
@@ -35,7 +42,7 @@ class Parser(BaseParser):
 
         # value is numeric, NaN if fails
         data['value'] = pd.to_numeric(data['value'], errors='coerce')
-        
+
         # Filter the data on the input start- and enddate
         data['startDate'] = data['startDate'].dt.tz_localize(None)
         data = data[(data['startDate'] >= start_date) & (data['startDate'] <= end_date)]
@@ -45,14 +52,15 @@ class Parser(BaseParser):
         df_insulin = getDataframeForType(data, 'HKQuantityTypeIdentifierInsulinDelivery', 'insulin')
         df_carbs = getDataframeForType(data, 'HKQuantityTypeIdentifierDietaryCarbohydrates', 'carbs')
         df_heartrate = getDataframeForType(data, 'HKQuantityTypeIdentifierHeartRate', 'heartrate')
-        df_heartratevariability = getDataframeForType(data, 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN', 'heartratevariability')
+        df_heartratevariability = getDataframeForType(data, 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
+                                                      'heartratevariability')
         df_caloriesburned = getDataframeForType(data, 'HKQuantityTypeIdentifierActiveEnergyBurned', 'caloriesburned')
         df_respiratoryrate = getDataframeForType(data, 'HKQuantityTypeIdentifierRespiratoryRate', 'respiratoryrate')
         df_steps = getDataframeForType(data, 'HKQuantityTypeIdentifierStepCount', 'steps')
         df_restingheartrate = getDataframeForType(data, 'HKQuantityTypeIdentifierRestingHeartRate', 'restingheartrate')
 
-		# TODO: Add workouts and sleep data
-        
+        # TODO: Add workouts and sleep data
+
         # Resampling all datatypes into the same time-grid
         df = df_glucose.copy()
         df = df.resample('5T', label='right').mean()
@@ -63,24 +71,23 @@ class Parser(BaseParser):
 
         df_insulin = df_insulin.resample('5T', label='right').sum()
         df = pd.merge(df, df_insulin, on="date", how='outer')
-        
+
         df_heartrate = df_heartrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_heartrate, on="date", how='outer')
-        
+
         df_heartratevariability = df_heartratevariability.resample('5T', label='right').mean()
         df = pd.merge(df, df_heartratevariability, on="date", how='outer')
-        
+
         df_caloriesburned = df_caloriesburned.resample('5T', label='right').sum()
         df = pd.merge(df, df_caloriesburned, on="date", how='outer')
-        
+
         df_respiratoryrate = df_respiratoryrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_respiratoryrate, on="date", how='outer')
-        
+
         df_steps = df_steps.resample('5T', label='right').sum()
         df = pd.merge(df, df_steps, on="date", how='outer')
-        
+
         df_restingheartrate = df_restingheartrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_restingheartrate, on="date", how='outer')
 
         return df
-

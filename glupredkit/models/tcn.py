@@ -16,7 +16,7 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
         # The recommended approach for saving and loading Keras models is to use Keras's built-in .save() and
         # Using legacy .h5 file type because .keras threw error with M1 Mac chip
-        self.model_path = f"data/keras_models/tcn_ph-{prediction_horizon}.h5"
+        self.model_path = f"data/.keras_models/tcn_ph-{prediction_horizon}.h5"
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]

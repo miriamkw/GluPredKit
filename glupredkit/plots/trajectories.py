@@ -57,7 +57,7 @@ class Plot(BasePlot):
             ax.legend()
             plt.title(f'Predicted trajectories {self.prediction_horizon} Minutes Ahead for {model_name}')
 
-            file_path = "results/figures/"
+            file_path = "data/figures/"
             file_name = f'trajectories_ph-{self.prediction_horizon}_{model_name}.png'
             plt.savefig(file_path + file_name)
             plt.show()

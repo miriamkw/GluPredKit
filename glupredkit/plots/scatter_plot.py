@@ -47,7 +47,7 @@ class Plot(BasePlot):
         plt.title(f"Accuracy of {self.prediction_horizon}-minutes ahead predictions")
         plt.legend(loc='upper left')
 
-        file_path = "results/figures/"
+        file_path = "data/figures/"
         os.makedirs(file_path, exist_ok=True)
 
         file_name = f'scatter_plot_ph-{self.prediction_horizon}.png'
