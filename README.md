@@ -174,7 +174,7 @@ glupredkit evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRICS] [--
 
 #### Example
 ```
-glupredkit evaluate_model --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
+glupredkit evaluate_model test-data_scikit_learn_ph-60_lag-12.csv --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
 ```
 
 ---

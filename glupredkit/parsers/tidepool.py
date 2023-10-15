@@ -2,7 +2,7 @@
 The tidepool parser uses tidepool API to fetch some data using user credentials
 and return the data in a format that can be used as input to the blood glucose prediction trained_models.
 """
-from submodules.tidepool_api.data_science_tidepool_api_python.makedata.tidepool_api import TidepoolAPI
+from tidepool_data_science_project.makedata.tidepool_api import TidepoolAPI
 import datetime
 import pandas as pd
 from .base_parser import BaseParser
@@ -12,7 +12,7 @@ class Parser(BaseParser):
     def __init__(self):
         super().__init__
 
-    def __call__(self, start_date: datetime, end_date: datetime, username: str, password: str):
+    def __call__(self, start_date, end_date, username: str, password: str):
         """
         Tidepool API ignores time of day in the dates and will always fetch all data from a specific date
         """
@@ -33,14 +33,14 @@ class Parser(BaseParser):
             if not df_glucose.empty:  # If blood glucose values in mmol/L, convert to mg/dL
                 if pd.json_normalize(glucose_data)[['units']].loc[0, 'units'] == 'mmol/L':
                     df_glucose['value'] = df_glucose['value'] * 18.0182
-            df_glucose.time = pd.to_datetime(df_glucose.time)
+            df_glucose.time = pd.to_datetime(df_glucose.time, errors='coerce')
             df_glucose.rename(columns={"time": "date", "value": "CGM"}, inplace=True)
             df_glucose.sort_values(by='date', inplace=True, ascending=True)
             df_glucose.set_index('date', inplace=True)
 
             # Dataframe bolus doses
             df_bolus = pd.json_normalize(bolus_data)[['time', 'normal']]
-            df_bolus.time = pd.to_datetime(df_bolus.time)
+            df_bolus.time = pd.to_datetime(df_bolus.time, errors='coerce')
             df_bolus.rename(columns={"time": "date", "normal": "insulin"}, inplace=True)
             df_bolus.sort_values(by='date', inplace=True, ascending=True)
             df_bolus.set_index('date', inplace=True)
@@ -48,24 +48,23 @@ class Parser(BaseParser):
             # Dataframe basal rates
             df_basal = pd.json_normalize(basal_data)[
                 ['time', 'rate']]
-            df_basal.time = pd.to_datetime(df_basal.time)
+            df_basal.time = pd.to_datetime(df_basal.time, errors='coerce')
             df_basal.rename(columns={"time": "date", "rate": "basal_rate"}, inplace=True)
             df_basal.sort_values(by='date', inplace=True, ascending=True)
             df_basal.set_index('date', inplace=True)
 
             # Dataframe carbohydrates
             df_carbs = pd.json_normalize(carb_data)[['time', 'nutrition.carbohydrate.net']]
-            df_carbs.time = pd.to_datetime(df_carbs.time)
+            df_carbs.time = pd.to_datetime(df_carbs.time, errors='coerce')
             df_carbs.rename(columns={"time": "date", "nutrition.carbohydrate.net": "carbs"}, inplace=True)
             df_carbs.sort_values(by='date', inplace=True, ascending=True)
             df_carbs.set_index('date', inplace=True)
 
-            # TODO: ADD WORKOUTS AS A DATATYPE!
             if not len(workout_data) == 0:
                 df_workouts = pd.json_normalize(workout_data)[['time', 'duration.value', 'name']]
                 df_workouts.rename(columns={"duration.value": "duration[s]"}, inplace=True)
                 df_workouts['name'] = df_workouts['name'].apply(lambda x: x.split()[0])
-                df_workouts.time = pd.to_datetime(df_workouts.time)
+                df_workouts.time = pd.to_datetime(df_workouts.time, errors='coerce')
             else:
                 df_workouts = pd.DataFrame()
 
@@ -89,7 +88,6 @@ class Parser(BaseParser):
             df.drop(columns=(["basal_rate"]), inplace=True)
 
             if not df_workouts.empty:
-                print("EXISTING WORKOUT")
                 # Add activity states
                 df['activity_state'] = "None"
                 df_workouts.apply(lambda x: self.add_activity_states(x['time'], x['duration[s]'], x['name'], df),

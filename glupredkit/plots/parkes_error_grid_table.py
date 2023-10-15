@@ -1,5 +1,5 @@
 from .base_plot import BasePlot
-from error_grids.error_grids import zone_accuracy
+from error_grids import zone_accuracy
 import matplotlib.pyplot as plt
 import os
 

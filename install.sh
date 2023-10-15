@@ -21,9 +21,5 @@ source bgp-evaluation/bin/activate
 echo "Installing dependencies..." 
 pip install -r requirements.txt
 
-# Set up submodules
-echo "Initializing and updating submodules..." 
-git submodule update --init --recursive
-
 echo "Installation complete. Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels."
 		
