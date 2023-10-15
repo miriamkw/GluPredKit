@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 project_name = "GluPredKit"
-version = "0.0.8"
+version = "0.0.9"
 author = "Miriam K. Wolff"
 author_email = "miriamkwolff@outlook.com"
 package_name = "glupredkit"  # The package name on pip install
