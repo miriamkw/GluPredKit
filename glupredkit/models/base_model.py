@@ -25,3 +25,7 @@ class BaseModel(BaseEstimator, TransformerMixin):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         raise NotImplementedError("Model has not implemented predict method!")
+
+    def process_data(self, df, num_lagged_features, numerical_features, categorical_features):
+        # Implement library specific preprocessing steps that are required before training a pandas dataframe
+        raise NotImplementedError("Model has not implemented predict method!")

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import itertools
 import os
 from .base_plot import BasePlot
-from ..config_manager import config_manager
+from glupredkit.helpers.unit_config_manager import config_manager
 
 
 class Plot(BasePlot):

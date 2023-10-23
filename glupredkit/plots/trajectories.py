@@ -1,7 +1,7 @@
 from .base_plot import BasePlot
 import numpy as np
 import matplotlib.pyplot as plt
-from ..config_manager import config_manager
+from glupredkit.helpers.unit_config_manager import config_manager
 
 
 class Plot(BasePlot):

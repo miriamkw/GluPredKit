@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVR
 from .base_model import BaseModel
+from glupredkit.helpers.scikit_learn import process_data
 
 
 class Model(BaseModel):
@@ -34,3 +35,6 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return self.model.best_params_
+
+    def process_data(self, df, num_lagged_features, numerical_features, categorical_features):
+        return process_data(df, num_lagged_features, numerical_features, categorical_features)

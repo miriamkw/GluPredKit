@@ -1,6 +1,6 @@
 from .base_metric import BaseMetric
 import numpy as np
-from ..config_manager import config_manager
+from glupredkit.helpers.unit_config_manager import config_manager
 
 
 class Metric(BaseMetric):
