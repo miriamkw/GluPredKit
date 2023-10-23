@@ -58,9 +58,6 @@ class Preprocessor(BasePreprocessor):
         # Imputation of CGM values if there is a one-sample gap
         df['CGM'] = df.CGM.ffill(limit=1)
 
-        # Add hour of day
-        df['hour'] = df.index.hour
-
         # Add target column
         target_index = self.prediction_horizon // 5
         if self.prediction_horizon % 5 != 0:

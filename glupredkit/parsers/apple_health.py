@@ -90,4 +90,7 @@ class Parser(BaseParser):
         df_restingheartrate = df_restingheartrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_restingheartrate, on="date", how='outer')
 
+        # Add hour of day
+        df['hour'] = df.index.hour
+
         return df

@@ -126,7 +126,7 @@ glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 0
 **Description**: Preprocess data from an input CSV file and store the training and test data into separate CSV files.
 
 ```
-glupredkit preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--include-hour INCLUDE_HOUR] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
+glupredkit preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
 ```
 - `--preprocessor`: Choose between scikit_learn and tf_keras for preprocessing.
 - `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw`.

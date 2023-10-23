@@ -87,6 +87,9 @@ class Parser(BaseParser):
             df['insulin'] = df['insulin'] + df['basal_rate']
             df.drop(columns=(["basal_rate"]), inplace=True)
 
+            # Add hour of day
+            df['hour'] = df.index.hour
+
             if not df_workouts.empty:
                 # Add activity states
                 df['activity_state'] = "None"

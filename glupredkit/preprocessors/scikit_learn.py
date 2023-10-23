@@ -32,9 +32,6 @@ class Preprocessor(BasePreprocessor):
         # Imputation of CGM values if there is a one-sample gap
         df['CGM'] = df.CGM.ffill(limit=1)
 
-        # Add hour of day
-        df['hour'] = df.index.copy().to_series().apply(lambda x: x.hour)
-
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
 
