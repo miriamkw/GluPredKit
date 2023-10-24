@@ -8,7 +8,7 @@ import json
 
 class ModelConfigurationManager:
     def __init__(self, config_file):
-        self.config_file = config_file
+        self.config_file = 'data/configurations/' + config_file + '.json'
         self.schema = {
             "data": str,
             "preprocessor": str,

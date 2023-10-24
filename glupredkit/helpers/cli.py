@@ -1,7 +1,10 @@
 import pandas as pd
 import sys
+import os
+import dill
 import importlib
 from ..models.base_model import BaseModel
+from ..metrics.base_metric import BaseMetric
 from ..helpers.model_config_manager import ModelConfigurationManager
 
 
@@ -35,6 +38,15 @@ def user_input_prompt(text):
         print("Invalid input. Please respond with 'Y' or 'n'.")
 
 
+def get_metric_module(metric):
+    metric_module = importlib.import_module(f'glupredkit.metrics.{metric}')
+    # Ensure the chosen parser inherits from BaseParser
+    if not issubclass(metric_module.Metric, BaseMetric):
+        raise Exception(f"The selected metric '{metric}' must inherit from BaseMetric.")
+
+    return metric_module
+
+
 def get_model_module(model):
     model_module = importlib.import_module(f'glupredkit.models.{model}')
     # Ensure the chosen parser inherits from BaseParser
@@ -42,6 +54,14 @@ def get_model_module(model):
         raise Exception(f"The selected model '{model}' must inherit from BaseModel.")
 
     return model_module
+
+
+def get_trained_model(model_file_name):
+    model_path = "data/trained_models/"
+    with open(model_path + model_file_name, 'rb') as f:
+        model_instance = dill.load(f)
+
+    return model_instance
 
 
 def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager):
@@ -62,3 +82,13 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     train_data, test_data = chosen_preprocessor(data)
 
     return train_data, test_data
+
+
+def list_files_in_directory(directory_path):
+    file_list = []
+    for filename in os.listdir(directory_path):
+        if os.path.isfile(os.path.join(directory_path, filename)):
+            file_list.append(filename)
+    return file_list
+
+

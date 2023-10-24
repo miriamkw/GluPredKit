@@ -165,10 +165,8 @@ def train_model_new(model, config_file_name):
     1) Process data using the given configurations
     2) Train the given models for the given prediction horizons in the configuration
     """
-    input_path = "data/configurations/"
-    click.echo(f"Starting pipeline to train model {model} with configurations from {input_path}{config_file_name}...")
-
-    model_config_manager = ModelConfigurationManager(f'{input_path}{config_file_name}.json')
+    click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
+    model_config_manager = ModelConfigurationManager(config_file_name)
 
     prediction_horizons = model_config_manager.get_prediction_horizons()
     model_module = helpers.get_model_module(model)
@@ -184,7 +182,6 @@ def train_model_new(model, config_file_name):
         chosen_model = model_module.Model(prediction_horizon)
 
         processed_data = chosen_model.process_data(train_data, model_config_manager)
-
         x_train = processed_data.drop('target', axis=1)
         y_train = processed_data['target']
 
@@ -254,6 +251,68 @@ def train_model(model, input_file_name, prediction_horizon):
 
     if hasattr(model_instance, 'best_params'):
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
+
+
+
+
+@click.command()
+@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
+                               'models will be evaluated. ',
+              default=None)
+@click.option('--metrics', help='List of metrics to be computed, separated by comma. '
+                                'By default all metrics will be computed. ', default='mae,rmse,pcc')
+def calculate_metrics(models, metrics):
+    """
+    This method does the following:
+    1) Store a report of given metrics in data/reports/
+    2) Store the plots in data/figures
+    """
+    trained_models_path = "data/trained_models/"
+
+    if models == None:
+        models = helpers.list_files_in_directory(trained_models_path)
+    else:
+        models = [model + ".pkl" for model in models]
+
+    # Prepare a list of metrics
+    metrics = helpers.split_string(metrics)
+
+    results = []
+    y_preds = []
+    click.echo(f"Calculating metrics...")
+    for model_file in models:
+        config_file_name, prediction_horizon = model_file.split('__')[1], int(model_file.split('__')[2].split('.')[0])
+
+        model_config_manager = ModelConfigurationManager(config_file_name)
+
+        model_instance = helpers.get_trained_model(model_file)
+        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+        processed_data = model_instance.process_data(test_data, model_config_manager)
+
+        x_test = processed_data.drop('target', axis=1)
+        y_test = processed_data['target']
+
+        y_pred = model_instance.predict(x_test)
+        y_preds.append(y_pred)
+
+        for metric in metrics:
+            metric_module = helpers.get_metric_module(metric)
+            chosen_metric = metric_module.Metric()
+            score = chosen_metric(y_test, y_pred)
+            results.append({'Model': model_file, 'Metric': metric, 'Score': score})
+
+    # Convert results to DataFrame and save as CSV
+    df_results = pd.DataFrame(results)
+    metric_results_path = 'data/reports/'
+    os.makedirs(metric_results_path, exist_ok=True)
+    results_file_name = f'{datetime.now()}.csv'
+    df_results.to_csv(metric_results_path + results_file_name, index=False)
+
+    click.echo(
+        f"{metrics} for trained_models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
+
+
 
 
 @click.command()
@@ -362,10 +421,11 @@ def set_unit(use_mgdl):
 cli = click.Group(commands={
     'setup_directories': setup_directories,
     'parse': parse,
-    'preprocess': preprocess,
-    'train_model': train_model,
+    #'preprocess': preprocess,
+    #'train_model': train_model,
     'train_model_new': train_model_new,
-    'evaluate_model': evaluate_model,
+    #'evaluate_model': evaluate_model,
+    'calculate_metrics': calculate_metrics,
     'set_unit': set_unit,
 })
 
