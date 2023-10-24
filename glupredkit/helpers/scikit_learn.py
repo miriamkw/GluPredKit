@@ -1,4 +1,5 @@
 import pandas as pd
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
 def add_time_lagged_features(col_name, df, num_lagged_features):
@@ -10,11 +11,11 @@ def add_time_lagged_features(col_name, df, num_lagged_features):
     return df
 
 
-def process_data(df, num_lagged_features, numerical_features, categorical_features):
+def process_data(df, model_config_manager: ModelConfigurationManager):
 
     # Add time-lagged features
-    for col in numerical_features:
-        df = add_time_lagged_features(col, df, num_lagged_features)
+    for col in model_config_manager.get_num_features():
+        df = add_time_lagged_features(col, df, model_config_manager.get_num_lagged_features())
 
     df = df.dropna()
 

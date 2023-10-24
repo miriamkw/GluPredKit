@@ -14,7 +14,9 @@ from .models.base_model import BaseModel
 from .metrics.base_metric import BaseMetric
 from .plots.base_plot import BasePlot
 from glupredkit.helpers.unit_config_manager import unit_config_manager
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 import glupredkit.helpers.cli as helpers
+
 
 
 
@@ -166,24 +168,22 @@ def train_model_new(model, config_file_name):
     input_path = "data/configurations/"
     click.echo(f"Starting pipeline to train model {model} with configurations from {input_path}{config_file_name}...")
 
-    with open(f"{input_path}{config_file_name}.json") as f:
-        config = json.load(f)
+    model_config_manager = ModelConfigurationManager(f'{input_path}{config_file_name}.json')
 
-    prediction_horizons = config['prediction_horizons']
+    prediction_horizons = model_config_manager.get_prediction_horizons()
     model_module = helpers.get_model_module(model)
 
     for prediction_horizon in prediction_horizons:
         # PREPROCESSING
 
         # Perform data preprocessing using your preprocessor
-        train_data, _ = helpers.get_preprocessed_data(prediction_horizon, config)
+        train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
         # MODEL TRAINING
         # Create an instance of the chosen model
         chosen_model = model_module.Model(prediction_horizon)
 
-        processed_data = chosen_model.process_data(train_data, config['num_lagged_features'], config['num_features'],
-                                                   config['cat_features'])
+        processed_data = chosen_model.process_data(train_data, model_config_manager)
 
         x_train = processed_data.drop('target', axis=1)
         y_train = processed_data['target']

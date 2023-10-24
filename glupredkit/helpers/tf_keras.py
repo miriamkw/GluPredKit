@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
 def prepare_sequences(data, labels, window_size, step_size=1):
@@ -27,14 +28,15 @@ def create_dataframe(sequences, targets, dates):
     return dataset_df
 
 
-def process_data(df, num_lagged_features, numerical_features, categorical_features):
+def process_data(df, model_config_manager: ModelConfigurationManager):
 
     df = df.dropna()
 
     df_X, df_y = df.drop("target", axis=1), df["target"]
 
     # Add sliding windows of features
-    sequences, targets, dates = prepare_sequences(df_X, df_y, window_size=num_lagged_features)
+    sequences, targets, dates = prepare_sequences(df_X, df_y,
+                                                  window_size=model_config_manager.get_num_lagged_features())
 
     # Store as a dataframe with two columns: targets and sequences
     df = create_dataframe(sequences, targets, dates)

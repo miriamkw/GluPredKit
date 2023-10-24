@@ -75,5 +75,5 @@ class Model(BaseModel):
         return None
 
 
-    def process_data(self, df, num_lagged_features, numerical_features, categorical_features):
-        return process_data(df, num_lagged_features, numerical_features, categorical_features)
+    def process_data(self, df, model_config_manager):
+        return process_data(df, model_config_manager)

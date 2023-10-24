@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import importlib
 from ..models.base_model import BaseModel
+from ..helpers.model_config_manager import ModelConfigurationManager
 
 
 def read_data_from_csv(input_path, file_name):
@@ -43,16 +44,18 @@ def get_model_module(model):
     return model_module
 
 
-def get_preprocessed_data(prediction_horizon, config):
-    preprocessor = config['preprocessor']
-    input_file_name = config['data']
+def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager):
+
+    preprocessor = config_manager.get_preprocessor()
+    input_file_name = config_manager.get_data()
 
     print(f"Preprocessing data using {preprocessor} from file data/raw/{input_file_name}, with a prediction "
           f"horizon of {prediction_horizon} minutes...")
     preprocessor_module = importlib.import_module(f'glupredkit.preprocessors.{preprocessor}')
-    chosen_preprocessor = preprocessor_module.Preprocessor(config['num_features'], config['cat_features'],
-                                                           prediction_horizon, config['num_lagged_features'],
-                                                           config['test_size'])
+    chosen_preprocessor = preprocessor_module.Preprocessor(config_manager.get_num_features(),
+                                                           config_manager.get_cat_features(),
+                                                           prediction_horizon, config_manager.get_num_lagged_features(),
+                                                           config_manager.get_test_size())
     # Load the input CSV file into a DataFrame
     data = read_data_from_csv("data/raw/", input_file_name)
 

@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
 class BaseModel(BaseEstimator, TransformerMixin):
@@ -26,6 +27,6 @@ class BaseModel(BaseEstimator, TransformerMixin):
         # Return the best parameters found by GridSearchCV
         raise NotImplementedError("Model has not implemented predict method!")
 
-    def process_data(self, df, num_lagged_features, numerical_features, categorical_features):
+    def process_data(self, df, model_config_manager: ModelConfigurationManager):
         # Implement library specific preprocessing steps that are required before training a pandas dataframe
         raise NotImplementedError("Model has not implemented predict method!")
