@@ -6,6 +6,22 @@ models before preprocessing and training.
 import json
 
 
+def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
+                                 cat_features, test_size):
+    config = {
+        "data": data,
+        "preprocessor": preprocessor,
+        "prediction_horizons": prediction_horizons,
+        "num_lagged_features": num_lagged_features,
+        "num_features": num_features,
+        "cat_features": cat_features,
+        "test_size": test_size
+    }
+    # Save the generated config to a JSON file
+    with open(f'data/configurations/{file_name}.json', 'w') as f:
+        json.dump(config, f, indent=4)
+
+
 class ModelConfigurationManager:
     def __init__(self, config_file):
         self.config_file = 'data/configurations/' + config_file + '.json'
@@ -56,4 +72,3 @@ class ModelConfigurationManager:
 
     def get_test_size(self):
         return self.config["test_size"]
-
