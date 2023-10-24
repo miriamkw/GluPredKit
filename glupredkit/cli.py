@@ -260,16 +260,15 @@ def train_model(model, input_file_name, prediction_horizon):
                                'models will be evaluated. ',
               default=None)
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default all metrics will be computed. ', default='mae,rmse,pcc')
+                                'By default all metrics will be computed. ', default='mae,rmse,pcc,parkes_error_grid,'
+                                                                                     'clarke_error_grid')
 def calculate_metrics(models, metrics):
     """
-    This method does the following:
-    1) Store a report of given metrics in data/reports/
-    2) Store the plots in data/figures
+    This command stores a report of the given metrics in data/reports/.
     """
     trained_models_path = "data/trained_models/"
 
-    if models == None:
+    if models is None:
         models = helpers.list_files_in_directory(trained_models_path)
     else:
         models = [model + ".pkl" for model in models]
@@ -278,23 +277,19 @@ def calculate_metrics(models, metrics):
     metrics = helpers.split_string(metrics)
 
     results = []
-    y_preds = []
     click.echo(f"Calculating metrics...")
     for model_file in models:
         config_file_name, prediction_horizon = model_file.split('__')[1], int(model_file.split('__')[2].split('.')[0])
 
         model_config_manager = ModelConfigurationManager(config_file_name)
-
         model_instance = helpers.get_trained_model(model_file)
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
         processed_data = model_instance.process_data(test_data, model_config_manager)
-
         x_test = processed_data.drop('target', axis=1)
         y_test = processed_data['target']
 
         y_pred = model_instance.predict(x_test)
-        y_preds.append(y_pred)
 
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)
@@ -311,6 +306,68 @@ def calculate_metrics(models, metrics):
 
     click.echo(
         f"{metrics} for trained_models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
+
+
+
+
+
+
+@click.command()
+@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
+                               'models will be evaluated. ', default=None)
+@click.option('--plots', help='List of plots to be computed, separated by comma. '
+                              'By default a scatter plot will be drawn. ', default='scatter_plot')
+def draw_plots(models, plots):
+    """
+    This command draws the given plots and store them in data/figures/.
+    TODO: Would be cool to have a solution here with a dict model approach, PH, config. Where each model with same config represents a trajectory.
+    """
+    # Prepare a list of plots
+    plots = helpers.split_string(plots)
+
+    if models is None:
+        models = helpers.list_files_in_directory('data/trained_models/')
+    else:
+        models = [model + ".pkl" for model in models]
+
+    click.echo(f"Calculating predictions...")
+    models_data = []
+    for model_file in models:
+        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                            int(model_file.split('__')[2].split('.')[0]))
+
+        model_config_manager = ModelConfigurationManager(config_file_name)
+        model_instance = helpers.get_trained_model(model_file)
+        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+        processed_data = model_instance.process_data(test_data, model_config_manager)
+        x_test = processed_data.drop('target', axis=1)
+        y_test = processed_data['target']
+
+        y_pred = model_instance.predict(x_test)
+
+        model_data = {
+            'name': f'{model_name} {prediction_horizon}-minutes PH',
+            'y_pred': y_pred,
+            'y_true': y_test,
+            'prediction_horizon': prediction_horizon
+        }
+        models_data.append(model_data)
+
+    plot_results_path = 'data/figures/'
+
+    # Draw plots
+    click.echo(f"Drawing plots...")
+    os.makedirs(plot_results_path, exist_ok=True)
+    for plot in plots:
+        plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
+        if not issubclass(plot_module.Plot, BasePlot):
+            raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
+
+        chosen_plot = plot_module.Plot()
+        chosen_plot(models_data)
+
+    click.echo(f"{plots} for trained_models {models} are stored in '{plot_results_path}'")
 
 
 
@@ -426,6 +483,7 @@ cli = click.Group(commands={
     'train_model_new': train_model_new,
     #'evaluate_model': evaluate_model,
     'calculate_metrics': calculate_metrics,
+    'draw_plots': draw_plots,
     'set_unit': set_unit,
 })
 

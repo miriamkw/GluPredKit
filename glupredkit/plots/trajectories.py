@@ -1,14 +1,14 @@
 from .base_plot import BasePlot
 import numpy as np
 import matplotlib.pyplot as plt
-from glupredkit.helpers.unit_config_manager import config_manager
+from glupredkit.helpers.unit_config_manager import unit_config_manager
 
 
 class Plot(BasePlot):
-    def __init__(self, prediction_horizon):
-        super().__init__(prediction_horizon)
+    def __init__(self):
+        super().__init__()
 
-    def __call__(self, models_data, y_true):
+    def __call__(self, models_data):
         def on_hover(event):
             if event.inaxes == ax:
                 for line in lines:
@@ -19,14 +19,9 @@ class Plot(BasePlot):
                         line.set_alpha(0.2)
                 fig.canvas.draw_idle()
 
-        prediction_index = int(self.prediction_horizon / 5)
-        total_time = len(y_true) * 5 + prediction_index * 5
-        t = np.arange(0, total_time, 5)
-
-        if config_manager.use_mgdl:
+        if unit_config_manager.use_mgdl:
             unit = "mg/dL"
         else:
-            y_true = [config_manager.convert_value(val) for val in y_true]
             unit = "mmol/L"
 
         for model_data in models_data:
@@ -34,13 +29,20 @@ class Plot(BasePlot):
 
             model_name = model_data.get('name')
             y_pred = model_data.get('y_pred')
+            y_true = model_data.get('y_true')
+            prediction_horizon = model_data.get('prediction_horizon')
+
+            prediction_index = int(prediction_horizon / 5)
+            total_time = len(y_true) * 5 + prediction_index * 5
+            t = np.arange(0, total_time, 5)
 
             # Use correct unit
-            if config_manager.use_mgdl:
+            if unit_config_manager.use_mgdl:
                 ax.axhspan(70, 180, facecolor='blue', alpha=0.2)
             else:
-                y_pred = [config_manager.convert_value(val) for val in y_pred]
-                ax.axhspan(config_manager.convert_value(70), config_manager.convert_value(180), facecolor='blue', alpha=0.2)
+                y_true = [unit_config_manager.convert_value(val) for val in y_true]
+                y_pred = [unit_config_manager.convert_value(val) for val in y_pred]
+                ax.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180), facecolor='blue', alpha=0.2)
 
             ax.set_title('Blood glucose predicted trajectories')
             ax.set_xlabel('Time (minutes)')
@@ -55,10 +57,9 @@ class Plot(BasePlot):
 
             fig.canvas.mpl_connect('motion_notify_event', on_hover)
             ax.legend()
-            plt.title(f'Predicted trajectories {self.prediction_horizon} Minutes Ahead for {model_name}')
-
+            plt.title(f'Predicted trajectories {prediction_horizon} Minutes Ahead for {model_name}')
             file_path = "data/figures/"
-            file_name = f'trajectories_ph-{self.prediction_horizon}_{model_name}.png'
+            file_name = f'trajectories_ph-{prediction_horizon}_{model_name}.png'
             plt.savefig(file_path + file_name)
             plt.show()
 
