@@ -9,6 +9,12 @@ class Plot(BasePlot):
         super().__init__()
 
     def __call__(self, models_data):
+        """
+        This plot plots predicted trajectories from the measured values. It is recommended to use around 24 hours
+        of test data for this plot to work optimally.
+
+        #TODO: Predict trajectories when the models with different prediction horizons have the same config.
+        """
         def on_hover(event):
             if event.inaxes == ax:
                 for line in lines:
@@ -42,7 +48,8 @@ class Plot(BasePlot):
             else:
                 y_true = [unit_config_manager.convert_value(val) for val in y_true]
                 y_pred = [unit_config_manager.convert_value(val) for val in y_pred]
-                ax.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180), facecolor='blue', alpha=0.2)
+                ax.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
+                           facecolor='blue', alpha=0.2)
 
             ax.set_title('Blood glucose predicted trajectories')
             ax.set_xlabel('Time (minutes)')

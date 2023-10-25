@@ -15,9 +15,6 @@ class Preprocessor(BasePreprocessor):
 
     def __call__(self, df):
 
-        # Imputation of CGM values if there is a one-sample gap
-        df['CGM'] = df.CGM.ffill(limit=1)
-
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
 
@@ -27,6 +24,9 @@ class Preprocessor(BasePreprocessor):
             raise ValueError("Prediction horizon must be divisible by 5.")
         df = df.copy()
         df.loc[:, 'target'] = df['CGM'].shift(-target_index)
+
+        # Interpolation using forward fill
+        df[self.numerical_features] = df[self.numerical_features].ffill()
 
         # Transform columns
         if self.numerical_features:

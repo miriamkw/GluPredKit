@@ -69,8 +69,9 @@ class Parser(BaseParser):
         df = pd.merge(df, df_carbs, on="date", how='outer')
         df['carbs'] = df['carbs'].fillna(value=0.0)
 
-        df_insulin = df_insulin.resample('5T', label='right').sum()
+        df_insulin = df_insulin.resample('5T', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_insulin, on="date", how='outer')
+        df['insulin'] = df['insulin'].fillna(value=0.0)
 
         df_heartrate = df_heartrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_heartrate, on="date", how='outer')
@@ -78,14 +79,16 @@ class Parser(BaseParser):
         df_heartratevariability = df_heartratevariability.resample('5T', label='right').mean()
         df = pd.merge(df, df_heartratevariability, on="date", how='outer')
 
-        df_caloriesburned = df_caloriesburned.resample('5T', label='right').sum()
+        df_caloriesburned = df_caloriesburned.resample('5T', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_caloriesburned, on="date", how='outer')
+        df['caloriesburned'] = df['caloriesburned'].fillna(value=0.0)
 
         df_respiratoryrate = df_respiratoryrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_respiratoryrate, on="date", how='outer')
 
-        df_steps = df_steps.resample('5T', label='right').sum()
+        df_steps = df_steps.resample('5T', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_steps, on="date", how='outer')
+        df['steps'] = df['steps'].fillna(value=0.0)
 
         df_restingheartrate = df_restingheartrate.resample('5T', label='right').mean()
         df = pd.merge(df, df_restingheartrate, on="date", how='outer')

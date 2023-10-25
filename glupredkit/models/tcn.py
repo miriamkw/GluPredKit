@@ -72,5 +72,5 @@ class Model(BaseModel):
         # Return the best parameters found by GridSearchCV
         return None
 
-    def process_data(self, df, model_config_manager):
-        return process_data(df, model_config_manager)
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

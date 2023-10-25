@@ -28,9 +28,12 @@ def create_dataframe(sequences, targets, dates):
     return dataset_df
 
 
-def process_data(df, model_config_manager: ModelConfigurationManager):
+def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
 
-    df = df.dropna()
+    if real_time:
+        df = df.dropna(subset=df.columns.difference(['target']))
+    else:
+        df = df.dropna()
 
     df_X, df_y = df.drop("target", axis=1), df["target"]
 

@@ -125,14 +125,17 @@ def train_model(model, config_file_name):
 
         # Perform data preprocessing using your preprocessor
         train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+        click.echo(f"Training data finished preprocessing...")
 
         # MODEL TRAINING
         # Create an instance of the chosen model
         chosen_model = model_module.Model(prediction_horizon)
 
-        processed_data = chosen_model.process_data(train_data, model_config_manager)
+        processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
         x_train = processed_data.drop('target', axis=1)
         y_train = processed_data['target']
+
+        click.echo(f"Training model...")
 
         # Initialize and train the model
         model_instance = chosen_model.fit(x_train, y_train)
@@ -210,10 +213,14 @@ def calculate_metrics(models, metrics):
                                'models will be evaluated. ', default=None)
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-def draw_plots(models, plots):
+@click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
+    , default=False)
+def draw_plots(models, plots, is_real_time):
     """
     This command draws the given plots and store them in data/figures/.
-    TODO: Would be cool to have a solution here with a dict model approach, PH, config. Where each model with same config represents a trajectory.
+
+    The "real_time" parameter indicates whether all test data (including when there is no true values) should be
+    included. This parameter allows for real-time plots, but is not compatible with all the plots.
     """
     # Prepare a list of plots
     plots = helpers.split_string(plots)
@@ -233,7 +240,7 @@ def draw_plots(models, plots):
         model_instance = helpers.get_trained_model(model_file)
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
-        processed_data = model_instance.process_data(test_data, model_config_manager)
+        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
         x_test = processed_data.drop('target', axis=1)
         y_test = processed_data['target']
 
@@ -243,7 +250,9 @@ def draw_plots(models, plots):
             'name': f'{model_name} {prediction_horizon}-minutes PH',
             'y_pred': y_pred,
             'y_true': y_test,
-            'prediction_horizon': prediction_horizon
+            'prediction_horizon': prediction_horizon,
+            'config': config_file_name,
+            'real_time': is_real_time,
         }
         models_data.append(model_data)
 
