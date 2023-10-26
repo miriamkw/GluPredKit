@@ -18,8 +18,8 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__C': [1, 30, 50],
-            'regressor__epsilon': [0.01, 0.015]
+            'regressor__C': [30],
+            'regressor__epsilon': [0.015]
         }
 
         # Define GridSearchCV

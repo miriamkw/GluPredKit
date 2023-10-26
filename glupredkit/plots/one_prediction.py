@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from .base_plot import BasePlot
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 
@@ -18,7 +18,7 @@ class Plot(BasePlot):
         models_data: A list of dictionaries containing the model name, y_true, y_pred, prediction horizon and the name
         of the configuration file.
         """
-        history_length = 12 # Number of samples of measured CGM values
+        history_length = 18 # Number of samples of measured CGM values
         sample_rate = 5 # CGM values are sampled every 5 minutes
 
         t = np.arange(-history_length*sample_rate + sample_rate, 0 + sample_rate, sample_rate)
@@ -93,6 +93,9 @@ class Plot(BasePlot):
         else:
             unit = "mmol/L"
 
+        #TODO: Add the datetime where t=0
+        #TODO: Add potential carbs and insulin input
+
         plt.figure(figsize=(10, 8))
 
         for trajectory in trajectories:
@@ -101,14 +104,21 @@ class Plot(BasePlot):
 
         for model_data in models_data:
             y_true = model_data.get('y_true')
+            prediction_horizon = model_data.get('prediction_horizon')
 
             if real_time:
                 last_y_true_values = y_true.dropna()[-history_length:]
             else:
                 last_y_true_values = y_true[-history_length - max_target_index:-max_target_index]
 
-            # Get the last 12 values of y_true
-            if not unit_config_manager.use_mgdl:
+            # Get the datetime where t=0. The index/date of y_true is the date of the predicted value
+            time_of_prediction = last_y_true_values.index[-1] + timedelta(minutes=prediction_horizon)
+
+            # User correct unit. Add a text label above t=0
+            if unit_config_manager.use_mgdl:
+                plt.text(0, 10, f'{time_of_prediction}', fontsize=12, ha='center')
+            else:
+                plt.text(0, unit_config_manager.convert_value(5), f'{time_of_prediction}', fontsize=12, ha='center')
                 last_y_true_values = [unit_config_manager.convert_value(val) for val in last_y_true_values]
 
             plt.scatter(t, last_y_true_values, label=f'Blood glucose measurements', color='black')
@@ -116,8 +126,12 @@ class Plot(BasePlot):
 
         if unit_config_manager.use_mgdl:
             plt.ylim(0, 250)
+            plt.axhspan(70, 180, facecolor='blue', alpha=0.2)
         else:
             plt.ylim(0, unit_config_manager.convert_value(250))
+            plt.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
+                        facecolor='blue', alpha=0.2)
+
         plt.xlabel(f"Time [minutes]")
         plt.ylabel(f"Blood glucose [{unit}]")
         plt.title(f"Single Prediction Plot")

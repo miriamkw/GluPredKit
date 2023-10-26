@@ -4,10 +4,27 @@ models before preprocessing and training.
 """
 
 import json
+import os
 
 
 def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
                                  cat_features, test_size):
+    # Check if the 'data' string is a valid file in the 'data/raw/' folder
+    data_path = os.path.join('data/raw', data)
+    if not os.path.isfile(data_path):
+        raise ValueError(f"Data file '{data}' not found in 'data/raw/' folder.")
+
+    # Check if 'preprocessor' is a valid preprocessor module
+    preprocessor_module = f'glupredkit.preprocessors.{preprocessor}'
+    try:
+        __import__(preprocessor_module)
+    except ImportError:
+        raise ValueError(f"Preprocessor '{preprocessor}' not found in 'preprocessors' module.")
+
+    # Check if 'test_size' is a float between 0 and 1
+    if not isinstance(test_size, float) or test_size < 0 or test_size > 1:
+        raise ValueError("Test size must be a float between 0 and 1.")
+
     config = {
         "data": data,
         "preprocessor": preprocessor,

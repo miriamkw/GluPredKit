@@ -49,11 +49,6 @@ class Model(BaseModel):
             train_X, val_X = sequences[train_idx], sequences[val_idx]
             train_Y, val_Y = targets[train_idx], targets[val_idx]
 
-            print("Train x", train_X.shape)
-            print("Train y", train_Y.shape)
-            print("val x", val_X.shape)
-            print("val y", val_Y.shape)
-
             model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
                       callbacks=[early_stopping, reduce_lr])
 

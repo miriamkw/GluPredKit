@@ -35,26 +35,6 @@ def setup_directories():
 
 
 @click.command()
-@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
-@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
-@click.option('--preprocessor', prompt='Preprocessor', help='Name of the preprocessor.')
-@click.option('--prediction-horizons', prompt='Prediction horizons (comma-separated without space)',
-              help='Comma-separated list of prediction horizons.')
-@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
-@click.option('--num-features', prompt='Numerical features', help='Comma-separated list of numerical features.')
-@click.option('--cat-features', prompt='Categorical features', help='Comma-separated list of categorical features.')
-@click.option('--test-size', prompt='Test size', help='Test size.')
-def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
-                    test_size):
-    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons)]
-    num_features = helpers.split_string(num_features)
-    cat_features = helpers.split_string(cat_features)
-
-    generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
-                                 num_features, cat_features, float(test_size))
-
-
-@click.command()
 @click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser',
               required=True)
 @click.argument('username', type=str)
@@ -103,6 +83,30 @@ def parse(parser, username, password, start_date, end_date):
     helpers.store_data_as_csv(parsed_data, output_path, file_name)
     click.echo(f"Data stored as CSV at '{output_path}' as '{file_name}'")
     click.echo(f"Data has the shape: {parsed_data.shape}")
+
+
+
+@click.command()
+@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
+@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
+@click.option('--preprocessor', prompt='Preprocessor', help='Name of the preprocessor.')
+@click.option('--prediction-horizons', prompt='Prediction horizons (comma-separated without space)',
+              help='Comma-separated list of prediction horizons.')
+@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
+@click.option('--num-features', prompt='Numerical features', help='Comma-separated list of numerical features.')
+@click.option('--cat-features', prompt='Categorical features', default='',
+              help='Comma-separated list of categorical features.')
+@click.option('--test-size', prompt='Test size', help='Test size.')
+def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
+                    test_size):
+    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons)]
+    num_features = helpers.split_string(num_features)
+    cat_features = helpers.split_string(cat_features)
+
+    generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
+                                 num_features, cat_features, float(test_size))
+    click.echo(f"Storing configuration file to data/configurations/{file_name}...")
+    click.echo(f"Note that it might take a minute before the file appears in the folder.")
 
 
 @click.command()
@@ -243,7 +247,6 @@ def draw_plots(models, plots, is_real_time):
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
         x_test = processed_data.drop('target', axis=1)
         y_test = processed_data['target']
-
         y_pred = model_instance.predict(x_test)
 
         model_data = {
@@ -283,8 +286,8 @@ def set_unit(use_mgdl):
 # Create a Click group and add the commands to it
 cli = click.Group(commands={
     'setup_directories': setup_directories,
-    'generate_config': generate_config,
     'parse': parse,
+    'generate_config': generate_config,
     'train_model': train_model,
     'calculate_metrics': calculate_metrics,
     'draw_plots': draw_plots,

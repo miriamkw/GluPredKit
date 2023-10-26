@@ -16,9 +16,9 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__n_estimators': [50, 300, 3000],
-            'regressor__max_depth': [3, 10, 30],
-            'regressor__gamma': [0, 0.001, 0.1, 1]
+            'regressor__n_estimators': [3000],
+            'regressor__max_depth': [10],
+            'regressor__gamma': [0.1]
         }
 
         # Define GridSearchCV
