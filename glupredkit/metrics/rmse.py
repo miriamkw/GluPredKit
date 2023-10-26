@@ -8,12 +8,10 @@ class Metric(BaseMetric):
         super().__init__('RMSE')
 
     def __call__(self, y_true, y_pred):
-        print("RMSE!!!")
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
         rmse = np.sqrt(np.mean(np.square(y_true - y_pred)))
-        print(rmse)
         if unit_config_manager.use_mgdl:
             return rmse
         else:

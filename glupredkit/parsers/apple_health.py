@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 
-def getDataframeForType(data, type, name):
+def get_data_frame_for_type(data, type, name):
     df = data[data.type == type]
     df = df.copy()
 
@@ -48,16 +48,16 @@ class Parser(BaseParser):
         data = data[(data['startDate'] >= start_date) & (data['startDate'] <= end_date)]
 
         # Creating separate dataframes for each data type
-        df_glucose = getDataframeForType(data, 'HKQuantityTypeIdentifierBloodGlucose', 'CGM')
-        df_insulin = getDataframeForType(data, 'HKQuantityTypeIdentifierInsulinDelivery', 'insulin')
-        df_carbs = getDataframeForType(data, 'HKQuantityTypeIdentifierDietaryCarbohydrates', 'carbs')
-        df_heartrate = getDataframeForType(data, 'HKQuantityTypeIdentifierHeartRate', 'heartrate')
-        df_heartratevariability = getDataframeForType(data, 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
+        df_glucose = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierBloodGlucose', 'CGM')
+        df_insulin = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierInsulinDelivery', 'insulin')
+        df_carbs = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierDietaryCarbohydrates', 'carbs')
+        df_heartrate = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierHeartRate', 'heartrate')
+        df_heartratevariability = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
                                                       'heartratevariability')
-        df_caloriesburned = getDataframeForType(data, 'HKQuantityTypeIdentifierActiveEnergyBurned', 'caloriesburned')
-        df_respiratoryrate = getDataframeForType(data, 'HKQuantityTypeIdentifierRespiratoryRate', 'respiratoryrate')
-        df_steps = getDataframeForType(data, 'HKQuantityTypeIdentifierStepCount', 'steps')
-        df_restingheartrate = getDataframeForType(data, 'HKQuantityTypeIdentifierRestingHeartRate', 'restingheartrate')
+        df_caloriesburned = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierActiveEnergyBurned', 'caloriesburned')
+        df_respiratoryrate = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierRespiratoryRate', 'respiratoryrate')
+        df_steps = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierStepCount', 'steps')
+        df_restingheartrate = get_data_frame_for_type(data, 'HKQuantityTypeIdentifierRestingHeartRate', 'restingheartrate')
 
         # TODO: Add workouts and sleep data
 

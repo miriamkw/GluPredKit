@@ -87,7 +87,7 @@ You should now have the following file structure in your desired folder:
    │
    ├── raw/
    │
-   ├── processed/
+   ├── configurations/
    │
    ├── trained_models/
    │
@@ -103,14 +103,15 @@ In the examples below we will use `glupredkit`.
 
 
 ### Parsing Data
-**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing.
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing. 
+If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
 
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health] USERNAME PASSWORD [--file-name FILE_NAME] [--start-date START_DATE] [--end-date END_DATE]
 ```
 - `--parser`: Choose a parser between `tidepool`, `nightscout` or `apple_health`.
-- `username`: Your username for the data source.
-- `password`: Your password for the data source.
+- `username` (Optional): Your username for the data source.
+- `password` (Optional): Your password for the data source.
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 
@@ -122,25 +123,24 @@ glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 0
 
 ---
 
-### Preprocessing Data
-**Description**: Preprocess data from an input CSV file and store the training and test data into separate CSV files.
+### Generate Model Training Configuration
+**Description**: This command generates a configuration with a given raw dataset, and various settings for training blood glucose predictions. These configurations will be stored in `data/configurations/`, enabling their reuse for different model approaches and evaluations.
 
 ```
-glupredkit preprocess INPUT_FILE_NAME [--preprocessor [scikit_learn|tf_keras]] [--prediction-horizon PREDICTION_HORIZON] [--num-lagged-features NUM_LAGGED_FEATURES] [--test-size TEST_SIZE] [--num_features NUM_FEATURES] [--cat_features CAT_FEATURES]
+glupredkit generate_config 
 ```
-- `--preprocessor`: Choose between scikit_learn and tf_keras for preprocessing.
-- `input-file-name`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw`.
-- `--prediction-horizon` (Optional): Prediction into the future given in time in minutes.
-- `--num-lagged-features` (Optional): The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--test-size` (Optional): The fraction in float to how much of the data shall be used as test data.
-- `--num-features` (Optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
-- `--cat-features` (Optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--file-name`: Give a file name to the configuration. Example: `all_features_24_time_lags`.
+- `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`.
+- `--preprocessor`: The name of the preprocessor that shall be used. Example: `basic`.
+- `--prediction-horizons`: A comma-separated list of prediction horizons used in model training, without spaces. Example: `30,60`. 
+- `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
+- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing.
 
 #### Example
+Upon executing `glupredkit generate_config`, you will be sequentially prompted for each of the inputs above.
 
-```
-glupredkit preprocess tidepool_16-09-2023_to_30-09-2023.csv --num-features CGM,insulin --cat-features hour
-```
 
 
 ---
@@ -148,33 +148,50 @@ glupredkit preprocess tidepool_16-09-2023_to_30-09-2023.csv --num-features CGM,i
 ### Train a Model
 **Description**: Train a model using the specified training data.
 ```
-glupredkit train_model --model MODEL_NAME INPUT_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
-- `--model`: Name of the model file (without .py) to be trained. The file name must exist in `src/models`.
-- `input-file-name`: Name of the CSV file containing training data. The file name must exist in `data/processed`.
-- `--prediction-horizon` (Optional): The prediction horizon for the target value in minutes.
+- `model`: Name of the model file (without .py) to be trained. The file name must exist in `src/models/`.
+- `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 
 #### Example
 ```
-glupredkit train_model --model ridge train-data_scikit_learn_ph-60_lag-12.csv
+glupredkit train_model ridge all_features_24_time_lags
 ```
 ---
 
-### Evaluate Models
-**Description**: Evaluate one or more trained models using the specified test data, compute metrics and generate plots. The results will be 
-stored in `results/reports` for evaluation metrics and in `results/figures` for plots.
+### Calculate Metrics
+**Description**: Evaluate one or more trained models by computing metrics (for example RMSE). The results will be stored in `results/reports`.
 
 ```
-glupredkit evaluate_model --model-files MODEL_FILE_NAMES [--metrics METRICS] [--plots PLOTS] TEST_FILE_NAME [--prediction-horizon PREDICTION_HORIZON]
+glupredkit calculate_metrics [--model-files MODEL_FILE_NAMES] [--metrics METRICS]
 ```
-- `--model-files`: List of trained model filenames from `data/trained_models` (without .pkl), separated by comma.
-- `--metrics` (Optional): List of metrics from `src/metrics` to be computed, separated by comma.
-- `--plots` (Optional): List of plots from `src/plots` to be generated, separated by comma. 
-- `test-file-name`: Name of the CSV file containing test data.
+
+- `--model-files` (Optional): List of trained model filenames from `data/trained_models/` (without .pkl), separated by comma. Default is all the models.
+- `--metrics` (Optional): List of metrics from `src/metrics/` to be computed, separated by comma. Default is all the metrics.
 
 #### Example
 ```
-glupredkit evaluate_model test-data_scikit_learn_ph-60_lag-12.csv --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
+glupredkit calculate_metrics --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
+```
+---
+
+### Draw Plots
+**Description**: This command allows users to visualize model predictions using different types of plots. It supports visualization of multiple models and can restrict the plots to certain date ranges or use artificial carbohydrate and insulin inputs for specific visualizations.
+
+```
+glupredkit draw_plots
+```
+- `--models`: Specify the list of trained models you'd like to visualize. Input model names separated by commas, without the ".pkl" extension. By default, all available models will be evaluated.
+- `--plots`: Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default.
+- `--is-real-time`: A boolean flag indicating whether to consider test data without matching true measurements. By default, it is set to False.
+- `--start-date`: The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
+- `--end-date`: This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
+- `--carbs`: This allows you to set an artificial carbohydrate input for one_prediction plots. This option is only valid when is-real-time is set to True.
+- `--insulin`: Similar to the carbs option, this lets you provide an artificial insulin input for one_prediction plots. Again, it's only available when is-real-time is True.
+
+#### Example
+```
+glupredkit draw_plots --models model1,model2 --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
 
 ---
@@ -183,7 +200,12 @@ glupredkit evaluate_model test-data_scikit_learn_ph-60_lag-12.csv --model-files 
 ```
 glupredkit set_config --use-mgdl [True|False]
 ```
-**Description**: Set whether to use mg/dL or mmol/L for units.
+**Description**: Set whether to use mg/dL or mmol/L for units. 
+
+#### Example
+```
+glupredkit set_config --use-mgdl False
+```
 
 ---
 

@@ -85,7 +85,6 @@ def parse(parser, username, password, start_date, end_date):
     click.echo(f"Data has the shape: {parsed_data.shape}")
 
 
-
 @click.command()
 @click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
 @click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
@@ -110,7 +109,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 
 @click.command()
-@click.option('--model', prompt='Model name', help='Name of the model file (without .py) to be trained.')
+@click.argument('model')
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
     """
@@ -189,7 +188,7 @@ def calculate_metrics(models, metrics):
         model_instance = helpers.get_trained_model(model_file)
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
-        processed_data = model_instance.process_data(test_data, model_config_manager)
+        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
         x_test = processed_data.drop('target', axis=1)
         y_test = processed_data['target']
 

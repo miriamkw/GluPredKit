@@ -5,13 +5,10 @@ import os
 
 class UnitConfigManager:
     def __init__(self):
-        self.config_file = pkg_resources.resource_filename('glupredkit', 'unit_config.json')
-        with open(self.config_file) as f:
-            self.config = json.load(f)
-
         self.default_config_file = pkg_resources.resource_filename('glupredkit', 'unit_config.json')
+
         self.user_config_dir = os.path.expanduser("~/.glupredkit")
-        self.user_config_file = os.path.join(self.user_config_dir, "../unit_config.json")
+        self.user_config_file = os.path.join(self.user_config_dir, "unit_config.json")  # Fixed the path
 
         if not os.path.exists(self.user_config_file):
             self._initialize_user_config()
@@ -32,7 +29,6 @@ class UnitConfigManager:
     @use_mgdl.setter
     def use_mgdl(self, value):
         self.config['use_mgdl'] = value
-        # Update the config.json file to persist the change
         with open(self.user_config_file, 'w') as f:
             json.dump(self.config, f, indent=4)
 
