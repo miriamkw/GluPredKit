@@ -91,6 +91,13 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
         else:
             raise Exception("No input feature named 'insulin'.")
 
+    if end_date:
+        # Convert the prediction_date string to a datetime object
+        end_date = pd.to_datetime(end_date, format="%d-%m-%Y/%H:%M")
+        end_date = end_date.tz_localize(data.index.tz)
+        nearest_index = abs(data.index - end_date).argmin()
+        data = data.iloc[:nearest_index + 1]
+
     train_data, test_data = chosen_preprocessor(data)
 
     if start_date:
@@ -99,13 +106,6 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
         start_date = start_date.tz_localize(test_data.index.tz)
         nearest_index = abs(test_data.index - start_date).argmin()
         test_data = test_data.iloc[nearest_index:]
-
-    if end_date:
-        # Convert the prediction_date string to a datetime object
-        end_date = pd.to_datetime(end_date, format="%d-%m-%Y/%H:%M")
-        end_date = end_date.tz_localize(test_data.index.tz)
-        nearest_index = abs(test_data.index - end_date).argmin()
-        test_data = test_data.iloc[:nearest_index + 1]
 
     return train_data, test_data
 

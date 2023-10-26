@@ -18,10 +18,10 @@ class Plot(BasePlot):
         models_data: A list of dictionaries containing the model name, y_true, y_pred, prediction horizon and the name
         of the configuration file.
         """
-        history_length = 18 # Number of samples of measured CGM values
-        sample_rate = 5 # CGM values are sampled every 5 minutes
+        history_length = 18  # Number of samples of measured CGM values
+        sample_rate = 5  # CGM values are sampled every 5 minutes
 
-        t = np.arange(-history_length*sample_rate + sample_rate, 0 + sample_rate, sample_rate)
+        t = np.arange(-history_length * sample_rate + sample_rate, 0 + sample_rate, sample_rate)
 
         unique_model_names = set()  # Initialize an empty set to store unique names
         unique_configs = set()
@@ -44,7 +44,7 @@ class Plot(BasePlot):
         max_ph = max(unique_ph_list)
         max_target_index = max_ph // sample_rate
 
-        trajectories = [] # Will be a set of trajectories for models with equal names and configs
+        trajectories = []  # Will be a set of trajectories for models with equal names and configs
 
         for model_name in unique_model_names_list:
             for config in unique_configs_list:
@@ -93,7 +93,7 @@ class Plot(BasePlot):
         else:
             unit = "mmol/L"
 
-        #TODO: Add potential carbs and insulin input (DRAW IT AS WELL!)
+        # TODO: Add potential carbs and insulin input (DRAW IT AS WELL!)
 
         plt.figure(figsize=(10, 8))
 
@@ -153,4 +153,3 @@ class Plot(BasePlot):
         file_name = f'one_prediction_{datetime.now()}.png'
         plt.savefig(file_path + file_name)
         plt.show()
-
