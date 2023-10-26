@@ -101,6 +101,7 @@ class Plot(BasePlot):
             plt.plot(trajectory.get('prediction_horizons'), trajectory.get('predictions'),
                      label=f"Predictions for {trajectory.get('model_name')}")
 
+        # This iteration will break after the first iteration, using a random sample of model data
         for model_data in models_data:
             y_true = model_data.get('y_true')
             prediction_horizon = model_data.get('prediction_horizon')
@@ -116,9 +117,19 @@ class Plot(BasePlot):
             # User correct unit. Add a text label above t=0
             if unit_config_manager.use_mgdl:
                 plt.text(0, 10, f'{time_of_prediction}', fontsize=12, ha='center')
+                if model_data.get('carbs'):
+                    plt.text(0, 20, f"{model_data.get('carbs')}g of carbohydrates", fontsize=12, ha='center')
+                if model_data.get('insulin'):
+                    plt.text(0, 30, f"{model_data.get('insulin')}U of insulin", fontsize=12, ha='center')
             else:
                 plt.text(0, unit_config_manager.convert_value(5), f'{time_of_prediction}', fontsize=12, ha='center')
                 last_y_true_values = [unit_config_manager.convert_value(val) for val in last_y_true_values]
+                if model_data.get('carbs'):
+                    plt.text(0, unit_config_manager.convert_value(20), f"{model_data.get('carbs')}g of carbohydrates",
+                             fontsize=12, ha='center')
+                if model_data.get('insulin'):
+                    plt.text(0, unit_config_manager.convert_value(30), f"{model_data.get('insulin')}U of insulin",
+                             fontsize=12, ha='center')
 
             plt.scatter(t, last_y_true_values, label=f'Blood glucose measurements', color='black')
             break

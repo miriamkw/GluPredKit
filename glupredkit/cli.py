@@ -267,6 +267,8 @@ def draw_plots(models, plots, is_real_time, prediction_date, carbs, insulin):
             'prediction_horizon': prediction_horizon,
             'config': config_file_name,
             'real_time': is_real_time,
+            'carbs': carbs,
+            'insulin': insulin,
         }
         models_data.append(model_data)
 
