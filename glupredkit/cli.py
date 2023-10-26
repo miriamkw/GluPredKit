@@ -219,16 +219,19 @@ def calculate_metrics(models, metrics):
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
 @click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
     , default=False)
-@click.option('--prediction-date', type=str,
-              help='Prediction date for one prediction plots. Default is the last sample. Format "dd-mm-yyyy/hh:mm"',
-              default=None)
+@click.option('--start-date', type=str,
+              help='Start date for the predictions. Default is the first sample in the test data. '
+                   'Format "dd-mm-yyyy/hh:mm"', default=None)
+@click.option('--end-date', type=str,
+              help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
+                   'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--carbs', type=int,
               help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
               default=None)
 @click.option('--insulin', type=float,
               help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
               default=None)
-def draw_plots(models, plots, is_real_time, prediction_date, carbs, insulin):
+def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin):
     """
     This command draws the given plots and store them in data/figures/.
 
@@ -252,7 +255,7 @@ def draw_plots(models, plots, is_real_time, prediction_date, carbs, insulin):
         model_config_manager = ModelConfigurationManager(config_file_name)
         model_instance = helpers.get_trained_model(model_file)
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
-                                                     insulin=insulin, end_date=prediction_date)
+                                                     insulin=insulin, start_date=start_date, end_date=end_date)
 
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
         x_test = processed_data.drop('target', axis=1)
