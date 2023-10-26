@@ -64,8 +64,8 @@ def get_trained_model(model_file_name):
     return model_instance
 
 
-def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager):
-
+def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager, carbs=None, insulin=None,
+                          end_date=None):
     preprocessor = config_manager.get_preprocessor()
     input_file_name = config_manager.get_data()
 
@@ -79,6 +79,25 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     # Load the input CSV file into a DataFrame
     data = read_data_from_csv("data/raw/", input_file_name)
 
+    if carbs:
+        if 'carbs' in data.columns:
+            data.at[data.index[-1], 'carbs'] = carbs
+        else:
+            raise Exception("No input feature named 'carbs'.")
+
+    if insulin:
+        if 'insulin' in data.columns:
+            data.at[data.index[-1], 'insulin'] = insulin
+        else:
+            raise Exception("No input feature named 'insulin'.")
+
+    if end_date:
+        # Convert the prediction_date string to a datetime object
+        end_date = pd.to_datetime(end_date, format="%d-%m-%Y/%H:%M")
+        end_date = end_date.tz_localize(data.index.tz)
+        nearest_index = abs(data.index - end_date).argmin()
+        data = data.iloc[:nearest_index + 1]
+
     train_data, test_data = chosen_preprocessor(data)
 
     return train_data, test_data
@@ -90,5 +109,3 @@ def list_files_in_directory(directory_path):
         if os.path.isfile(os.path.join(directory_path, filename)):
             file_list.append(filename)
     return file_list
-
-

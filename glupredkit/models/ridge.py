@@ -38,3 +38,9 @@ class Model(BaseModel):
 
     def process_data(self, df, model_config_manager, real_time):
         return process_data(df, model_config_manager, real_time)
+
+    def print_coefficients(self):
+        feature_names = self.model.best_estimator_[0].feature_names_in_
+        coefficients = self.model.best_estimator_[0].coef_
+        for feature_name, coefficient in zip(feature_names, coefficients):
+            print(f"Feature: {feature_name}, Coefficient: {coefficient:.4f}")

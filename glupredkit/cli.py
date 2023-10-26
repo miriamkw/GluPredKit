@@ -219,7 +219,16 @@ def calculate_metrics(models, metrics):
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
 @click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
     , default=False)
-def draw_plots(models, plots, is_real_time):
+@click.option('--prediction-date', type=str,
+              help='Prediction date for one prediction plots. Default is the last sample. Format "dd-mm-yyyy/hh:mm"',
+              default=None)
+@click.option('--carbs', type=int,
+              help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
+              default=None)
+@click.option('--insulin', type=float,
+              help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
+              default=None)
+def draw_plots(models, plots, is_real_time, prediction_date, carbs, insulin):
     """
     This command draws the given plots and store them in data/figures/.
 
@@ -242,11 +251,13 @@ def draw_plots(models, plots, is_real_time):
 
         model_config_manager = ModelConfigurationManager(config_file_name)
         model_instance = helpers.get_trained_model(model_file)
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
+                                                     insulin=insulin, end_date=prediction_date)
 
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
         x_test = processed_data.drop('target', axis=1)
         y_test = processed_data['target']
+
         y_pred = model_instance.predict(x_test)
 
         model_data = {

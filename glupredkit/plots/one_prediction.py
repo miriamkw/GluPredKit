@@ -93,8 +93,7 @@ class Plot(BasePlot):
         else:
             unit = "mmol/L"
 
-        #TODO: Add the datetime where t=0
-        #TODO: Add potential carbs and insulin input
+        #TODO: Add potential carbs and insulin input (DRAW IT AS WELL!)
 
         plt.figure(figsize=(10, 8))
 
