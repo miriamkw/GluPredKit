@@ -2,7 +2,7 @@ class BaseParser:
     def __init__(self):
         pass
 
-    def __call__(self, start_date, end_date, username, password, **kwargs):
+    def __call__(self, start_date, end_date, **kwargs):
         """
         start_date -- start date for dataset
         end_date -- end date for dataset
