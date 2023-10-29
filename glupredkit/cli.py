@@ -69,13 +69,14 @@ def setup_directories():
 @click.command()
 @click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser',
               required=True)
-@click.argument('username', type=str)
-@click.argument('password', type=str)
+@click.option('--username', type=str, required=False)
+@click.option('--password', type=str, required=False)
 @click.option('--start-date', type=str,
               help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
+@click.option('--file-path', type=str, required=False)
 @click.option('--end-date', type=str,
               help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
-def parse(parser, username, password, start_date, end_date):
+def parse(parser, username, password, start_date, file_path, end_date):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -103,8 +104,21 @@ def parse(parser, username, password, start_date, end_date):
         start_date = datetime.strptime(start_date, date_format)
 
     # Perform parsing using the chosen parser
-    parsed_data = chosen_parser(start_date, end_date, username, password)
 
+    # Ensure that the optional params match the parser
+    if parser in ['tidepool', 'nightscout']:
+        if username is None or password is None:
+            raise ValueError(f"{parser} parser requires that you provide --username and --password") 
+        else:
+            parsed_data = chosen_parser(start_date, end_date, username=username, password=password)
+    elif parser in ['apple_health']:
+        if file_path is None:
+            raise ValueError(f"{parser} parser requires that you provide --filename")
+        else:
+            parsed_data = chosen_parser(start_date, end_date, file_path=file_path)
+    else:
+        raise ValueError("unrecognized parser: '{parser}'")
+    
     output_path = 'data/raw/'
     date_format = "%d-%m-%Y"
 
