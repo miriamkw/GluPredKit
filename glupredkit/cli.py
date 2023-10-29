@@ -174,7 +174,7 @@ def calculate_metrics(models, metrics):
     if models is None:
         models = helpers.list_files_in_directory(trained_models_path)
     else:
-        models = [model + ".pkl" for model in models]
+        models = helpers.split_string(models)
 
     # Prepare a list of metrics
     metrics = helpers.split_string(metrics)
@@ -243,7 +243,7 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
     if models is None:
         models = helpers.list_files_in_directory('data/trained_models/')
     else:
-        models = [model + ".pkl" for model in models]
+        models = helpers.split_string(models)
 
     click.echo(f"Calculating predictions...")
     models_data = []

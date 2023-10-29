@@ -135,10 +135,8 @@ class Plot(BasePlot):
             break
 
         if unit_config_manager.use_mgdl:
-            plt.ylim(0, 250)
             plt.axhspan(70, 180, facecolor='blue', alpha=0.2)
         else:
-            plt.ylim(0, unit_config_manager.convert_value(250))
             plt.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
                         facecolor='blue', alpha=0.2)
 

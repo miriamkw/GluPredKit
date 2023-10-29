@@ -98,8 +98,15 @@ You should now have the following file structure in your desired folder:
 
 Now, you're ready to use the Command Line Interface (CLI) for processing and predicting blood glucose levels.
 
+
 Note that the prefix for all the commands will be either `glupredkit` for regular users, or `python -m glupredkit.cli` for developers.
+The `glupredkit` prefix will also work while developing, but changes made to the code will only be directly reflected when
+using the `python -m glupredkit.cli` prefix.
 In the examples below we will use `glupredkit`.
+
+The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
+<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
+![img.png](figures/CLI_overview.png)
 
 
 ### Parsing Data
@@ -150,7 +157,7 @@ Upon executing `glupredkit generate_config`, you will be sequentially prompted f
 ```
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
-- `model`: Name of the model file (without .py) to be trained. The file name must exist in `src/models/`.
+- `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`.
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 
 #### Example
@@ -163,11 +170,11 @@ glupredkit train_model ridge all_features_24_time_lags
 **Description**: Evaluate one or more trained models by computing metrics (for example RMSE). The results will be stored in `results/reports`.
 
 ```
-glupredkit calculate_metrics [--model-files MODEL_FILE_NAMES] [--metrics METRICS]
+glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
 ```
 
-- `--model-files` (Optional): List of trained model filenames from `data/trained_models/` (without .pkl), separated by comma. Default is all the models.
-- `--metrics` (Optional): List of metrics from `src/metrics/` to be computed, separated by comma. Default is all the metrics.
+- `--models` (Optional): List of trained model filenames from `data/trained_models/` (with .pkl), separated by comma. Default is all the models.
+- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is all the metrics.
 
 #### Example
 ```
@@ -194,13 +201,27 @@ glupredkit draw_plots
 glupredkit draw_plots --models model1,model2 --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
 
+### Real-Time Prediction Plots
+
+**Description**: To achieve real-time predictions, it is necessary to have a data-source that provides real-time data. 
+Nightscout API can be a real-time API if the insulin management system is uploading data continuously (which is, to our knowledge,
+only possible to achieve with open-source insulin management systems). The steps to draw real-time plots are the following:
+1. Train one or more models using the steps above.
+2. Parse some up-to-date data, using for example the nightscout-parser.
+3. Update the model configurations to have the data from (2) as a data source for predictions.
+4. Call the `draw_plots` command with `--plots one_prediction` and `--is-real-time True` 
+
+
 ---
-### Setting Configurations
+### Setting Unit of Evaluations
+
+**Description**: Set whether to use mg/dL or mmol/L for units. You can change this after models are trained,
+without retraining the models. This only has an impact on the model evaluation (`calculate_metrics` or `draw_plots`).
 
 ```
-glupredkit set_config --use-mgdl [True|False]
+glupredkit set_unit --use-mgdl [True|False]
 ```
-**Description**: Set whether to use mg/dL or mmol/L for units. 
+
 
 #### Example
 ```
@@ -214,20 +235,19 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 
 
 
-
-
-
-
-
 ## Contributing with code
 
 In this section we will explain how you can contribute with enhancing the implementation of parsers, preprocessors, models, evaluation metrics and plots.
+
+The following figure is a class diagram of the main components in GluPredKit.
+<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
+![img.png](figures/UML_diagram.png)
 
 ### Contributing With New Components
 
 Regardless of the component type you're contributing, follow these general steps:
 
-1. Navigate to the corresponding directory in `src/`.
+1. Navigate to the corresponding directory in `glupredkit/`.
 2. Create a new Python file for your component.
 3. Implement your component class, inheriting from the appropriate base class.
 4. Add necessary tests and update the documentation.
@@ -236,27 +256,44 @@ Here are specifics for various component types:
 
 #### Parsers
 Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. 
-   - Directory: `src/parsers`
-   - Base Class: `BaseParser`
+- Directory: `glupredkit/parsers`
+- Base Class: `BaseParser`
+
+All the parsers should give an output of the same format. Some essential details are:
+- We use pandas DataFrames as output.
+- All datatypes are resampled into 5-minute intervals. If the sample rate is more frequent, the data should be aggregated with for example sum or mean values. If less frequent, NaN values should be used. Interpolation is handled in the preprocessor.
+- The index-column of the dataframe should be the datetime of the sample.
+- Blood glucose values should have the column name "CGM".
+- Carbohydrate intake values should have the column name "carbs".
+- Insulin infusion values should have the column name "insulin". 
+- Additional columns and column names are optional.
 
 #### Preprocessors
-Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature addition, removing NaN values, splitting data etc.
-   - Directory: `src/preprocessors`
-   - Base Class: `BasePreprocessor`
+Refers to the preprocessing of the raw datasets from the parsing-stage. This includes imputation, feature transformation, splitting data etc.
+- Directory: `glupredkit/preprocessors`
+- Base Class: `BasePreprocessor`
+
+Note that time-lagged features and other library-specific data-processing is handled in the model implementations, in the method `process_data` in `base_model.py`. 
+That is because different libraries like scikit-learn, Keras or PyTorch, or model approaches might expect different data-input formats.
+For example, time-lagged features might be stored in different ways as in separate columns or as lists in a single column.
 
 #### Machine Learning Prediction Models
 Refers to using preprocessed data to train a blood glucose prediction model.
-   - Directory: `src/models`
-   - Base Class: `BaseModel`
+- Directory: `glupredkit/models`
+- Base Class: `BaseModel`
+
+The method `process_data` in `base_model.py` handles addition of time-lagged features, removal of NaN values and other 
+library- or model-specific configurations for the model data input format. 
 
 #### Evaluation Metrics
-Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model.    - Directory: `src/metrics`
-   - Base Class: `BaseMetric`
+Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model.    
+- Directory: `glupredkit/metrics`
+- Base Class: `BaseMetric`
 
 #### Evaluation Plots
 Different types of plots that can illustrate blood glucose predictions together with actual measured values.
-   - Directory: `src/plots`
-   - Base Class: `BasePlot`
+- Directory: `glupredkit/plots`
+- Base Class: `BasePlot`
 
 Remember to adhere to our coding and documentation standards when contributing!
 
@@ -269,7 +306,7 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
 * Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
 * Metrics assumes mg/dL for the input.
-* Note that the difference between how basal rates are registered. Bolus doses are however consistent across. Hopefully it is negligable.
+* Note that the difference between how basal rates are registered. Bolus doses are however consistent across. Hopefully it is negligible.
 
 
 ## License
