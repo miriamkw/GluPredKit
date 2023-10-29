@@ -6,8 +6,8 @@ glucose prediction models in Python. Access all features via the integrated Comm
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
 
-<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
-![img.png](figures/pipeline_overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png)
 
 ## Table of Contents
 1. [Setup and Installation](#setup-and-installation)
@@ -105,8 +105,8 @@ using the `python -m glupredkit.cli` prefix.
 In the examples below we will use `glupredkit`.
 
 The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
-<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
-![img.png](figures/CLI_overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png)
 
 
 ### Parsing Data
@@ -240,8 +240,8 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 In this section we will explain how you can contribute with enhancing the implementation of parsers, preprocessors, models, evaluation metrics and plots.
 
 The following figure is a class diagram of the main components in GluPredKit.
-<!-- ![img.png](https://github.com/miriamkw/GluPredKit/figures/pipeline_overview.png) -->
-![img.png](figures/UML_diagram.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/UML_diagram.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/UML_diagram.png)
 
 ### Contributing With New Components
 

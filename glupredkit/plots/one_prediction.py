@@ -116,7 +116,7 @@ class Plot(BasePlot):
 
             # User correct unit. Add a text label above t=0
             if unit_config_manager.use_mgdl:
-                plt.text(0, 10, f'{time_of_prediction}', fontsize=12, ha='center')
+                plt.text(0, 5, f'{time_of_prediction}', fontsize=12, ha='center')
                 if model_data.get('carbs'):
                     plt.text(0, 20, f"{model_data.get('carbs')}g of carbohydrates", fontsize=12, ha='center')
                 if model_data.get('insulin'):
@@ -139,6 +139,12 @@ class Plot(BasePlot):
         else:
             plt.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
                         facecolor='blue', alpha=0.2)
+
+        # Get current y-axis limits
+        y_min, y_max = plt.ylim()
+
+        # Set new y-axis limits to include 0
+        plt.ylim(min(0, int(y_min)), y_max)
 
         plt.xlabel(f"Time [minutes]")
         plt.ylabel(f"Blood glucose [{unit}]")
