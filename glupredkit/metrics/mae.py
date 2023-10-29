@@ -1,6 +1,6 @@
 from .base_metric import BaseMetric
 import numpy as np
-from glupredkit.config_manager import config_manager
+from glupredkit.helpers.unit_config_manager import unit_config_manager
 
 
 class Metric(BaseMetric):
@@ -13,7 +13,7 @@ class Metric(BaseMetric):
 
         mae = np.mean(np.abs(y_true - y_pred))
 
-        if config_manager.use_mgdl:
+        if unit_config_manager.use_mgdl:
             return mae
         else:
-            return config_manager.convert_value(mae)
+            return unit_config_manager.convert_value(mae)

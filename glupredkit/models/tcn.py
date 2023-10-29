@@ -9,6 +9,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callbac
 from sklearn.model_selection import TimeSeriesSplit
 from tcn import TCN
 from .base_model import BaseModel
+from glupredkit.helpers.tf_keras import process_data
 
 
 class Model(BaseModel):
@@ -70,3 +71,6 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return None
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

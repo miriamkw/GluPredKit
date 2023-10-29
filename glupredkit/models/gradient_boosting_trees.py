@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 import xgboost as xgb
 from .base_model import BaseModel
+from glupredkit.helpers.scikit_learn import process_data
 
 
 class Model(BaseModel):
@@ -15,9 +16,9 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__n_estimators': [50, 300, 3000],
-            'regressor__max_depth': [3, 10, 30],
-            'regressor__gamma': [0, 0.001, 0.1, 1]
+            'regressor__n_estimators': [3000],
+            'regressor__max_depth': [10],
+            'regressor__gamma': [0.1]
         }
 
         # Define GridSearchCV
@@ -33,3 +34,6 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return self.model.best_params_
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

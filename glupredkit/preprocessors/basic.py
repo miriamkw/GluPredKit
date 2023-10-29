@@ -1,26 +1,12 @@
 """
-The scikit learn preprocessor takes in a parsed dataset in a 5-minute time grid and returns a dataset ready to be
-trained with a model that builds on the scikit learn library.
-
-Users can customize:
-- History length
-- Prediction horizon for target
-- Test size
-- A list of categorical features
-- A list of numerical features
+The basic preprocessor does the following:
+- Standardize numerical features
+- One hot encode categorical features
+- Add the target value
 """
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-
-
-def add_time_lagged_features(col_name, df, num_lagged_features):
-    indexes = list(range(1, num_lagged_features + 1))
-
-    for i in indexes:
-        new_col_name = col_name + "_" + str(i * 5)
-        df = pd.concat([df, df[col_name].shift(i).rename(new_col_name)], axis=1)
-    return df
 
 
 class Preprocessor(BasePreprocessor):
@@ -29,12 +15,6 @@ class Preprocessor(BasePreprocessor):
 
     def __call__(self, df):
 
-        # Imputation of CGM values if there is a one-sample gap
-        df['CGM'] = df.CGM.ffill(limit=1)
-
-        # Add hour of day
-        df['hour'] = df.index.copy().to_series().apply(lambda x: x.hour)
-
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
 
@@ -42,11 +22,16 @@ class Preprocessor(BasePreprocessor):
         target_index = self.prediction_horizon // 5
         if self.prediction_horizon % 5 != 0:
             raise ValueError("Prediction horizon must be divisible by 5.")
-        df['target'] = df.CGM.shift(-target_index)
+        df = df.copy()
+        df.loc[:, 'target'] = df['CGM'].shift(-target_index)
+
+        # Interpolation using forward fill
+        df[self.numerical_features] = df[self.numerical_features].ffill()
 
         # Transform columns
         if self.numerical_features:
-            df[self.numerical_features] = StandardScaler().fit_transform(df[self.numerical_features])
+            scaler = StandardScaler()
+            df.loc[:, self.numerical_features] = scaler.fit_transform(df.loc[:, self.numerical_features])
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
             encoded_cols = encoder.fit_transform(df[self.categorical_features])
@@ -54,12 +39,6 @@ class Preprocessor(BasePreprocessor):
                                       columns=encoder.get_feature_names_out(self.categorical_features), index=df.index)
             df = df.drop(columns=self.categorical_features)
             df = pd.concat([df, encoded_df], axis=1)
-
-        # Add time-lagged features
-        for col in self.numerical_features:
-            df = add_time_lagged_features(col, df, self.num_lagged_features)
-
-        df = df.dropna()
 
         # Train and test split
         # Adding a margin of 24 hours to the train and the test data to avoid memory leak

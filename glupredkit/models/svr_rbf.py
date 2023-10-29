@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVR
 from .base_model import BaseModel
+from glupredkit.helpers.scikit_learn import process_data
 
 
 class Model(BaseModel):
@@ -17,9 +18,9 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__C': [1, 30, 50],
-            'regressor__epsilon': [0.01, 0.015],
-            'regressor__gamma': [0.003, 0.008],
+            'regressor__C': [100],
+            'regressor__epsilon': [0.03],
+            'regressor__gamma': [0.008],
         }
 
         # Define GridSearchCV
@@ -35,3 +36,6 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return self.model.best_params_
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

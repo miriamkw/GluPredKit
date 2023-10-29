@@ -1,8 +1,8 @@
 class BasePlot:
-    def __init__(self, prediction_horizon):
-        self.prediction_horizon = prediction_horizon
+    def __init__(self):
+        pass
 
-    def __call__(self, models_data, y_true):
+    def __call__(self, models_data):
         """
         Draw a plot for the given trained_models data.
 

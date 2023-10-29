@@ -105,6 +105,9 @@ class Parser(BaseParser):
             current_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
             df.index = df.index.tz_convert(current_timezone)
 
+            # Add hour of day
+            df['hour'] = df.index.hour
+
             return df
 
         except ClientResponseError as error:

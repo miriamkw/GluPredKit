@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import Ridge
 from .base_model import BaseModel
+from glupredkit.helpers.scikit_learn import process_data
 
 
 class Model(BaseModel):
@@ -18,7 +19,7 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
+            'regressor__alpha': [0.0001]
         }
 
         # Define GridSearchCV
@@ -34,3 +35,12 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return self.model.best_params_
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)
+
+    def print_coefficients(self):
+        feature_names = self.model.best_estimator_[0].feature_names_in_
+        coefficients = self.model.best_estimator_[0].coef_
+        for feature_name, coefficient in zip(feature_names, coefficients):
+            print(f"Feature: {feature_name}, Coefficient: {coefficient:.4f}")

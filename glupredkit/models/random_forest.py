@@ -2,6 +2,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor
 from .base_model import BaseModel
+from glupredkit.helpers.scikit_learn import process_data
 
 
 class Model(BaseModel):
@@ -17,9 +18,8 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__n_estimators': [50, 100, 300, 500],
-            'regressor__min_samples_split': [2, 20, 40, 80],
-            'regressor__max_depth': [None, 10, 30, 50],
+            'regressor__n_estimators': [300],
+            'regressor__min_samples_split': [80],
         }
 
         # Define GridSearchCV
@@ -35,3 +35,6 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return self.model.best_params_
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

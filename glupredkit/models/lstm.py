@@ -5,6 +5,7 @@ from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 from sklearn.model_selection import TimeSeriesSplit
 from .base_model import BaseModel
+from glupredkit.helpers.tf_keras import process_data
 
 
 class Model(BaseModel):
@@ -48,11 +49,6 @@ class Model(BaseModel):
             train_X, val_X = sequences[train_idx], sequences[val_idx]
             train_Y, val_Y = targets[train_idx], targets[val_idx]
 
-            print("Train x", train_X.shape)
-            print("Train y", train_Y.shape)
-            print("val x", val_X.shape)
-            print("val y", val_Y.shape)
-
             model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
                       callbacks=[early_stopping, reduce_lr])
 
@@ -72,3 +68,7 @@ class Model(BaseModel):
     def best_params(self):
         # Return the best parameters found by GridSearchCV
         return None
+
+
+    def process_data(self, df, model_config_manager, real_time):
+        return process_data(df, model_config_manager, real_time)

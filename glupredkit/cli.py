@@ -2,48 +2,16 @@
 import click
 import dill
 import os
-import sys
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
-from .preprocessors.base_preprocessor import BasePreprocessor
-from .models.base_model import BaseModel
-from .metrics.base_metric import BaseMetric
 from .plots.base_plot import BasePlot
-from .config_manager import config_manager
-
-
-def read_data_from_csv(input_path, file_name):
-    file_path = input_path + file_name
-    return pd.read_csv(file_path, index_col="date", parse_dates=True)
-
-
-def store_data_as_csv(df, output_path, file_name):
-    file_path = output_path + file_name
-    df.to_csv(file_path)
-
-
-def split_string(input_string):
-    return [] if not input_string else input_string.split(',')
-
-
-def user_input_prompt(text):
-    # Prompt the user for confirmation
-    user_response = input(f"{text} (Y/n): ")
-
-    # Convert the user's response to lowercase and check against 'y' and 'n'
-    if user_response.lower() == 'y':
-        # Continue processing
-        print("Continuing processing...")
-    elif user_response.lower() == 'n':
-        # Stop or exit
-        print("Operation aborted by the user.")
-        sys.exit()
-    else:
-        print("Invalid input. Please respond with 'Y' or 'n'.")
+from glupredkit.helpers.unit_config_manager import unit_config_manager
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager, generate_model_configuration
+import glupredkit.helpers.cli as helpers
 
 
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
@@ -56,7 +24,7 @@ def setup_directories():
     print("Creating directories...")
 
     folder_path = 'data'
-    folder_names = ['raw', 'processed', 'trained_models', 'figures', 'reports']
+    folder_names = ['raw', 'configurations', 'trained_models', 'figures', 'reports']
 
     for folder_name in folder_names:
         path = os.path.join(cwd, folder_path, folder_name)
@@ -126,203 +94,201 @@ def parse(parser, username, password, start_date, file_path, end_date):
                  + '.csv')
 
     click.echo("Storing data as CSV...")
-    store_data_as_csv(parsed_data, output_path, file_name)
+    helpers.store_data_as_csv(parsed_data, output_path, file_name)
     click.echo(f"Data stored as CSV at '{output_path}' as '{file_name}'")
     click.echo(f"Data has the shape: {parsed_data.shape}")
 
 
 @click.command()
-@click.option('--preprocessor', type=click.Choice(['scikit_learn', 'tf_keras']),
-              help='Choose a preprocessor', required=True)
-@click.argument('input-file-name', type=str)
-@click.option('--prediction-horizon', type=int, default=60)
-@click.option('--num-lagged-features', type=int, default=12,
-              help='The number of samples of time-lagged features (default: 12).')
-@click.option('--test-size', type=float, default=0.2,
-              help='Fraction of data to reserve for testing (default: 0.2).')
-@click.option('--num-features', default='CGM,insulin,carbs', help='List of numerical features, separated by comma.')
-@click.option('--cat-features', default='', help='List of categorical features, separated by comma.')
-def preprocess(preprocessor, input_file_name, prediction_horizon, num_lagged_features, test_size,
-               num_features, cat_features):
-    """
-    Preprocess data from an input CSV file and store train and test data into CSV files.
+@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
+@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
+@click.option('--preprocessor', prompt='Preprocessor', help='Name of the preprocessor.')
+@click.option('--prediction-horizons', prompt='Prediction horizons (comma-separated without space)',
+              help='Comma-separated list of prediction horizons.')
+@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
+@click.option('--num-features', prompt='Numerical features', help='Comma-separated list of numerical features.')
+@click.option('--cat-features', prompt='Categorical features', default='',
+              help='Comma-separated list of categorical features.')
+@click.option('--test-size', prompt='Test size', help='Test size.')
+def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
+                    test_size):
+    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons)]
+    num_features = helpers.split_string(num_features)
+    cat_features = helpers.split_string(cat_features)
 
-    Args:
-        preprocessor (str): Type of preprocessor from the preprocessor module.
-        input_file_name (str): Input CSV file containing the data.
-        prediction_horizon (int): The prediction horizon for the target value in minutes.
-        num_lagged_features (int): The number of samples of time-lagged features.
-        test_size (float): Fraction of data to reserve for testing.
-        num_features (str): List of numerical features, separated with comma without spaces
-        cat_features (str): List of categorical features, separated with comma without spaces
-    """
-    if prediction_horizon % 5 != 0:
-        raise click.BadParameter('Prediction horizon must be divisible by 5.')
-
-    # Load the chosen parser dynamically based on user input
-    preprocessor_module = importlib.import_module(f'glupredkit.preprocessors.{preprocessor}')
-
-    # Ensure the chosen parser inherits from BaseParser
-    if not issubclass(preprocessor_module.Preprocessor, BasePreprocessor):
-        raise click.ClickException(f"The selected preprocessor '{preprocessor}' must inherit from BasePreprocessor.")
-
-    # Convert comma-separated string of features to list
-    num_features = split_string(num_features)
-    cat_features = split_string(cat_features)
-
-    # Create an instance of the chosen parser
-    chosen_preprocessor = preprocessor_module.Preprocessor(num_features, cat_features, prediction_horizon,
-                                                           num_lagged_features, test_size)
-
-    input_path = "data/raw/"
-    click.echo(f"Preprocessing data using {preprocessor} from file {input_path}{input_file_name}...")
-
-    # Load the input CSV file into a DataFrame
-    data = read_data_from_csv(input_path, input_file_name)
-
-    # Perform data preprocessing using your preprocessor
-    train_data, test_data = chosen_preprocessor(data)
-
-    # Define output file names
-    output_path = "data/processed/"
-    train_output_file = f"train-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
-    test_output_file = f"test-data_{preprocessor}_ph-{prediction_horizon}_lag-{num_lagged_features}.csv"
-
-    # Store train and test data as CSV files
-    store_data_as_csv(train_data, output_path, train_output_file)
-    store_data_as_csv(test_data, output_path, test_output_file)
-
-    click.echo(f"Train data saved as '{train_output_file}', with shape {train_data.shape}")
-    click.echo(f"Test data saved as '{test_output_file}', with shape {test_data.shape}")
+    generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
+                                 num_features, cat_features, float(test_size))
+    click.echo(f"Storing configuration file to data/configurations/{file_name}...")
+    click.echo(f"Note that it might take a minute before the file appears in the folder.")
 
 
 @click.command()
-@click.option('--model', prompt='Model name', help='Name of the model file (without .py) to be trained.')
-@click.argument('input-file-name', type=str)
-@click.option('--prediction-horizon', type=int, default=60)
-def train_model(model, input_file_name, prediction_horizon):
-    # Load the chosen parser dynamically based on user input
-    model_module = importlib.import_module(f'glupredkit.models.{model}')
+@click.argument('model')
+@click.argument('config-file-name', type=str)
+def train_model(model, config_file_name):
+    """
+    This method does the following:
+    1) Process data using the given configurations
+    2) Train the given models for the given prediction horizons in the configuration
+    """
+    click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
+    model_config_manager = ModelConfigurationManager(config_file_name)
 
-    # Ensure the chosen parser inherits from BaseParser
-    if not issubclass(model_module.Model, BaseModel):
-        raise click.ClickException(f"The selected model '{model}' must inherit from BaseModel.")
+    prediction_horizons = model_config_manager.get_prediction_horizons()
+    model_module = helpers.get_model_module(model)
 
-    if input_file_name.startswith("test"):
-        user_input_prompt("This file starts with 'test', and not 'train'. Are you sure you want to continue?")
+    for prediction_horizon in prediction_horizons:
+        # PREPROCESSING
 
-    if str(prediction_horizon) not in input_file_name:
-        user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the input file name. "
-                          "Are you sure you want to continue?")
+        # Perform data preprocessing using your preprocessor
+        train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+        click.echo(f"Training data finished preprocessing...")
 
-    # Create an instance of the chosen parser
-    chosen_model = model_module.Model(prediction_horizon)
+        # MODEL TRAINING
+        # Create an instance of the chosen model
+        chosen_model = model_module.Model(prediction_horizon)
 
-    input_path = "data/processed/"
-    click.echo(f"Training model {model} with training data from {input_path}{input_file_name}...")
+        processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
+        x_train = processed_data.drop('target', axis=1)
+        y_train = processed_data['target']
 
-    # Load the input CSV file into a DataFrame
-    train_data = read_data_from_csv(input_path, input_file_name)
-    x_train = train_data.drop('target', axis=1)
-    y_train = train_data['target']
+        click.echo(f"Training model...")
 
-    # Initialize and train the model
-    model_instance = chosen_model.fit(x_train, y_train)
-    click.echo(f"Model {model} trained successfully!")
+        # Initialize and train the model
+        model_instance = chosen_model.fit(x_train, y_train)
+        click.echo(f"Model {model} with prediction horizon {prediction_horizon} minutes trained successfully!")
 
-    # Assuming model_instance is your class instance
-    output_path = "data/trained_models/"
-    output_file_name = f'{model}_ph-{prediction_horizon}.pkl'
-    try:
-        with open(f'{output_path}{output_file_name}', 'wb') as f:
-            click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
-            dill.dump(model_instance, f)
-    except Exception as e:
-        click.echo(f"Error saving model {model}: {e}")
+        # Assuming model_instance is your class instance
+        output_path = "data/trained_models/"
+        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+        try:
+            with open(f'{output_path}{output_file_name}', 'wb') as f:
+                click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
+                dill.dump(model_instance, f)
+        except Exception as e:
+            click.echo(f"Error saving model {model}: {e}")
 
-    if hasattr(model_instance, 'best_params'):
-        click.echo(f"Model hyperparameters: {model_instance.best_params()}")
+        if hasattr(model_instance, 'best_params'):
+            click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
 @click.command()
-@click.option('--model-files', prompt='Model file names',
-              help='List of trained trained_models (filenames without .pkl), separated by comma. ')
+@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
+                               'models will be evaluated. ',
+              default=None)
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default all metrics will be computed. ', default='mae,rmse,pcc')
-@click.option('--plots', help='List of plots to be computed, separated by comma. '
-                              'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.argument('test-file-name', type=str)
-@click.option('--prediction-horizon', type=int, default=60)
-def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horizon):
+                                'By default all metrics will be computed. ', default='mae,rmse,pcc,parkes_error_grid,'
+                                                                                     'clarke_error_grid')
+def calculate_metrics(models, metrics):
     """
-    This command is only capable of comparing metrics given one specific prediction horizon at a time, because
-    it only takes in one test file at a time. Hence, giving correct information about prediction horizon and
-    test file is crucial.
+    This command stores a report of the given metrics in data/reports/.
     """
-    if test_file_name.startswith("train"):
-        user_input_prompt("This file starts with 'train', and not 'test'. Are you sure you want to continue?")
+    trained_models_path = "data/trained_models/"
 
-    if str(prediction_horizon) not in test_file_name:
-        user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the input file name. "
-                          "Are you sure you want to continue?")
-
-    model_path = "data/trained_models/"
-    metric_results_path = "data/reports/"
-    plot_results_path = "data/figures/"
-    test_file_path = "data/processed/"
-
-    # Prepare a list of trained_models
-    trained_models = split_string(model_files)
+    if models is None:
+        models = helpers.list_files_in_directory(trained_models_path)
+    else:
+        models = helpers.split_string(models)
 
     # Prepare a list of metrics
-    metrics = split_string(metrics)
-
-    # Prepare a list of plots
-    plots = split_string(plots)
-
-    test_data = read_data_from_csv(test_file_path, test_file_name)
-    x_test = test_data.drop('target', axis=1)
-    y_test = test_data['target']
+    metrics = helpers.split_string(metrics)
 
     results = []
-    y_preds = []
     click.echo(f"Calculating metrics...")
-    for model_file in trained_models:
-        if str(prediction_horizon) not in model_file:
-            user_input_prompt(f"The prediction horizon '{str(prediction_horizon)}' is not in the model file name. "
-                              "Are you sure you want to continue?")
+    for model_file in models:
+        config_file_name, prediction_horizon = model_file.split('__')[1], int(model_file.split('__')[2].split('.')[0])
 
-        with open(model_path + model_file + '.pkl', 'rb') as f:
-            model_instance = dill.load(f)
+        model_config_manager = ModelConfigurationManager(config_file_name)
+        model_instance = helpers.get_trained_model(model_file)
+        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+        x_test = processed_data.drop('target', axis=1)
+        y_test = processed_data['target']
 
         y_pred = model_instance.predict(x_test)
-        y_preds.append(y_pred)
 
         for metric in metrics:
-            metric_module = importlib.import_module(f'glupredkit.metrics.{metric}')
-            if not issubclass(metric_module.Metric, BaseMetric):
-                raise click.ClickException(f"The selected metric '{metric}' must inherit from BaseMetric.")
-
+            metric_module = helpers.get_metric_module(metric)
             chosen_metric = metric_module.Metric()
             score = chosen_metric(y_test, y_pred)
             results.append({'Model': model_file, 'Metric': metric, 'Score': score})
 
     # Convert results to DataFrame and save as CSV
     df_results = pd.DataFrame(results)
+    metric_results_path = 'data/reports/'
     os.makedirs(metric_results_path, exist_ok=True)
-    results_file_name = f'{test_file_name}'
+    results_file_name = f'{datetime.now()}.csv'
     df_results.to_csv(metric_results_path + results_file_name, index=False)
 
     click.echo(
-        f"{metrics} for trained_models {model_files} are stored in '{metric_results_path}' as '{results_file_name}'")
+        f"{metrics} for trained_models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
 
+
+@click.command()
+@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
+                               'models will be evaluated. ', default=None)
+@click.option('--plots', help='List of plots to be computed, separated by comma. '
+                              'By default a scatter plot will be drawn. ', default='scatter_plot')
+@click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
+    , default=False)
+@click.option('--start-date', type=str,
+              help='Start date for the predictions. Default is the first sample in the test data. '
+                   'Format "dd-mm-yyyy/hh:mm"', default=None)
+@click.option('--end-date', type=str,
+              help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
+                   'Format "dd-mm-yyyy/hh:mm"', default=None)
+@click.option('--carbs', type=int,
+              help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
+              default=None)
+@click.option('--insulin', type=float,
+              help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
+              default=None)
+def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin):
+    """
+    This command draws the given plots and store them in data/figures/.
+
+    The "real_time" parameter indicates whether all test data (including when there is no true values) should be
+    included. This parameter allows for real-time plots, but is not compatible with all the plots.
+    """
+    # Prepare a list of plots
+    plots = helpers.split_string(plots)
+
+    if models is None:
+        models = helpers.list_files_in_directory('data/trained_models/')
+    else:
+        models = helpers.split_string(models)
+
+    click.echo(f"Calculating predictions...")
     models_data = []
-    for model_name, y_pred in zip(trained_models, y_preds):
+    for model_file in models:
+        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                            int(model_file.split('__')[2].split('.')[0]))
+
+        model_config_manager = ModelConfigurationManager(config_file_name)
+        model_instance = helpers.get_trained_model(model_file)
+        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
+                                                     insulin=insulin, start_date=start_date, end_date=end_date)
+
+        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
+        x_test = processed_data.drop('target', axis=1)
+        y_test = processed_data['target']
+
+        y_pred = model_instance.predict(x_test)
+
         model_data = {
-            'name': model_name,
-            'y_pred': y_pred
+            'name': f'{model_name} {prediction_horizon}-minutes PH',
+            'y_pred': y_pred,
+            'y_true': y_test,
+            'prediction_horizon': prediction_horizon,
+            'config': config_file_name,
+            'real_time': is_real_time,
+            'carbs': carbs,
+            'insulin': insulin,
         }
         models_data.append(model_data)
+
+    plot_results_path = 'data/figures/'
 
     # Draw plots
     click.echo(f"Drawing plots...")
@@ -332,17 +298,17 @@ def evaluate_model(model_files, metrics, plots, test_file_name, prediction_horiz
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
 
-        chosen_plot = plot_module.Plot(prediction_horizon)
-        chosen_plot(models_data, y_test)
+        chosen_plot = plot_module.Plot()
+        chosen_plot(models_data)
 
-    click.echo(f"{plots} for trained_models {trained_models} are stored in '{plot_results_path}'")
+    click.echo(f"{plots} for trained_models {models} are stored in '{plot_results_path}'")
 
 
 @click.command()
 @click.option('--use-mgdl', type=bool, help='Set whether to use mg/dL or mmol/L')
-def set_config(use_mgdl):
+def set_unit(use_mgdl):
     # Update the config
-    config_manager.use_mgdl = use_mgdl
+    unit_config_manager.use_mgdl = use_mgdl
     click.echo(f'Set unit to {"mg/dL" if use_mgdl else "mmol/L"}.')
 
 
@@ -350,10 +316,11 @@ def set_config(use_mgdl):
 cli = click.Group(commands={
     'setup_directories': setup_directories,
     'parse': parse,
-    'preprocess': preprocess,
+    'generate_config': generate_config,
     'train_model': train_model,
-    'evaluate_model': evaluate_model,
-    'set_config': set_config,
+    'calculate_metrics': calculate_metrics,
+    'draw_plots': draw_plots,
+    'set_unit': set_unit,
 })
 
 if __name__ == "__main__":
