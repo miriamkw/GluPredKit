@@ -18,7 +18,7 @@ setup(
     package_dir={package_name: package_name},
     long_description=readme,
     long_description_content_type="text/markdown",
-    python_requires='>=3.6',
+    python_requires='>=3.7, <3.10',
     license='MIT',
     include_package_data=True,
     install_requires=[
@@ -37,7 +37,7 @@ setup(
         "error-grids",
     ],
     package_data={
-        'glupredkit': ['config.json'],
+        'glupredkit': ['unit_config.json'],
     },
     entry_points={
         'console_scripts': [

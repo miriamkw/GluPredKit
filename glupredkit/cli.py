@@ -112,9 +112,9 @@ def parse(parser, username, password, start_date, file_path, end_date):
 @click.option('--test-size', prompt='Test size', help='Test size.')
 def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
                     test_size):
-    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons)]
-    num_features = helpers.split_string(num_features)
-    cat_features = helpers.split_string(cat_features)
+    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons.replace(' ', ''))]
+    num_features = helpers.split_string(num_features.replace(' ', ''))
+    cat_features = helpers.split_string(cat_features.replace(' ', ''))
 
     generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
                                  num_features, cat_features, float(test_size))
