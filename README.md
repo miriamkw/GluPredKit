@@ -46,7 +46,8 @@ Choose which one is relevant for you, and follow the instructions below.
 ### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
-Creating a virtual environment is optional, but recommended. Create a virtual environment with the command `python3 -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate`.
+Creating a virtual environment is optional, but recommended. Python version 3.7, 3.8 or 3.9 is required. 
+Create a virtual environment with the command `python3.8 -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate`.
 
 To set up the CLI, simply run the following command:
 
@@ -137,14 +138,15 @@ glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 0
 ```
 glupredkit generate_config 
 ```
-- `--file-name`: Give a file name to the configuration. Example: `all_features_24_time_lags`.
-- `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`.
-- `--preprocessor`: The name of the preprocessor that shall be used. Example: `basic`.
-- `--prediction-horizons`: A comma-separated list of prediction horizons used in model training, without spaces. Example: `30,60`. 
+- `--file-name`: Give a file name to the configuration. Example: `my_config`.
+- `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. Example: `df.csv`.
+- `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessor is:
+    - basic
+- `--prediction-horizons`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces. Example: `30,60`. 
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Example: `CGM,insulin,carbs`. 
 - `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
-- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing.
+- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing. Example: `0.25`. 
 
 #### Example
 Upon executing `glupredkit generate_config`, you will be sequentially prompted for each of the inputs above.
@@ -158,12 +160,23 @@ Upon executing `glupredkit generate_config`, you will be sequentially prompted f
 ```
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
-- `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`.
+- `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
+    - arx
+    - elastic_net
+    - gradient_boosting_trees
+    - huber
+    - lasso
+    - lstm
+    - random_forest
+    - ridge
+    - svr_linear
+    - svr_rbf
+    - tcn
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 
 #### Example
 ```
-glupredkit train_model ridge all_features_24_time_lags
+glupredkit train_model ridge my_config
 ```
 ---
 
@@ -175,11 +188,16 @@ glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
 ```
 
 - `--models` (Optional): List of trained model filenames from `data/trained_models/` (with .pkl), separated by comma. Default is all the models.
-- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is all the metrics.
+- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is all the metrics. The available metrics are:
+    - rmse
+    - mae
+    - pcc
+    - clarke_error_grid
+    - parkes_error_grid
 
 #### Example
 ```
-glupredkit calculate_metrics --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse
+glupredkit calculate_metrics --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse,mae
 ```
 ---
 
@@ -226,7 +244,7 @@ glupredkit set_unit --use-mgdl [True|False]
 
 #### Example
 ```
-glupredkit set_config --use-mgdl False
+glupredkit set_unit --use-mgdl False
 ```
 
 ---
