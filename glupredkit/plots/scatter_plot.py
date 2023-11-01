@@ -54,6 +54,8 @@ class Plot(BasePlot):
         file_path = "data/figures/"
         os.makedirs(file_path, exist_ok=True)
 
-        file_name = f'scatter_plot_{datetime.now()}.png'
+        timestamp = datetime.now().isoformat()
+        safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        file_name = f'scatter_plot_{safe_timestamp}.png'
         plt.savefig(file_path + file_name)
         plt.show()

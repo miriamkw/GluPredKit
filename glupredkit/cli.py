@@ -218,7 +218,11 @@ def calculate_metrics(models, metrics):
     df_results = pd.DataFrame(results)
     metric_results_path = 'data/reports/'
     os.makedirs(metric_results_path, exist_ok=True)
-    results_file_name = f'{datetime.now()}.csv'
+
+    timestamp = datetime.now().isoformat()
+    safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+    results_file_name = f'{safe_timestamp}.csv'
+
     df_results.to_csv(metric_results_path + results_file_name, index=False)
 
     click.echo(
