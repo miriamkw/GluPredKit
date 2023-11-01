@@ -71,8 +71,6 @@ def parse(parser, username, password, start_date, file_path, end_date):
     else:
         start_date = datetime.strptime(start_date, date_format)
 
-    # Perform parsing using the chosen parser
-
     # Ensure that the optional params match the parser
     if parser in ['tidepool', 'nightscout']:
         if username is None or password is None:
@@ -102,14 +100,15 @@ def parse(parser, username, password, start_date, file_path, end_date):
 @click.command()
 @click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
 @click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
-@click.option('--preprocessor', prompt='Preprocessor', help='Name of the preprocessor.')
-@click.option('--prediction-horizons', prompt='Prediction horizons (comma-separated without space)',
+@click.option('--preprocessor', prompt='Preprocessor (available: basic)', help='Name of the preprocessor.')
+@click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
               help='Comma-separated list of prediction horizons.')
 @click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
-@click.option('--num-features', prompt='Numerical features', help='Comma-separated list of numerical features.')
-@click.option('--cat-features', prompt='Categorical features', default='',
+@click.option('--num-features', prompt='Numerical features (a subset of column names from the input data file)',
+              help='Comma-separated list of numerical features.')
+@click.option('--cat-features', prompt='Categorical features (press enter if none)', default='',
               help='Comma-separated list of categorical features.')
-@click.option('--test-size', prompt='Test size', help='Test size.')
+@click.option('--test-size', prompt='Test size (float between 0 and 1. Example: 0.25)', help='Test size.')
 def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
                     test_size):
     prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons.replace(' ', ''))]
@@ -123,7 +122,18 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 
 @click.command()
-@click.argument('model')
+@click.argument('model', type=click.Choice(['arx',
+                                            'elastic_net',
+                                            'gradient_boosting_trees',
+                                            'huber',
+                                            'lasso',
+                                            'lstm',
+                                            'random_forest',
+                                            'ridge',
+                                            'svr_linear',
+                                            'svr_rbf',
+                                            'tcn'
+                                            ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
     """
@@ -177,8 +187,7 @@ def train_model(model, config_file_name):
                                'models will be evaluated. ',
               default=None)
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default all metrics will be computed. ', default='mae,rmse,pcc,parkes_error_grid,'
-                                                                                     'clarke_error_grid')
+                                'By default all metrics will be computed. ', default='mae,rmse,pcc,parkes_error_grid,clarke_error_grid')
 def calculate_metrics(models, metrics):
     """
     This command stores a report of the given metrics in data/reports/.
@@ -196,7 +205,8 @@ def calculate_metrics(models, metrics):
     results = []
     click.echo(f"Calculating metrics...")
     for model_file in models:
-        config_file_name, prediction_horizon = model_file.split('__')[1], int(model_file.split('__')[2].split('.')[0])
+        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                            int(model_file.split('__')[2].split('.')[0]))
 
         model_config_manager = ModelConfigurationManager(config_file_name)
         model_instance = helpers.get_trained_model(model_file)
@@ -212,7 +222,11 @@ def calculate_metrics(models, metrics):
             metric_module = helpers.get_metric_module(metric)
             chosen_metric = metric_module.Metric()
             score = chosen_metric(y_test, y_pred)
-            results.append({'Model': model_file, 'Metric': metric, 'Score': score})
+            results.append({'Model name': model_name,
+                            'Configuration': config_file_name,
+                            'Prediction horizon': prediction_horizon,
+                            'Metric': metric,
+                            'Score': score})
 
     # Convert results to DataFrame and save as CSV
     df_results = pd.DataFrame(results)
@@ -227,6 +241,8 @@ def calculate_metrics(models, metrics):
 
     click.echo(
         f"{metrics} for trained_models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
+
+    click.echo(df_results.to_string(index=False))
 
 
 @click.command()
