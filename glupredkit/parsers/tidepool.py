@@ -5,6 +5,7 @@ and return the data in a format that can be used as input to the blood glucose p
 from tidepool_data_science_project.makedata.tidepool_api import TidepoolAPI
 import datetime
 import pandas as pd
+from dateutil import parser
 from .base_parser import BaseParser
 
 
@@ -33,6 +34,7 @@ class Parser(BaseParser):
             if not df_glucose.empty:  # If blood glucose values in mmol/L, convert to mg/dL
                 if pd.json_normalize(glucose_data)[['units']].loc[0, 'units'] == 'mmol/L':
                     df_glucose['value'] = df_glucose['value'] * 18.0182
+            df_glucose.time = df_glucose.time.apply(self.custom_date_parser)
             df_glucose.time = pd.to_datetime(df_glucose.time, errors='coerce')
             df_glucose.rename(columns={"time": "date", "value": "CGM"}, inplace=True)
             df_glucose.sort_values(by='date', inplace=True, ascending=True)
@@ -132,11 +134,24 @@ class Parser(BaseParser):
             elif data['type'] == 'physicalActivity':
                 workout_data.append(data)
             else:
-                print('Unknown type is not yet supported: ', data['type'])
+                print('Unknown type is not supported: ', data['type'])
 
         return glucose_data, bolus_data, basal_data, carb_data, workout_data
 
     def add_activity_states(self, start_date, duration, workout_name, df):
         end_date = start_date + pd.to_timedelta(duration, unit='s')
         df['activity_state'][df.index.to_series().between(start_date, end_date)] = workout_name
+
+    # Your custom parser function
+    def custom_date_parser(self, date_str):
+        try:
+            # Try parsing with the first format
+            return parser.parse(date_str)
+        except ValueError:
+            # If the first format fails, try the second format
+            try:
+                return parser.parse(date_str, fuzzy=True)
+            except ValueError:
+                # If second format also fails, return NaT
+                return pd.NaT
 
