@@ -31,7 +31,7 @@ class Parser(BaseParser):
     def __call__(self, start_date, end_date, file_path: str):
         tree = ET.parse(file_path)
         root = tree.getroot()
-        record_list = [x.attrib for x in root('Record')]
+        record_list = [x.attrib for x in root.iter('Record')]
         data = pd.DataFrame(record_list)
 
         # Dates from string to datetime
