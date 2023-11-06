@@ -35,16 +35,16 @@ def setup_directories():
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health']), help='Choose a parser',
-              required=True)
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm']),
+              help='Choose a parser', required=True)
 @click.option('--username', type=str, required=False)
 @click.option('--password', type=str, required=False)
 @click.option('--start-date', type=str,
               help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
 @click.option('--file-path', type=str, required=False)
-@click.option('--end-date', type=str,
-              help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
-def parse(parser, username, password, start_date, file_path, end_date):
+@click.option('--end-date', type=str, help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
+@click.option('--output-file-name', type=str, help='The file name for the output.')
+def parse(parser, username, password, start_date, file_path, end_date, output_file_name):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -77,9 +77,9 @@ def parse(parser, username, password, start_date, file_path, end_date):
             raise ValueError(f"{parser} parser requires that you provide --username and --password") 
         else:
             parsed_data = chosen_parser(start_date, end_date, username=username, password=password)
-    elif parser in ['apple_health']:
+    elif parser in ['apple_health', 'ohio_t1dm']:
         if file_path is None:
-            raise ValueError(f"{parser} parser requires that you provide --filename")
+            raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
             parsed_data = chosen_parser(start_date, end_date, file_path=file_path)
     else:
@@ -88,8 +88,10 @@ def parse(parser, username, password, start_date, file_path, end_date):
     output_path = 'data/raw/'
     date_format = "%d-%m-%Y"
 
-    file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format)
-                 + '.csv')
+    if output_file_name:
+        file_name = output_file_name + '.csv'
+    else:
+        file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format) + '.csv')
 
     click.echo("Storing data as CSV...")
     helpers.store_data_as_csv(parsed_data, output_path, file_name)

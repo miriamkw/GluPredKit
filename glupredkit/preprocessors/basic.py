@@ -23,6 +23,7 @@ class Preprocessor(BasePreprocessor):
         if self.prediction_horizon % 5 != 0:
             raise ValueError("Prediction horizon must be divisible by 5.")
         df = df.copy()
+
         df.loc[:, 'target'] = df['CGM'].shift(-target_index)
 
         # Interpolation using forward fill

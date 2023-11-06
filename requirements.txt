@@ -1,6 +1,6 @@
 # opsb-pyloopkit==0.1.0 # This is the original pyloopkit
-matplotlib>=3.6.3
-pandas>=1.5.3
+matplotlib
+pandas
 scikit-learn
 xgboost
 tensorflow

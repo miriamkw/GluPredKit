@@ -4,7 +4,6 @@ the same time grid in a dataframe.
 """
 from .base_parser import BaseParser
 import xml.etree.ElementTree as ET
-import numpy as np
 import pandas as pd
 
 
@@ -25,7 +24,6 @@ def get_data_frame_for_type(data, type, name):
     return df
 
 
-# TODO: Refactor base_parser and CLI to be more flexible for parsers
 class Parser(BaseParser):
     def __init__(self):
         super().__init__()

@@ -47,7 +47,8 @@ Choose which one is relevant for you, and follow the instructions below.
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
 Creating a virtual environment is optional, but recommended. Python version 3.7, 3.8 or 3.9 is required. Create a 
-virtual environment with the command `python -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate`.
+virtual environment with the command `python -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate` (Mac) 
+or `.glupredkit_venv\Scripts\activate` (Windows).
 
 To set up the CLI, simply run the following command:
 
@@ -115,14 +116,15 @@ The following figure is an overview over all the CLI commands and how they inter
 If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
 
 ```
-glupredkit parse --parser [tidepool|nightscout|apple_health] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
+glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
 ```
-- `--parser`: Choose a parser between `tidepool`, `nightscout` or `apple_health`.
+- `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health` or `ohio_t1dm`.
 - `--username` (Optional): Your username for the data source.
 - `--password` (Optional): Your password for the data source.
 - `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
+- `--output-file-name` (Optional): The filename for the output file after parsing.
 
 #### Example
 
