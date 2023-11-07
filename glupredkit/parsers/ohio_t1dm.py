@@ -1,5 +1,5 @@
 """
-The Apple Health parser is processing the raw .xml data from Apple Health export and returning the data merged into
+The Ohio T1DM parser is processing the raw .xml data from the Ohio T1DM datasets and returning the data merged into
 the same time grid in a dataframe.
 """
 from .base_parser import BaseParser
@@ -25,11 +25,12 @@ class Parser(BaseParser):
 
         # Resampling all datatypes into the same time-grid
         df = dataframes['glucose_level'].copy()
+
         df['ts'] = pd.to_datetime(df['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)
         df.set_index('date', inplace=True)
-        df = df.resample('5T', label='right').mean()
+        df = df.resample('5T', label='right').mean()#.ffill(limit=1)
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
@@ -72,7 +73,7 @@ class Parser(BaseParser):
                 start_date = row['ts_begin']  # Assuming the column name in df_temp_basal is 'start_date'
                 end_date = row['ts_end']  # Assuming the column name in df_temp_basal is 'end_date'
                 value = row['value']
-                df_basal.loc[start_date:end_date] = value
+                df_basal.loc[start_date:end_date] = float(value)
 
         # Convert basal rates from U/hr to U
         df_basal['basal'] = pd.to_numeric(df_basal['basal'], errors='coerce')
