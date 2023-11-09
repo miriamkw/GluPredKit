@@ -7,7 +7,7 @@ NOTE: THIS PREPROCESSOR IS NOT WORKING AS INTENDED! Hence, it is not added to th
 
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, Normalizer
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 
 
 # TODO: ADD, IF NOT TRAINING DATA, DONT INCLUDE SAMPLES ADDED BY IMPUTATION
@@ -19,12 +19,14 @@ class Preprocessor(BasePreprocessor):
 
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
+        df = df.copy()
 
-        # Check if any numerical features have NaN values before imputation
-        df['imputed'] = df[self.numerical_features].isna().any(axis=1)
+        # Check if any numerical features have NaN values before imputation, add a column "flag"
+        df.loc[:, 'imputed'] = df.loc[:, self.numerical_features].isna().any(axis=1)
 
-        # Interpolation using forward fill
-        df[self.numerical_features] = df[self.numerical_features].interpolate(method='polynomial', order=2)
+        # Interpolation using a nonlinear curve, without too much curvature
+        df = df.sort_index()
+        df[self.numerical_features] = df[self.numerical_features].interpolate(method='akima')
 
         # Add target column
         target_index = self.prediction_horizon // 5
@@ -37,7 +39,7 @@ class Preprocessor(BasePreprocessor):
 
         # Transform columns
         if self.numerical_features:
-            scaler = Normalizer()
+            scaler = MinMaxScaler(feature_range=(0, 1))
             df.loc[:, self.numerical_features] = scaler.fit_transform(df.loc[:, self.numerical_features])
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap

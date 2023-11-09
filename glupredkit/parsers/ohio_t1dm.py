@@ -25,12 +25,11 @@ class Parser(BaseParser):
 
         # Resampling all datatypes into the same time-grid
         df = dataframes['glucose_level'].copy()
-
         df['ts'] = pd.to_datetime(df['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)
         df.set_index('date', inplace=True)
-        df = df.resample('5T', label='right').mean()#.ffill(limit=1)
+        df = df.resample('5T', label='right').last()
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
@@ -51,6 +50,8 @@ class Parser(BaseParser):
         df_bolus = df_bolus[['date', 'bolus']]
         df_bolus.set_index('date', inplace=True)
         df_bolus = df_bolus.resample('5T', label='right').sum().fillna(value=0)
+        df = pd.merge(df, df_bolus, on="date", how='outer')
+        df['bolus'] = df['bolus'].fillna(value=0.0)
 
         # Basal rates
         df_basal = dataframes['basal'].copy()
@@ -77,13 +78,8 @@ class Parser(BaseParser):
 
         # Convert basal rates from U/hr to U
         df_basal['basal'] = pd.to_numeric(df_basal['basal'], errors='coerce')
-        df_basal['basal'] = df_basal['basal'] / 12
-        df_basal.rename(columns={'basal': 'insulin'}, inplace=True)
-        df_bolus.rename(columns={'bolus': 'insulin'}, inplace=True)
-
-        df_insulin = df_basal.add(df_bolus, fill_value=0)
-        df = pd.merge(df, df_insulin, on="date", how='outer')
-        df['insulin'] = df['insulin'].fillna(value=0.0)
+        df = pd.merge(df, df_basal, on="date", how='outer')
+        df['basal'] = df['basal'].fillna(value=0.0)
 
         # Heart rate
         df_heartrate = dataframes['basis_heart_rate'].copy()
@@ -91,7 +87,7 @@ class Parser(BaseParser):
         df_heartrate['value'] = pd.to_numeric(df_heartrate['value'], errors='coerce')
         df_heartrate.rename(columns={'ts': 'date', 'value': 'heartrate'}, inplace=True)
         df_heartrate.set_index('date', inplace=True)
-        df_heartrate = df_heartrate.resample('5T', label='right').mean()
+        df_heartrate = df_heartrate.resample('5T', label='right').last()
         df = pd.merge(df, df_heartrate, on="date", how='outer')
 
         return df
