@@ -118,8 +118,8 @@ If you provide your own dataset, make sure that the dataset and all datatypes ar
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
 ```
 - `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
-- `--username` (Optional): Your username for the data source.
-- `--password` (Optional): Your password for the data source.
+- `--username` (Optional): Your username for the data source (for nightscout, use url).
+- `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
 - `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser and ohio_t1dm).
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
