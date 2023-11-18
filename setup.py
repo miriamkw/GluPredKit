@@ -35,6 +35,7 @@ setup(
         "tidepool-data-science-project",
         "python-nightscout",
         "error-grids",
+        "torch"
     ],
     package_data={
         'glupredkit': ['unit_config.json'],

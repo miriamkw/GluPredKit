@@ -4,6 +4,7 @@ This Temporal Convolutional Network (TCN) should be used together with data prep
 import numpy as np
 import tensorflow as tf
 import ast
+from datetime import datetime
 from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 from sklearn.model_selection import TimeSeriesSplit
@@ -17,7 +18,10 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
         # The recommended approach for saving and loading Keras models is to use Keras's built-in .save() and
         # Using legacy .h5 file type because .keras threw error with M1 Mac chip
-        self.model_path = f"data/.keras_models/tcn_ph-{prediction_horizon}.h5"
+        # Using current date in the file name to remove chances of equal file names
+        timestamp = datetime.now().isoformat()
+        safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        self.model_path = f"data/.keras_models/tcn_ph-{prediction_horizon}_{safe_timestamp}.h5"
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
@@ -30,13 +34,13 @@ class Model(BaseModel):
         input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
 
         # TCN layer
-        tcn_out = TCN(nb_filters=50, return_sequences=False)(input_layer)
+        tcn_out = (TCN(kernel_size=4, dropout_rate=0.5, return_sequences=False)(input_layer))
 
         output_layer = Dense(1)(tcn_out)
 
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
         model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.999, beta_2=0.999, clipnorm=1.0),
+            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, clipnorm=1.0),
             loss='mse')
 
         # Callbacks
@@ -45,14 +49,22 @@ class Model(BaseModel):
 
         # Split the data into 5 folds
         tscv = TimeSeriesSplit(n_splits=5)
-
+        train_X, train_Y = [], []
         # Use first 4 folds for training and the last fold for validation
-        for train_idx, val_idx in tscv.split(sequences):
-            train_X, val_X = sequences[train_idx], sequences[val_idx]
-            train_Y, val_Y = targets[train_idx], targets[val_idx]
+        for fold, (train_idx, val_idx) in enumerate(tscv.split(sequences)):
+            if fold < 4:  # Accumulate the first 4 folds for training
+                train_X.append(sequences[train_idx])
+                train_Y.append(targets[train_idx])
+            else:  # Use the 5th fold for validation
+                val_X, val_Y = sequences[val_idx], targets[val_idx]
 
-            model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
-                      callbacks=[early_stopping, reduce_lr])
+        # Convert lists to numpy arrays if necessary
+        train_X = np.concatenate(train_X, axis=0)
+        train_Y = np.concatenate(train_Y, axis=0)
+
+        # Fit the model with early stopping and reduce LR on plateau
+        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20,  batch_size=1,
+                  callbacks=[early_stopping, reduce_lr])
 
         model.save(self.model_path)
 

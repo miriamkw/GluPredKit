@@ -11,8 +11,28 @@ class Parser(BaseParser):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, start_date, end_date, file_path: str):
-        tree = ET.parse(file_path)
+    def __call__(self, file_path: str, subject_id: str, *args):
+        """
+        file_path -- the file path to where the test- and train-folder is located.
+        id -- the id of the subject.
+        """
+        training_tree = ET.parse(file_path + f'train/{subject_id}-ws-training.xml')
+        testing_tree = ET.parse(file_path + f'test/{subject_id}-ws-testing.xml')
+
+        df_training = self.resample_data(training_tree)
+        df_training['is_test'] = False
+
+        df_testing = self.resample_data(testing_tree)
+        df_testing['is_test'] = True
+
+        merged_df = pd.concat([df_testing, df_training], ignore_index=False)
+
+        # Sort the merged DataFrame
+        merged_df = merged_df.sort_index()
+
+        return merged_df
+
+    def resample_data(self, tree):
         root = tree.getroot()
 
         dataframes = {}
@@ -90,4 +110,7 @@ class Parser(BaseParser):
         df_heartrate = df_heartrate.resample('5T', label='right').last()
         df = pd.merge(df, df_heartrate, on="date", how='outer')
 
+        df = df.sort_index()
+
         return df
+

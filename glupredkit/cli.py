@@ -5,6 +5,7 @@ import os
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
+import torch
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -42,9 +43,10 @@ def setup_directories():
 @click.option('--start-date', type=str,
               help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
 @click.option('--file-path', type=str, required=False)
+@click.option('--subject-id', type=str, required=False)
 @click.option('--end-date', type=str, help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
 @click.option('--output-file-name', type=str, help='The file name for the output.')
-def parse(parser, username, password, start_date, file_path, end_date, output_file_name):
+def parse(parser, username, password, start_date, file_path, subject_id, end_date, output_file_name):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -77,13 +79,18 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
             raise ValueError(f"{parser} parser requires that you provide --username and --password") 
         else:
             parsed_data = chosen_parser(start_date, end_date, username=username, password=password)
-    elif parser in ['apple_health', 'ohio_t1dm']:
+    elif parser in ['apple_health']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
             parsed_data = chosen_parser(start_date, end_date, file_path=file_path)
+    elif parser in ['ohio_t1dm']:
+        if file_path is None or subject_id is None:
+            raise ValueError(f"{parser} parser requires that you provide --file-path and --subject-id")
+        else:
+            parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id)
     else:
-        raise ValueError("unrecognized parser: '{parser}'")
+        raise ValueError(f"unrecognized parser: '{parser}'")
     
     output_path = 'data/raw/'
     date_format = "%d-%m-%Y"
@@ -102,7 +109,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 @click.command()
 @click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
 @click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
-@click.option('--preprocessor', prompt='Preprocessor (available: basic)', help='Name of the preprocessor.')
+@click.option('--preprocessor', prompt='Preprocessor (available: basic, ohio_t1dm)', help='Name of the preprocessor.')
 @click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
               help='Comma-separated list of prediction horizons.')
 @click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
@@ -130,11 +137,13 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'huber',
                                             'lasso',
                                             'lstm',
+                                            'lstm_pytorch',
                                             'random_forest',
                                             'ridge',
                                             'svr_linear',
                                             'svr_rbf',
-                                            'tcn'
+                                            'tcn',
+                                            'tcn_pytorch'
                                             ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
@@ -173,6 +182,7 @@ def train_model(model, config_file_name):
         # Assuming model_instance is your class instance
         output_path = "data/trained_models/"
         output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+
         try:
             with open(f'{output_path}{output_file_name}', 'wb') as f:
                 click.echo(f"Saving model {model} to {output_path}{output_file_name}...")

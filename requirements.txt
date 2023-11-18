@@ -12,3 +12,4 @@ dill
 tidepool-data-science-project
 python-nightscout
 error-grids
+torch
