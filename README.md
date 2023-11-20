@@ -1,8 +1,7 @@
 # Blood Glucose Prediction-Kit
 
-> **USER TESTING**
-> 
-> If you want to participate in user testing of GluPredKit, and help to shape the further development, send an email to miriam.k.wolff@ntnu.no. Do not hesitate with reaching out if you have any questions.
+> [!NOTE]  
+> **USER TESTING:** If you want to participate in user testing of GluPredKit, and help to shape the further development, send an email to miriam.k.wolff@ntnu.no. Do not hesitate with reaching out if you have any questions.
 
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
 glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI).
