@@ -115,19 +115,19 @@ The following figure is an overview over all the CLI commands and how they inter
 If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
 
 ```
-glupredkit parse --parser [tidepool|nightscout|apple_health] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
+glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
 ```
-- `--parser`: Choose a parser between `tidepool`, `nightscout` or `apple_health`.
-- `--username` (Optional): Your username for the data source.
-- `--password` (Optional): Your password for the data source.
-- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
+- `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
+- `--username` (Optional): Your username for the data source (for nightscout, use url).
+- `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
+- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser and ohio_t1dm).
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 
 #### Example
 
 ```
-glupredkit parse --parser tidepool johndoe@example.com mypassword --start-date 01-09-2023 --end-date 30-09-2023
+glupredkit parse --parser tidepool kari.nordmann@example.com mypassword --start-date 01-09-2023 --end-date 30-09-2023
 ```
 
 ---
@@ -197,7 +197,7 @@ glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
 
 #### Example
 ```
-glupredkit calculate_metrics --model-files ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --metrics rmse,mae
+glupredkit calculate_metrics --models ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --metrics rmse,mae
 ```
 ---
 
