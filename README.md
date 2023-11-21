@@ -1,5 +1,8 @@
 # Blood Glucose Prediction-Kit
 
+> [!NOTE]  
+> **USER TESTING:** If you want to participate in user testing of GluPredKit, and help to shape the further development, send an email to miriam.k.wolff@ntnu.no. Do not hesitate with reaching out if you have any questions.
+
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
 glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI).
 
@@ -123,9 +126,10 @@ If you provide your own dataset, make sure that the dataset and all datatypes ar
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
 ```
-- `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health` or `ohio_t1dm`.
-- `--username` (Optional): Your username for the data source.
-- `--password` (Optional): Your password for the data source.
+
+- `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
+- `--username` (Optional): Your username for the data source (for nightscout, use url).
+- `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
 - `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
     - For the Ohio T1DM parser, the file path is the folder where the `test` and `train` folder are located. Example: `data/raw/`. 
 - `--subject-id`: (Optional): The subject id for the data that shall be parsed (required for the Ohio T1DM parser).
@@ -212,7 +216,7 @@ glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
 
 #### Example
 ```
-glupredkit calculate_metrics --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-60 --metrics rmse,mae
+glupredkit calculate_metrics --models ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --metrics rmse,mae
 ```
 ---
 
@@ -222,8 +226,11 @@ glupredkit calculate_metrics --model-files ridge_ph-60,arx_ph-60,svr_linear_ph-6
 ```
 glupredkit draw_plots
 ```
-- `--models`: Specify the list of trained models you'd like to visualize. Input model names separated by commas, without the ".pkl" extension. By default, all available models will be evaluated.
-- `--plots`: Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default.
+- `--models`: Specify the list of trained models you'd like to visualize. Input model names separated by commas, with the ".pkl" extension. By default, all available models will be evaluated.
+- `--plots`: Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
+    - scatter_plot
+    - trajectories
+    - one_prediction
 - `--is-real-time`: A boolean flag indicating whether to consider test data without matching true measurements. By default, it is set to False.
 - `--start-date`: The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
 - `--end-date`: This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
@@ -232,7 +239,7 @@ glupredkit draw_plots
 
 #### Example
 ```
-glupredkit draw_plots --models model1,model2 --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --models ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
 
 ### Real-Time Prediction Plots
