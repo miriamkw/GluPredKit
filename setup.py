@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 project_name = "GluPredKit"
-version = "0.1.1"
+version = "0.1.6"
 author = "Miriam K. Wolff"
 author_email = "miriamkwolff@outlook.com"
 package_name = "glupredkit"  # The package name on pip install
@@ -22,8 +22,8 @@ setup(
     license='MIT',
     include_package_data=True,
     install_requires=[
-        "matplotlib>=3.6.3",
-        "pandas>=1.5.3",
+        "matplotlib",
+        "pandas",
         "scikit-learn",
         "xgboost",
         "tensorflow",
@@ -35,6 +35,7 @@ setup(
         "tidepool-data-science-project",
         "python-nightscout",
         "error-grids",
+        "torch"
     ],
     package_data={
         'glupredkit': ['unit_config.json'],

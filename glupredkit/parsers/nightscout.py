@@ -13,12 +13,12 @@ class Parser(BaseParser):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, start_date, end_date, nightscout_url: str, api_secret: str):
+    def __call__(self, start_date, end_date, username: str, password: str):
         """
-        Tidepool API ignores time of day in the dates and will always fetch all data from a specific date
+        In the nighscout parser, the username is the nightscout URL, and the password is the API key.
         """
         try:
-            api = nightscout.Api(nightscout_url, api_secret=api_secret)
+            api = nightscout.Api(username, api_secret=password)
 
             api_start_date = start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
             api_end_date = end_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
@@ -113,6 +113,7 @@ class Parser(BaseParser):
         except ClientResponseError as error:
             raise RuntimeError("Received ClientResponseError") from error
         except (ClientError, ClientConnectorError, TimeoutError, OSError) as error:
-            raise RuntimeError("Received client error or timeout") from error
+            raise RuntimeError("Received client error or timeout. Make sure that the username (nightscout URL) and "
+                               "passoword (API key) is correct.") from error
         except Exception as e:
             raise RuntimeError(f"Error fetching data: {str(e)}")

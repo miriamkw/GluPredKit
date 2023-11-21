@@ -12,6 +12,11 @@ framework.
 <!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png) -->
 ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png)
 
+#### GluPredKit YouTube-Tutorial
+
+[![GluPredKit YouTube-Tutorial](https://img.youtube.com/vi/GMu_Om1gTsk/0.jpg)](https://www.youtube.com/watch?v=GMu_Om1gTsk)
+
+
 ## Table of Contents
 1. [Setup and Installation](#setup-and-installation)
    - [Regular users: Install using pip](#regular-users-install-using-pip)
@@ -49,8 +54,9 @@ Choose which one is relevant for you, and follow the instructions below.
 ### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
-Creating a virtual environment is optional, but recommended. Python version 3.7, 3.8 or 3.9 is required. 
-Create a virtual environment with the command `python -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate` (Mac) or `.glupredkit_venv\Scripts\activate` (Windows).
+Creating a virtual environment is optional, but recommended. Python version 3.7, 3.8 or 3.9 is required. Create a 
+virtual environment with the command `python -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate` (Mac) 
+or `.glupredkit_venv\Scripts\activate` (Windows).
 
 To set up the CLI, simply run the following command:
 
@@ -83,7 +89,7 @@ The command-line tool is designed to streamline the end-to-end process of data h
 This is the folder where the datasets, models and results will be stored.
 3) Set up the necessary directories for the GluPredKit CLI by running the following command:
    * For regular users: `glupredkit setup_directories`
-   * For developers: `python3 -m glupredkit.cli setup_directories`
+   * For developers: `python -m glupredkit.cli setup_directories`
 
 You should now have the following file structure in your desired folder:
    ```
@@ -120,17 +126,24 @@ If you provide your own dataset, make sure that the dataset and all datatypes ar
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
 ```
+
 - `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
 - `--username` (Optional): Your username for the data source (for nightscout, use url).
 - `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
-- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser and ohio_t1dm).
+- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
+    - For the Ohio T1DM parser, the file path is the folder where the `test` and `train` folder are located. Example: `data/raw/`. 
+- `--subject-id`: (Optional): The subject id for the data that shall be parsed (required for the Ohio T1DM parser).
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
+- `--output-file-name` (Optional): The filename for the output file after parsing, without file extension.
 
 #### Example
 
 ```
-glupredkit parse --parser tidepool kari.nordmann@example.com mypassword --start-date 01-09-2023 --end-date 30-09-2023
+glupredkit parse --parser tidepool --username johndoe@example.com --password mypassword --start-date 01-09-2023 --end-date 30-09-2023
+glupredkit parse --parser nightscout --username https://my_nightscout.net/ --password API_KEY --start-date 01-09-2023 --end-date 30-09-2023
+glupredkit parse --apple_health --file-path data/raw/export.xml --start-date 01-01-2023
+glupredkit parse --parser ohio_t1dm --file-path data/raw/ --subject-id 559
 ```
 
 ---
@@ -143,13 +156,14 @@ glupredkit generate_config
 ```
 - `--file-name`: Give a file name to the configuration. Example: `my_config`.
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. Example: `df.csv`.
-- `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessor is:
+- `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
     - basic
+    - ohio_t1dm
 - `--prediction-horizons`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces. Example: `30,60`. 
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Example: `CGM,insulin,carbs`. 
 - `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
-- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing. Example: `0.25`. 
+- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing. Example: `0.25`. Note that for the Ohio T1DM dataset the test-size is automatically going to use the original separation between train and test data.
 
 #### Example
 Upon executing `glupredkit generate_config`, you will be sequentially prompted for each of the inputs above.
@@ -170,11 +184,13 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
     - huber
     - lasso
     - lstm
+    - lstm_pytorch
     - random_forest
     - ridge
     - svr_linear
     - svr_rbf
     - tcn
+    - tcn_pytorch (https://github.com/locuslab/TCN/tree/master)
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 
 #### Example
