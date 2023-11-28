@@ -207,12 +207,16 @@ glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
 ```
 
 - `--models` (Optional): List of trained model filenames from `data/trained_models/` (with .pkl), separated by comma. Default is all the models.
-- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is all the metrics. The available metrics are:
-    - rmse
-    - mae
-    - pcc
-    - clarke_error_grid
-    - parkes_error_grid
+- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is RMSE. The available metrics are:
+    - **Root mean squared error:** rmse
+    - **Glucose-specific root mean squared error:** grmse (https://pubmed.ncbi.nlm.nih.gov/22275716/)
+    - **Mean absolute error:** mae
+    - **Mean error:** me
+    - **Mean relative error:** mre
+    - **Mean absolute relative difference:** mare
+    - **Pearsons correlation coefficient:** pcc
+    - **Zones in Clarke error grid:** clarke_error_grid
+    - **Zones in Parkes error grid:** parkes_error_grid
 
 #### Example
 ```
