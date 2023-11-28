@@ -199,7 +199,7 @@ def train_model(model, config_file_name):
                                'models will be evaluated. ',
               default=None)
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default all metrics will be computed. ', default='mae,rmse,pcc,parkes_error_grid,clarke_error_grid')
+                                'By default RMSE will be computed. ', default='rmse')
 def calculate_metrics(models, metrics):
     """
     This command stores a report of the given metrics in data/reports/.
