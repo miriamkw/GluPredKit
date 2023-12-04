@@ -103,12 +103,13 @@ class Parser(BaseParser):
 
         # Heart rate
         df_heartrate = dataframes['basis_heart_rate'].copy()
-        df_heartrate['ts'] = pd.to_datetime(df_heartrate['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
-        df_heartrate['value'] = pd.to_numeric(df_heartrate['value'], errors='coerce')
-        df_heartrate.rename(columns={'ts': 'date', 'value': 'heartrate'}, inplace=True)
-        df_heartrate.set_index('date', inplace=True)
-        df_heartrate = df_heartrate.resample('5T', label='right').last()
-        df = pd.merge(df, df_heartrate, on="date", how='outer')
+        if not df_heartrate.empty:
+            df_heartrate['ts'] = pd.to_datetime(df_heartrate['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+            df_heartrate['value'] = pd.to_numeric(df_heartrate['value'], errors='coerce')
+            df_heartrate.rename(columns={'ts': 'date', 'value': 'heartrate'}, inplace=True)
+            df_heartrate.set_index('date', inplace=True)
+            df_heartrate = df_heartrate.resample('5T', label='right').last()
+            df = pd.merge(df, df_heartrate, on="date", how='outer')
 
         df = df.sort_index()
 
