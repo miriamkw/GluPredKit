@@ -16,6 +16,11 @@ class Plot(BasePlot):
         #TODO: Predict trajectories when the models with different prediction horizons have the same config.
         """
 
+        font = {'family': 'normal',
+                'size': 22}
+
+        plt.rc('font', **font)
+
         def on_hover(event):
             if event.inaxes == ax:
                 for hover_line in lines:
@@ -23,7 +28,7 @@ class Plot(BasePlot):
                     if contains:
                         hover_line.set_alpha(1.0)
                     else:
-                        hover_line.set_alpha(0.2)
+                        hover_line.set_alpha(1.0)
                 fig.canvas.draw_idle()
 
         if unit_config_manager.use_mgdl:

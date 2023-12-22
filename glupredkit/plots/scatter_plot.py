@@ -17,6 +17,11 @@ class Plot(BasePlot):
         models_data: A list of dictionaries containing the model name, y_true, and y_pred.
                     Example: [{'name': 'model1', 'y_pred': [...]}, ...]
         """
+        font = {'family': 'normal',
+                'size': 22}
+
+        plt.rc('font', **font)
+
         # Define unique markers for scatter plot
         markers = itertools.cycle(('o', 's', '^', 'v', 'D', '<', '>'))
 

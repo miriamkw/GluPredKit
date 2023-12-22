@@ -19,7 +19,7 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__alpha': [0.0001]
+            'regressor__alpha': [0.00001, 0.0001, 0.001, 0.01]
         }
 
         # Define GridSearchCV

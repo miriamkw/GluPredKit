@@ -1,12 +1,14 @@
 import numpy as np
 import tensorflow as tf
 import ast
+import json
 from datetime import datetime
-from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input
+from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input, InputLayer
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
+from keras.models import Sequential
 from sklearn.model_selection import TimeSeriesSplit
 from .base_model import BaseModel
-from glupredkit.helpers.tf_keras import process_data
+from glupredkit.helpers.neural_networks import process_data
 
 
 class Model(BaseModel):
@@ -21,22 +23,46 @@ class Model(BaseModel):
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
-        targets = y_train.tolist()
+        targets = y_train.tolist
 
         sequences = np.array(sequences)
         targets = np.array(targets)
 
-        # Model architecture
-        input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
-        lstm = LSTM(50, return_sequences=True)(input_layer)
-        lstm = LSTM(50, return_sequences=True)(lstm)
-        lstm = LSTM(50, return_sequences=False)(lstm)
-        output_layer = Dense(1)(lstm)
+        print("first el: ", sequences[-1])
+        print(sequences.shape)
+        # TODO: I should maybe adjust this when more features, to treat seperate features differently
 
+        # Model architecture
+        lstm = Sequential()
+        lstm.add(InputLayer(input_shape=(sequences.shape[1], sequences.shape[2])))
+        #lstm.add(LSTM(50, input_shape=(sequences.shape[1], sequences.shape[2]),  return_sequences=True))
+        lstm.add(LSTM(50, return_sequences=True))
+        lstm.add(LSTM(50, return_sequences=True))
+        lstm.add(LSTM(50, return_sequences=False))
+        lstm.add(Dense(1))  # Output layer
+        """
+        lstm = Sequential()
+        lstm.add(LSTM(200, activation='relu', input_shape=(sequences.shape[1], sequences.shape[2])))
+        lstm.add(Dense(100, activation='relu'))
+        lstm.add(Dense(sequences.shape[1]))
+        """
+
+        """
+        lstm = Sequential()
+        lstm.add(InputLayer(input_shape=sequences.shape[1]))
+        lstm.add(Dense(64, activation='relu'))  # Example hidden layer
+        lstm.add(Dense(1))  # Output layer
+        """
+
+        """
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
-        model.compile(
-            optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, clipnorm=1.0),
-            loss='mse')
+        """
+
+        # lstm.compile(
+        #    optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, clipnorm=1.0),
+        #    loss='mse')
+
+        lstm.compile(optimizer='adam', loss='mean_squared_error')  # Compile model
 
         # Callbacks
         early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
@@ -50,6 +76,7 @@ class Model(BaseModel):
         for fold, (train_idx, val_idx) in enumerate(tscv.split(sequences)):
             if fold < 4:  # Accumulate the first 4 folds for training
                 train_X.append(sequences[train_idx])
+                print(targets)
                 train_Y.append(targets[train_idx])
             else:  # Use the 5th fold for validation
                 val_X, val_Y = sequences[val_idx], targets[val_idx]
@@ -59,10 +86,10 @@ class Model(BaseModel):
         train_Y = np.concatenate(train_Y, axis=0)
 
         # Fit the model with early stopping and reduce LR on plateau
-        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
+        lstm.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
                   callbacks=[early_stopping, reduce_lr])
 
-        model.save(self.model_path)
+        lstm.save(self.model_path)
 
         return self
 

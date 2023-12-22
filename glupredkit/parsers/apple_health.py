@@ -5,6 +5,7 @@ the same time grid in a dataframe.
 from .base_parser import BaseParser
 import xml.etree.ElementTree as ET
 import pandas as pd
+import numpy as np
 
 
 def get_data_frame_for_type(data, type, name):
@@ -127,4 +128,85 @@ class Parser(BaseParser):
         # Add hour of day
         df['hour'] = df.index.hour
 
+        # Constants for insulin
+        insulin_activity_time = 360
+        insulin_peak_activity_time = 75
+        insulin_delay_time = 10
+
+        # Absorbed insulin between the previous measurement and the current one
+        df['absorbed_insulin'] = df.apply(lambda x: get_absorbed_substance(df['insulin'], x.name,
+                                                                           insulin_peak_activity_time,
+                                                                           insulin_activity_time, insulin_delay_time),
+                                          axis=1)
+
+        # Constants for carbohydrates
+        carb_activity_time = 180
+        carb_peak_activity_time = 60
+        carb_delay_time = 0
+
+        df['absorbed_carbs'] = df.apply(lambda x: get_absorbed_substance(df['carbs'], x.name,
+                                                                         carb_peak_activity_time,
+                                                                         carb_activity_time, carb_delay_time),
+                                        axis=1)
+
         return df
+
+
+# Returns the absorbed substance in a given time interval, concidering all the occurences of impact
+def get_absorbed_substance(df, date,
+                         peak,
+                         total_time,
+                         delay):
+
+    # Get all the rows of impact
+    total_time_interval = pd.Timedelta(total_time, "m")
+    sample_interval = pd.Timedelta(5, "m")
+    rows = df[df.index.to_series().between(date - total_time_interval, date)]
+
+    value_array = rows.to_numpy()
+    startDate_array = rows.index.to_series().array
+    # endDate_array = rows.endDate.array
+    absorbed_substance = 0
+
+    # Iterate through rows of impact
+    for index, value in enumerate(value_array):
+        if value <= 0.0:
+            continue
+
+        delta_time = date + sample_interval - startDate_array[index]
+        absorbed_percentage = get_remaining_effect(get_minutes(delta_time - sample_interval), peak, total_time,
+                                                 delay) - get_remaining_effect(get_minutes(delta_time), peak,
+                                                                             total_time, delay)
+        delta_SOB = absorbed_percentage * value
+        # Negative IOB is not possible. If this occurs, it means that a dose has been added in this moment, and should not be accounted for
+        if delta_SOB > 0:
+            absorbed_substance += delta_SOB
+
+    return absorbed_substance
+
+
+# Returns the remaining effect in decimals t minutes after insulin injection
+def get_remaining_effect(t,
+                       peak,
+                       total_time,
+                       delay):
+    tau = peak * (1 - peak / total_time) / (1 - 2 * peak / total_time);
+    a = 2 * tau / total_time;
+    S = 1 / (1 - a + (1 + a) * np.exp(-total_time / tau));
+
+    if t < 0:
+        return 0
+    elif t <= delay:
+        return 1
+    elif t <= total_time:
+        return 1 - S * (1 - a) * (((t - delay) ** 2 / (tau * total_time * (1 - a)) - (t - delay) / tau - 1) * np.exp(
+            -(t - delay) / tau) + 1)
+    else:
+        return 0
+
+
+# Returns the number of minutes from a Pandas timedelta object
+def get_minutes(t):
+    return t.total_seconds()/60
+
+

@@ -6,7 +6,7 @@ The basic preprocessor does the following:
 """
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
 
 
 class Preprocessor(BasePreprocessor):
@@ -29,7 +29,7 @@ class Preprocessor(BasePreprocessor):
         df = self.add_target(df)
 
         # Interpolation using forward fill
-        df[self.numerical_features] = df[self.numerical_features].ffill()
+        #df[self.numerical_features] = df[self.numerical_features].ffill()
 
         # Train and test split
         # Adding a margin of 24 hours to the train and the test data to avoid memory leak
@@ -40,9 +40,18 @@ class Preprocessor(BasePreprocessor):
         train_data = df[:split_index - margin]
         test_data = df[split_index + margin:]
 
+        # Interpolation using a nonlinear curve, without too much curvature
+        train_data = train_data.sort_index()
+        train_data[self.numerical_features] = train_data[self.numerical_features].interpolate(method='akima')
+        test_data = test_data.sort_index()
+        test_data[self.numerical_features] = test_data[self.numerical_features].interpolate(method='akima')
+
+        print("TEST DATA: ", test_data[test_data.notna()].shape)
+        print("TRAIN DATA: ", train_data[train_data.notna()].shape)
+
         # Transform columns
         if self.numerical_features:
-            scaler = StandardScaler()
+            scaler = MinMaxScaler(feature_range=(0, 1))
 
             # Fit the scaler only on training data
             scaler.fit(train_data.loc[:, self.numerical_features])

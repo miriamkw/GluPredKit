@@ -18,6 +18,11 @@ class Plot(BasePlot):
         models_data: A list of dictionaries containing the model name, y_true, y_pred, prediction horizon and the name
         of the configuration file.
         """
+        font = {'family': 'normal',
+                'size': 22}
+
+        plt.rc('font', **font)
+
         history_length = 18  # Number of samples of measured CGM values
         sample_rate = 5  # CGM values are sampled every 5 minutes
 
