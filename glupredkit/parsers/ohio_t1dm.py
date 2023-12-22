@@ -101,14 +101,31 @@ class Parser(BaseParser):
         df = pd.merge(df, df_basal, on="date", how='outer')
         df['basal'] = df['basal'].fillna(value=0.0)
 
+
+
         # Heart rate
         df_heartrate = dataframes['basis_heart_rate'].copy()
-        df_heartrate['ts'] = pd.to_datetime(df_heartrate['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
-        df_heartrate['value'] = pd.to_numeric(df_heartrate['value'], errors='coerce')
-        df_heartrate.rename(columns={'ts': 'date', 'value': 'heartrate'}, inplace=True)
-        df_heartrate.set_index('date', inplace=True)
-        df_heartrate = df_heartrate.resample('5T', label='right').last()
-        df = pd.merge(df, df_heartrate, on="date", how='outer')
+        if not df_heartrate.empty:
+            df_heartrate['ts'] = pd.to_datetime(df_heartrate['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+            df_heartrate['value'] = pd.to_numeric(df_heartrate['value'], errors='coerce')
+            df_heartrate.rename(columns={'ts': 'date', 'value': 'heartrate'}, inplace=True)
+            df_heartrate.set_index('date', inplace=True)
+            df_heartrate = df_heartrate.resample('5T', label='right').last()
+            df = pd.merge(df, df_heartrate, on="date", how='outer')
+
+        # Exercise
+        df_exercise = dataframes['exercise'].copy()
+        if not df_exercise.empty:
+            df_exercise['ts'] = pd.to_datetime(df_exercise['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+            df_exercise['intensity'] = pd.to_numeric(df_exercise['intensity'], errors='coerce')
+            df_exercise['duration'] = pd.to_numeric(df_exercise['duration'], errors='coerce')
+            df_exercise['end_date'] = df_exercise['ts'] + pd.to_timedelta(df_exercise['duration'], unit='m')
+            df_exercise.rename(columns={'ts': 'start_date', 'intensity': 'exercise'}, inplace=True)
+            df['exercise'] = 0
+            for idx, row in df_exercise.iterrows():
+                # Find the range in df that falls between start_date and end_date
+                mask = (df.index >= row['start_date']) & (df.index <= row['end_date'])
+                df.loc[mask, 'exercise'] = row['exercise']
 
         df = df.sort_index()
 
