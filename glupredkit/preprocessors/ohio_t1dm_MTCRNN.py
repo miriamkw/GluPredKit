@@ -36,11 +36,11 @@ class Preprocessor(BasePreprocessor):
         # Add target for test data before interpolation to perceive NaN values
         test_df = self.add_target(test_df)
 
-        # Interpolation using a nonlinear curve, without too much curvature
+        # Interpolation using linear interpolation, with the maximum of 12 samples
         train_df = train_df.sort_index()
-        train_df[self.numerical_features] = train_df[self.numerical_features].interpolate(method='akima')
+        train_df[self.numerical_features] = train_df[self.numerical_features].interpolate(method='linear', limit=12)
         test_df = test_df.sort_index()
-        test_df[self.numerical_features] = test_df[self.numerical_features].interpolate(method='akima')
+        test_df[self.numerical_features] = test_df[self.numerical_features].interpolate(method='linear', limit=12)
 
         # Add target for train data after interpolation to use interpolated data for model training
         train_df = self.add_target(train_df)
@@ -48,37 +48,21 @@ class Preprocessor(BasePreprocessor):
         train_df = train_df.dropna()
         test_df = test_df.dropna(subset=self.numerical_features + self.categorical_features)
 
-        # Transform columns
-        if self.numerical_features:
-            scaler = MinMaxScaler(feature_range=(0, 1))
+        # Scaling and transforming data
+        train_df.loc[:, 'CGM'] = train_df.loc[:, 'CGM'] / 120
+        test_df.loc[:, 'CGM'] = test_df.loc[:, 'CGM'] / 120
 
-            # Fit the scaler only on training data
-            scaler.fit(train_df.loc[:, self.numerical_features])
+        train_df.loc[:, 'bolus'] = train_df.loc[:, 'bolus'] / 100
+        test_df.loc[:, 'bolus'] = test_df.loc[:, 'bolus'] / 100
 
-            # Transform data
-            train_df.loc[:, self.numerical_features] = scaler.transform(train_df.loc[:, self.numerical_features])
-            test_df.loc[:, self.numerical_features] = scaler.transform(test_df.loc[:, self.numerical_features])
+        train_df.loc[:, 'carbs'] = train_df.loc[:, 'carbs'] / 200
+        test_df.loc[:, 'carbs'] = test_df.loc[:, 'carbs'] / 200
 
-        if self.categorical_features:
-            encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
-
-            # Fit the encoder only on training data
-            encoder.fit(train_df[self.categorical_features])
-
-            # Transform data
-            train_df = self.transform_with_encoder(train_df, encoder)
-            test_df = self.transform_with_encoder(test_df, encoder)
+        train_df.loc[:, 'exercise'] = train_df['exercise'].apply(lambda x: 1 if x > 0 else 0)
+        test_df.loc[:, 'exercise'] = test_df['exercise'].apply(lambda x: 1 if x > 0 else 0)
 
         return train_df, test_df
 
-    def transform_with_encoder(self, df, encoder):
-        encoded_cols = encoder.transform(df.loc[:, self.categorical_features])
-        encoded_df = pd.DataFrame(encoded_cols.toarray(),
-                                  columns=encoder.get_feature_names_out(self.categorical_features),
-                                  index=df.index)
-        df = df.drop(columns=self.categorical_features)
-        df = pd.concat([df, encoded_df], axis=1)
-        return df
 
     def add_target(self, df):
         target_index = self.prediction_horizon // 5
