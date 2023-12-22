@@ -143,7 +143,9 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'svr_linear',
                                             'svr_rbf',
                                             'tcn',
-                                            'tcn_pytorch'
+                                            'tcn_pytorch',
+                                            'stl',
+                                            'mlt'
                                             ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
