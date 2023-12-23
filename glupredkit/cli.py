@@ -137,6 +137,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'huber',
                                             'lasso',
                                             'loop',
+                                            'loop_old',
                                             'lstm',
                                             'lstm_pytorch',
                                             'random_forest',

@@ -43,7 +43,7 @@ class Parser(BaseParser):
             # Dataframe bolus doses
             df_bolus = pd.json_normalize(bolus_data)[['time', 'normal']]
             df_bolus.time = pd.to_datetime(df_bolus.time, errors='coerce')
-            df_bolus.rename(columns={"time": "date", "normal": "insulin"}, inplace=True)
+            df_bolus.rename(columns={"time": "date", "normal": "bolus"}, inplace=True)
             df_bolus.sort_values(by='date', inplace=True, ascending=True)
             df_bolus.set_index('date', inplace=True)
 
@@ -51,7 +51,7 @@ class Parser(BaseParser):
             df_basal = pd.json_normalize(basal_data)[
                 ['time', 'rate']]
             df_basal.time = pd.to_datetime(df_basal.time, errors='coerce')
-            df_basal.rename(columns={"time": "date", "rate": "basal_rate"}, inplace=True)
+            df_basal.rename(columns={"time": "date", "rate": "basal"}, inplace=True)
             df_basal.sort_values(by='date', inplace=True, ascending=True)
             df_basal.set_index('date', inplace=True)
 
@@ -82,12 +82,11 @@ class Parser(BaseParser):
             df = pd.merge(df, df_bolus, on="date", how='outer')
 
             df_basal = df_basal.resample('5T', label='right').last()
-            df_basal['basal_rate'] = df_basal['basal_rate'] / 60 * 5  # From U/hr to U (5-minutes)
+            df_basal['basal'] = df_basal['basal'] / 60 * 5  # From U/hr to U (5-minutes)
             df = pd.merge(df, df_basal, on="date", how='outer')
-            df['basal_rate'] = df['basal_rate'].ffill(limit=12 * 24 * 2)
-            df[['insulin', 'basal_rate']] = df[['insulin', 'basal_rate']].fillna(value=0.0)
-            df['insulin'] = df['insulin'] + df['basal_rate']
-            df.drop(columns=(["basal_rate"]), inplace=True)
+            df['basal'] = df['basal'].ffill()
+            df[['bolus', 'basal']] = df[['bolus', 'basal']].fillna(value=0.0)
+            df['insulin'] = df['bolus'] + df['basal']
 
             # Add hour of day
             df['hour'] = df.index.hour
