@@ -49,9 +49,10 @@ class Parser(BaseParser):
 
             # Dataframe basal rates
             df_basal = pd.json_normalize(basal_data)[
-                ['time', 'rate']]
+                ['time', 'rate', 'deliveryType']]
             df_basal.time = pd.to_datetime(df_basal.time, errors='coerce')
-            df_basal.rename(columns={"time": "date", "rate": "basal"}, inplace=True)
+            df_basal.rename(columns={"time": "date", "rate": "basal", "deliveryType": "basal_type"},
+                            inplace=True)
             df_basal.sort_values(by='date', inplace=True, ascending=True)
             df_basal.set_index('date', inplace=True)
 
