@@ -13,6 +13,7 @@ class Model(BaseModel):
 
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
+        self.DIA = 360
 
     def fit(self, x_train, y_train):
         # Manually adjust the therapy settings at the bottom of this file to adjust the prediction model
@@ -28,66 +29,45 @@ class Model(BaseModel):
         y_pred -- A list of lists of the predicted trajectories.
         """
 
-        # TODO: Accounting for time zones in the predictions
-
-        input_dict = self.get_input_dict()
-
-        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(x_test['insulin'],
-                                                                                                      None)
-        input_dict["dose_types"] = dose_types
-        input_dict["dose_start_times"] = start_times
-        input_dict["dose_end_times"] = end_times
-        input_dict["dose_values"] = dose_values
-        input_dict["dose_delivered_units"] = dose_delivered_units
-
-        carb_dates, carb_values, carb_absorption_times = self.get_carbohydrate_data(x_test['carbs'])
-        input_dict["carb_dates"] = carb_dates
-        input_dict["carb_values"] = carb_values
-        input_dict["carb_absorption_times"] = carb_absorption_times
-
-        history_length = 6
-        n_predictions = x_test['CGM'].shape[0] - 12 * 6 - history_length
+        history_length = 24*12 + int(self.DIA / 5)
+        n_predictions = x_test.shape[0] - history_length
 
         if n_predictions <= 0:
-            print("Not enough data to predict.")
+            print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
             return
 
-        # Sort glucose values
-        df_glucose = x_test['CGM'].sort_values(by='time', ascending=True).reset_index(drop=True)
+        # Note that the prediction output starts at the reference value, so element 1 is the first prediction
+        prediction_index = int(self.prediction_horizon / 5)
 
         # For each glucose measurement, get a new prediction
         # Skip iteration if there are not enough predictions.
         y_pred = []
-        for i in range(history_length, n_predictions + history_length):
-
-            print("TIME TO CALC: ", time_to_calculate)
-            time_to_calculate = df_glucose["time"][i]
-            input_dict["time_to_calculate_at"] = time_to_calculate
-
-            # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
-            glucose_dates, glucose_values = self.get_glucose_data(df_glucose[df_glucose['time'] < time_to_calculate])
-            input_dict["glucose_dates"] = glucose_dates
-            input_dict["glucose_values"] = glucose_values
-
-            output_dict = update(input_dict)
+        for i in range(0, n_predictions - history_length):
+            df_subset = x_test.iloc[i:i + history_length]
+            output_dict = self.get_prediction_output(df_subset)
 
             if len(output_dict.get("predicted_glucose_values")) < 73:
                 print("Not enough predictions. Skipping iteration...")
                 continue
             else:
-                # Starting from index 1 to skip the reference value in the predicted trajectory
-                y_pred.append(output_dict.get("predicted_glucose_values")[1:73])
+                y_pred.append(output_dict.get("predicted_glucose_values")[prediction_index])
         return y_pred
 
     def get_prediction_output(self, df, time_to_calculate=None):
         # Important docs: https://github.com/miriamkw/PyLoopKit/blob/develop/pyloopkit/docs/pyloopkit_documentation.md
         # For correct predictions, at least 24 hours + duration of insulin absorption (DIA) of data is needed
-        DIA = 60 * 6
-
         # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
         if not time_to_calculate:
             time_to_calculate = df.index[-1]
-        filtered_df = df[df.index <= time_to_calculate].tail(12 * 24 + int(DIA / 5))
+
+        history_length = 24 * 12 - int(self.DIA / 5)
+        n_predictions = df.shape[0] - history_length
+
+        if n_predictions <= 0:
+            print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
+            return
+
+        filtered_df = df[df.index <= time_to_calculate].tail(history_length)
 
         input_dict = self.get_input_dict()
         input_dict["time_to_calculate_at"] = time_to_calculate
@@ -244,7 +224,7 @@ class Model(BaseModel):
             'carb_value_units': 'g',
             'settings_dictionary':
                 {
-                    'model': [360.0, 75],
+                    'model': [self.DIA, 75],
                     'momentum_data_interval': 15.0,
                     'suspend_threshold': None,
                     'dynamic_carb_absorption_enabled': True,
@@ -261,17 +241,16 @@ class Model(BaseModel):
                 },
             'sensitivity_ratio_start_times': [datetime.time(0, 0), datetime.time(0, 30)],
             'sensitivity_ratio_end_times': [datetime.time(0, 30), datetime.time(0, 0)],
-            'sensitivity_ratio_values': [86.4, 86.4],
+            'sensitivity_ratio_values': [50.4, 50.4],
             'sensitivity_ratio_value_units': 'mg/dL/U',
 
             'carb_ratio_start_times': [datetime.time(0, 0), datetime.time(8, 30)],
-            'carb_ratio_values': [8.0, 8.0],
+            'carb_ratio_values': [9.0, 9.0],
             'carb_ratio_value_units': 'g/U',
 
             'basal_rate_start_times': [datetime.time(0, 0), datetime.time(12, 0)],
-            'basal_rate_minutes': [720.0, 720.0],
-            'basal_rate_values': [0.7, 0.7],
-            'basal_rate_units': 'U/hr',
+            'basal_rate_minutes': [720, 720],  # the length of time the basal runs for (in minutes)
+            'basal_rate_values': [0.9, 0.9],  # the infusion rate in U/hour
 
             'target_range_start_times': [datetime.time(0, 0)],
             'target_range_end_times': [datetime.time(0, 0)],

@@ -56,6 +56,8 @@ class Parser(BaseParser):
             df_basal.sort_values(by='date', inplace=True, ascending=True)
             df_basal.set_index('date', inplace=True)
 
+            print(df_basal.basal_type.unique())
+
             # Dataframe carbohydrates
             df_carbs = pd.json_normalize(carb_data)[['time', 'nutrition.carbohydrate.net']]
             df_carbs.time = pd.to_datetime(df_carbs.time, errors='coerce')
@@ -85,7 +87,10 @@ class Parser(BaseParser):
             df_basal = df_basal.resample('5T', label='right').last()
             df_basal['basal'] = df_basal['basal'] / 60 * 5  # From U/hr to U (5-minutes)
             df = pd.merge(df, df_basal, on="date", how='outer')
+
+            # TODO: Should basal be forward filled or backwards filled?
             df['basal'] = df['basal'].ffill()
+            df['basal_type'] = df['basal_type'].ffill()
             df[['bolus', 'basal']] = df[['bolus', 'basal']].fillna(value=0.0)
             df['insulin'] = df['bolus'] + df['basal']
 
