@@ -1,4 +1,5 @@
 from glupredkit.models.base_model import BaseModel
+from glupredkit.helpers.unit_config_manager import unit_config_manager
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ class Model(BaseModel):
         y_pred -- A list of lists of the predicted trajectories.
         """
 
-        history_length = 24*12 + int(self.DIA / 5)
+        history_length = 24 * 12 + int(self.DIA / 5)
         n_predictions = x_test.shape[0] - history_length
 
         if n_predictions <= 0:
@@ -42,7 +43,7 @@ class Model(BaseModel):
         # For each glucose measurement, get a new prediction
         # Skip iteration if there are not enough predictions.
         y_pred = []
-        for i in range(0, n_predictions - history_length):
+        for i in range(0, n_predictions):
             df_subset = x_test.iloc[i:i + history_length]
             output_dict = self.get_prediction_output(df_subset)
 
@@ -146,7 +147,23 @@ class Model(BaseModel):
              retrospective_predicted_glucose_values
              ) = ([], [])
 
-        # dates = pd.to_datetime(dates)
+        unit = "mg/dL"
+        y_min = 70
+        y_max = 180
+        if not unit_config_manager.use_mgdl:
+            values = [unit_config_manager.convert_value(val) for val in values]
+            previous_glucose_values = [unit_config_manager.convert_value(val) for val in previous_glucose_values]
+            momentum_predicted_glucose_values = [unit_config_manager.convert_value(val) for val in
+                                                 momentum_predicted_glucose_values]
+            insulin_predicted_glucose_values = [unit_config_manager.convert_value(val) for val in
+                                                insulin_predicted_glucose_values]
+            carb_predicted_glucose_values = [unit_config_manager.convert_value(val) for val in
+                                             carb_predicted_glucose_values]
+            retrospective_predicted_glucose_values = [unit_config_manager.convert_value(val) for val in
+                                                      retrospective_predicted_glucose_values]
+            unit = "mmol/L"
+            y_min = unit_config_manager.convert_value(y_min)
+            y_max = unit_config_manager.convert_value(y_max)
 
         plt.figure(figsize=(10, 5))
         plt.plot(dates, values, marker='o', label='Prediction')
@@ -157,11 +174,11 @@ class Model(BaseModel):
         plt.plot(retrospective_predicted_glucose_dates, retrospective_predicted_glucose_values, marker='o',
                  label='Retrospective')
 
-        plt.axhspan(70, 180, facecolor='blue', alpha=0.1)
+        plt.axhspan(y_min, y_max, facecolor='blue', alpha=0.1)
 
         # Formatting the plot
         plt.xlabel('Date')
-        plt.ylabel('Value')
+        plt.ylabel(f'Blood glucose value [{unit}]')
         plt.title('Predicted Trajectory Contributions')
         plt.legend()
 
@@ -187,7 +204,7 @@ class Model(BaseModel):
         basal_dose_types = [get_dose_type(basal_type) for basal_type in df.basal_type.tolist()]
         basal_start_times = df.index.tolist()
         basal_end_times = [val + pd.Timedelta(minutes=5) for val in df.index.tolist()]
-        basal_values = df.basal.tolist()
+        basal_values = [value / 5 * 60 for value in df.basal.tolist()]
         basal_units = [None for _ in df.index.tolist()]
 
         df_bolus = df.copy()[df.bolus > 0]
