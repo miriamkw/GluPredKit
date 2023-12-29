@@ -39,13 +39,14 @@ class Model(BaseModel):
 
         # Note that the prediction output starts at the reference value, so element 1 is the first prediction
         prediction_index = int(self.prediction_horizon / 5)
+        input_dict = self.get_input_dict()
 
         # For each glucose measurement, get a new prediction
         # Skip iteration if there are not enough predictions.
         y_pred = []
         for i in range(0, n_predictions):
             df_subset = x_test.iloc[i:i + history_length]
-            output_dict = self.get_prediction_output(df_subset)
+            output_dict = self.get_prediction_output(df_subset, input_dict)
 
             if len(output_dict.get("predicted_glucose_values")) < 73:
                 print("Not enough predictions. Skipping iteration...")
@@ -54,7 +55,7 @@ class Model(BaseModel):
                 y_pred.append(output_dict.get("predicted_glucose_values")[prediction_index])
         return y_pred
 
-    def get_prediction_output(self, df, time_to_calculate=None):
+    def get_prediction_output(self, df, input_dict, time_to_calculate=None):
         # Important docs: https://github.com/miriamkw/PyLoopKit/blob/develop/pyloopkit/docs/pyloopkit_documentation.md
         # For correct predictions, at least 24 hours + duration of insulin absorption (DIA) of data is needed
         # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
@@ -70,7 +71,6 @@ class Model(BaseModel):
 
         filtered_df = df[df.index <= time_to_calculate].tail(history_length)
 
-        input_dict = self.get_input_dict()
         input_dict["time_to_calculate_at"] = time_to_calculate
 
         input_dict["glucose_dates"] = filtered_df.index.tolist()
