@@ -73,6 +73,21 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
     else:
         start_date = datetime.strptime(start_date, date_format)
 
+    def save_data(output_file_name, data):
+        output_path = 'data/raw/'
+        date_format = "%d-%m-%Y"
+
+        if output_file_name:
+            file_name = output_file_name + '.csv'
+        else:
+            file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(
+                date_format) + '.csv')
+
+        click.echo("Storing data as CSV...")
+        helpers.store_data_as_csv(data, output_path, file_name)
+        click.echo(f"Data stored as CSV at '{output_path}' as '{file_name}'")
+        click.echo(f"Data has the shape: {data.shape}")
+
     # Ensure that the optional params match the parser
     if parser in ['tidepool', 'nightscout']:
         if username is None or password is None:
@@ -85,25 +100,26 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
         else:
             parsed_data = chosen_parser(start_date, end_date, file_path=file_path)
     elif parser in ['ohio_t1dm']:
-        if file_path is None or subject_id is None:
-            raise ValueError(f"{parser} parser requires that you provide --file-path and --subject-id")
+        if file_path is None:
+            raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
-            parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id)
+            ids_2018 = ['559', '563', '570', '575', '588', '591']
+            ids_2020 = ['540', '544', '552', '567', '584', '596']
+
+            for subject_id in ids_2018:
+                parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id, year='2018')
+                save_data(output_file_name=subject_id, data=parsed_data)
+
+            for subject_id in ids_2020:
+                parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id, year='2020')
+                save_data(output_file_name=subject_id, data=parsed_data)
+
+            return
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
-    
-    output_path = 'data/raw/'
-    date_format = "%d-%m-%Y"
 
-    if output_file_name:
-        file_name = output_file_name + '.csv'
-    else:
-        file_name = (parser + '_' + start_date.strftime(date_format) + '_to_' + end_date.strftime(date_format) + '.csv')
+    save_data(output_file_name=output_file_name, data=parsed_data)
 
-    click.echo("Storing data as CSV...")
-    helpers.store_data_as_csv(parsed_data, output_path, file_name)
-    click.echo(f"Data stored as CSV at '{output_path}' as '{file_name}'")
-    click.echo(f"Data has the shape: {parsed_data.shape}")
 
 
 @click.command()

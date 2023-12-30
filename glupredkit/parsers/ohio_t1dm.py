@@ -11,13 +11,17 @@ class Parser(BaseParser):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, file_path: str, subject_id: str, *args):
+    def __call__(self, file_path: str, subject_id: str, year: str, *args):
         """
-        file_path -- the file path to where the test- and train-folder is located.
-        id -- the id of the subject.
+        file_path -- the file path to the OhioT1DM dataset root folder is located.
+        subject_id -- the id of the subject.
+        year -- the version year for the dataset.
         """
-        training_tree = ET.parse(file_path + f'train/{subject_id}-ws-training.xml')
-        testing_tree = ET.parse(file_path + f'test/{subject_id}-ws-testing.xml')
+        if year not in ['2018', '2020']:
+            raise Exception('The input year must be either a string of 2018 or 2020.')
+
+        training_tree = ET.parse(file_path + f'OhioT1DM/{year}/train/{subject_id}-ws-training.xml')
+        testing_tree = ET.parse(file_path + f'OhioT1DM/{year}/test/{subject_id}-ws-testing.xml')
 
         df_training = self.resample_data(training_tree)
         df_training['is_test'] = False
@@ -53,14 +57,15 @@ class Parser(BaseParser):
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
-        df_carbs['ts'] = pd.to_datetime(df_carbs['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
-        df_carbs['carbs'] = pd.to_numeric(df_carbs['carbs'], errors='coerce')
-        df_carbs.rename(columns={'ts': 'date'}, inplace=True)
-        df_carbs = df_carbs[['date', 'carbs']]
-        df_carbs.set_index('date', inplace=True)
-        df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
-        df = pd.merge(df, df_carbs, on="date", how='outer')
-        df['carbs'] = df['carbs'].fillna(value=0.0)
+        if not df_carbs.empty:
+            df_carbs['ts'] = pd.to_datetime(df_carbs['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
+            df_carbs['carbs'] = pd.to_numeric(df_carbs['carbs'], errors='coerce')
+            df_carbs.rename(columns={'ts': 'date'}, inplace=True)
+            df_carbs = df_carbs[['date', 'carbs']]
+            df_carbs.set_index('date', inplace=True)
+            df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
+            df = pd.merge(df, df_carbs, on="date", how='outer')
+            df['carbs'] = df['carbs'].fillna(value=0.0)
 
         # Bolus doses
         df_bolus = dataframes['bolus'].copy()
