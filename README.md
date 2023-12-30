@@ -137,13 +137,23 @@ glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--userna
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 - `--output-file-name` (Optional): The filename for the output file after parsing, without file extension.
 
-#### Example
-
+#### Example Tidepool Parser
 ```
 glupredkit parse --parser tidepool --username johndoe@example.com --password mypassword --start-date 01-09-2023 --end-date 30-09-2023
+```
+#### Example Nightscout Parser
+```
 glupredkit parse --parser nightscout --username https://my_nightscout.net/ --password API_KEY --start-date 01-09-2023 --end-date 30-09-2023
+```
+#### Example Apple Health Parser
+```
 glupredkit parse --apple_health --file-path data/raw/export.xml --start-date 01-01-2023
-glupredkit parse --parser ohio_t1dm --file-path data/raw/ --subject-id 559
+```
+#### Example Ohio T1DM Parser
+- The Ohio T1DM parser is parsing the data from each individual into separate dataframes.
+- `--file-path` shall be the path to where the `OhioT1DM` root folder is stored.
+```
+glupredkit parse --parser ohio_t1dm --file-path data/raw/
 ```
 
 ---
