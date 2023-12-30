@@ -5,7 +5,6 @@ import os
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
-import torch
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -123,23 +122,23 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
 
 
 @click.command()
-@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.')
-@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.')
+@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.',
+              callback=helpers.validate_file_name)
+@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.',
+              callback=helpers.validate_file_name)
 @click.option('--preprocessor', prompt='Preprocessor (available: basic, ohio_t1dm)', help='Name of the preprocessor.')
 @click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
-              help='Comma-separated list of prediction horizons.')
-@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.')
+              help='Comma-separated list of prediction horizons.', callback=helpers.validate_prediction_horizons)
+@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.',
+              callback=helpers.validate_num_lagged_features)
 @click.option('--num-features', prompt='Numerical features (a subset of column names from the input data file)',
-              help='Comma-separated list of numerical features.')
+              help='Comma-separated list of numerical features.', callback=helpers.validate_feature_list)
 @click.option('--cat-features', prompt='Categorical features (press enter if none)', default='',
-              help='Comma-separated list of categorical features.')
-@click.option('--test-size', prompt='Test size (float between 0 and 1. Example: 0.25)', help='Test size.')
+              help='Comma-separated list of categorical features.', callback=helpers.validate_feature_list)
+@click.option('--test-size', prompt='Test size (float between 0 and 1)', callback=helpers.validate_test_size,
+              help='Test size.')
 def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
                     test_size):
-    prediction_horizons = [int(val) for val in helpers.split_string(prediction_horizons.replace(' ', ''))]
-    num_features = helpers.split_string(num_features.replace(' ', ''))
-    cat_features = helpers.split_string(cat_features.replace(' ', ''))
-
     generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
                                  num_features, cat_features, float(test_size))
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")

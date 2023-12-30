@@ -10,9 +10,9 @@ import os
 def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
                                  cat_features, test_size):
     # Check if the 'data' string is a valid file in the 'data/raw/' folder
-    data_path = os.path.join('data/raw', data)
+    data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):
-        raise ValueError(f"Data file '{data}' not found in 'data/raw/' folder.")
+        raise ValueError(f"Data file '{data + '.csv'}' not found in 'data/raw/' folder.")
 
     # Check if 'preprocessor' is a valid preprocessor module
     preprocessor_module = f'glupredkit.preprocessors.{preprocessor}'
@@ -26,7 +26,7 @@ def generate_model_configuration(file_name, data, preprocessor, prediction_horiz
         raise ValueError("Test size must be a float between 0 and 1.")
 
     config = {
-        "data": data,
+        "data": data + '.csv',
         "preprocessor": preprocessor,
         "prediction_horizons": prediction_horizons,
         "num_lagged_features": num_lagged_features,
