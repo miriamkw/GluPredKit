@@ -1,6 +1,8 @@
 import pandas as pd
 import sys
 import os
+import ast
+import click
 import dill
 import importlib
 from ..models.base_model import BaseModel
@@ -19,7 +21,7 @@ def store_data_as_csv(df, output_path, file_name):
 
 
 def split_string(input_string):
-    return [] if not input_string else input_string.split(',')
+    return [] if not input_string else [elem.strip() for elem in input_string.split(',')]
 
 
 def user_input_prompt(text):
@@ -116,3 +118,67 @@ def list_files_in_directory(directory_path):
         if os.path.isfile(os.path.join(directory_path, filename)):
             file_list.append(filename)
     return file_list
+
+
+def validate_file_name(ctx, param, value):
+    file_name = str(value)
+    # Removing the file extension, if any
+    return file_name.partition('.')[0]
+
+
+def validate_prediction_horizons(ctx, param, value):
+    if value.startswith('[') and value.endswith(']'):
+        try:
+            # Convert string representation of a list to an actual list
+            value = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            raise click.BadParameter("Invalid format for prediction horizons.")
+
+    try:
+        if isinstance(value, str):
+            value = value.replace(' ', '').split(',')
+        prediction_horizons = [int(val) for val in value]
+        return prediction_horizons
+    except ValueError:
+        raise click.BadParameter('Prediction horizons must be a comma-separated list of integers.')
+
+
+def validate_num_lagged_features(ctx, param, value):
+    try:
+        value = int(value)
+        if value < 0:
+            raise ValueError
+    except ValueError:
+        raise click.BadParameter('The number of time lagged features must be a positive integer.')
+    return value
+
+
+def validate_feature_list(ctx, param, value):
+    if value.startswith('[') and value.endswith(']'):
+        try:
+            # Convert string representation of a list to an actual list
+            value = ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            raise click.BadParameter("Invalid format for prediction horizons.")
+    try:
+        if isinstance(value, str):
+            # Return an empty list if the input string is empty after removing spaces
+            if value.strip() == '':
+                return []
+            value = value.replace(' ', '').split(',')
+        return value
+    except ValueError:
+        raise click.BadParameter('List must be a comma-separated list of strings without spaces.')
+
+
+
+def validate_test_size(ctx, param, value):
+    try:
+        test_size = float(value)
+        if not 0 <= test_size <= 1:
+            raise ValueError
+    except ValueError:
+        raise click.BadParameter('Test size must be a float between 0 and 1. Decimal values are represented using a '
+                                 'period (dot).')
+    return test_size
+
