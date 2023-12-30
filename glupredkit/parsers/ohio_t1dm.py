@@ -5,6 +5,7 @@ the same time grid in a dataframe.
 from .base_parser import BaseParser
 import xml.etree.ElementTree as ET
 import pandas as pd
+import os
 
 
 class Parser(BaseParser):
@@ -13,30 +14,24 @@ class Parser(BaseParser):
 
     def __call__(self, file_path: str, subject_id: str, year: str, *args):
         """
-        file_path -- the file path to the OhioT1DM dataset root folder is located.
+        file_path -- the file path to the OhioT1DM dataset root folder.
         subject_id -- the id of the subject.
         year -- the version year for the dataset.
         """
-        if year not in ['2018', '2020']:
-            raise Exception('The input year must be either a string of 2018 or 2020.')
+        self.validate_year(year)
 
-        training_tree = ET.parse(file_path + f'OhioT1DM/{year}/train/{subject_id}-ws-training.xml')
-        testing_tree = ET.parse(file_path + f'OhioT1DM/{year}/test/{subject_id}-ws-testing.xml')
+        training_tree = ET.parse(os.path.join(file_path, 'OhioT1DM', year, 'train', f'{subject_id}-ws-training.xml'))
+        testing_tree = ET.parse(os.path.join(file_path, 'OhioT1DM', year, 'test', f'{subject_id}-ws-testing.xml'))
 
-        df_training = self.resample_data(training_tree)
-        df_training['is_test'] = False
-
-        df_testing = self.resample_data(testing_tree)
-        df_testing['is_test'] = True
+        df_training = self.resample_data(training_tree, is_test=False)
+        df_testing = self.resample_data(testing_tree, is_test=True)
 
         merged_df = pd.concat([df_testing, df_training], ignore_index=False)
-
-        # Sort the merged DataFrame
         merged_df = merged_df.sort_index()
 
         return merged_df
 
-    def resample_data(self, tree):
+    def resample_data(self, tree, is_test):
         root = tree.getroot()
 
         dataframes = {}
@@ -129,9 +124,21 @@ class Parser(BaseParser):
                 mask = (df.index >= row['start_date']) & (df.index <= row['end_date'])
                 df.loc[mask, 'exercise'] = row['exercise']
 
-        df = df.sort_index()
+        df['is_test'] = is_test
+        return df.sort_index()
 
-        return df
+    @staticmethod
+    def validate_year(year):
+        if year not in ['2018', '2020']:
+            raise ValueError('The input year must be either 2018 or 2020.')
+
+
+    @staticmethod
+    def parse_xml_file(base_path, dataset_type, subject_id, year):
+        file_name = f"{subject_id}-ws-{dataset_type}.xml"
+        file_path = os.path.join(base_path, 'OhioT1DM', year, dataset_type, file_name)
+        return ET.parse(file_path)
+
 
 
 def merge_data_type_into_dataframe(df, data, type_name, value_name):
