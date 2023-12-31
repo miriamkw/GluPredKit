@@ -8,6 +8,7 @@ def prepare_sequences(data, labels, window_size, real_time, step_size=12):
     exclude_list = ["target", "imputed"]
     sequence_columns = [item for item in data.columns if item not in exclude_list]
 
+    # TODO: Implement what-if features
     for i in range(0, len(data) - window_size, step_size):
         sequence = data[sequence_columns][i:i + window_size]
         label = labels.iloc[i + window_size - 1]

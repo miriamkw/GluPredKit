@@ -41,6 +41,7 @@ class ModelConfigurationManager:
             "num_lagged_features": int,
             "num_features": list,
             "cat_features": list,
+            "what_if_features": list,
             "test_size": float
         }
         self.config = self.load_config()
@@ -78,6 +79,9 @@ class ModelConfigurationManager:
 
     def get_cat_features(self):
         return self.config["cat_features"]
+
+    def get_what_if_features(self):
+        return self.config["what_if_features"]
 
     def get_test_size(self):
         return self.config["test_size"]

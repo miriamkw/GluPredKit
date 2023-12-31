@@ -15,7 +15,7 @@ class Preprocessor(BasePreprocessor):
         super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
                          num_lagged_features, test_size)
 
-    def __call__(self, df):
+    def __call__(self, df, **kwargs):
 
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
