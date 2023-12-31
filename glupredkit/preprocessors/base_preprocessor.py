@@ -28,10 +28,10 @@ class BasePreprocessor:
         self.num_lagged_features = num_lagged_features
         self.test_size = test_size
 
-    def __call__(self, data, **kwargs):
+    def __call__(self, df, **kwargs):
         """
         Args:
-            data (DataFrame): The input dataset.
+            df (DataFrame): The input dataset.
 
         Returns:
             train_data: The dataset for model training.

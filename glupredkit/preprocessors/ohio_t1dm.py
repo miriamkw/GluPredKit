@@ -13,8 +13,10 @@ import numpy as np
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
+    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
+                         num_lagged_features, test_size)
 
     def __call__(self, df):
 
