@@ -126,6 +126,22 @@ def validate_file_name(ctx, param, value):
     return file_name.partition('.')[0]
 
 
+def validate_dataset(ctx, param, value):
+    try:
+        # Removing the file extension, if any
+        file_name = str(value).partition('.')[0]
+
+        # Check if the dataset exists in the 'data/raw/' folder
+        data_path = os.path.join('data/raw', file_name + '.csv')
+
+        if not os.path.isfile(data_path):
+            raise ValueError(f"Data file '{file_name + '.csv'}' not found in 'data/raw/' folder.")
+
+        return file_name
+    except Exception as e:
+        raise click.BadParameter(f"Error validating dataset: {str(e)}")
+
+
 def validate_prediction_horizons(ctx, param, value):
     if value.startswith('[') and value.endswith(']'):
         try:

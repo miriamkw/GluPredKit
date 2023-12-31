@@ -90,7 +90,7 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
     # Ensure that the optional params match the parser
     if parser in ['tidepool', 'nightscout']:
         if username is None or password is None:
-            raise ValueError(f"{parser} parser requires that you provide --username and --password") 
+            raise ValueError(f"{parser} parser requires that you provide --username and --password")
         else:
             parsed_data = chosen_parser(start_date, end_date, username=username, password=password)
     elif parser in ['apple_health']:
@@ -120,27 +120,26 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
     save_data(output_file_name=output_file_name, data=parsed_data)
 
 
-
 @click.command()
 @click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.',
               callback=helpers.validate_file_name)
-@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.',
-              callback=helpers.validate_file_name)
-@click.option('--preprocessor', prompt='Preprocessor (available: basic, ohio_t1dm)', help='Name of the preprocessor.')
+@click.option('--data', prompt='Dataset file name (from data/raw/)', callback=helpers.validate_dataset)
+@click.option('--preprocessor', prompt='Preprocessor', type=click.Choice(['basic', 'ohio_t1dm']))
 @click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
               help='Comma-separated list of prediction horizons.', callback=helpers.validate_prediction_horizons)
-@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.',
+@click.option('--num-lagged-features', prompt='Number of lagged features',
               callback=helpers.validate_num_lagged_features)
 @click.option('--num-features', prompt='Numerical features (a subset of column names from the input data file)',
               help='Comma-separated list of numerical features.', callback=helpers.validate_feature_list)
 @click.option('--cat-features', prompt='Categorical features (press enter if none)', default='',
               help='Comma-separated list of categorical features.', callback=helpers.validate_feature_list)
-@click.option('--test-size', prompt='Test size (float between 0 and 1)', callback=helpers.validate_test_size,
-              help='Test size.')
+@click.option('--what-if-features', prompt='What-if features (press enter if none)', default='',
+              help='Comma-separated list of features with what-if events.', callback=helpers.validate_feature_list)
+@click.option('--test-size', prompt='Test size (float between 0 and 1)', callback=helpers.validate_test_size)
 def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
-                    test_size):
+                    what_if_features, test_size):
     generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
-                                 num_features, cat_features, float(test_size))
+                                 num_features, cat_features, what_if_features, float(test_size))
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")
     click.echo(f"Note that it might take a minute before the file appears in the folder.")
 

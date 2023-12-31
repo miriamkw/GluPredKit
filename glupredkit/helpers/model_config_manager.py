@@ -8,22 +8,13 @@ import os
 
 
 def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
-                                 cat_features, test_size):
-    # Check if the 'data' string is a valid file in the 'data/raw/' folder
-    data_path = os.path.join('data/raw', data + '.csv')
-    if not os.path.isfile(data_path):
-        raise ValueError(f"Data file '{data + '.csv'}' not found in 'data/raw/' folder.")
-
+                                 cat_features, what_if_features, test_size):
     # Check if 'preprocessor' is a valid preprocessor module
     preprocessor_module = f'glupredkit.preprocessors.{preprocessor}'
     try:
         __import__(preprocessor_module)
     except ImportError:
         raise ValueError(f"Preprocessor '{preprocessor}' not found in 'preprocessors' module.")
-
-    # Check if 'test_size' is a float between 0 and 1
-    if not isinstance(test_size, float) or test_size < 0 or test_size > 1:
-        raise ValueError("Test size must be a float between 0 and 1.")
 
     config = {
         "data": data + '.csv',
@@ -32,6 +23,7 @@ def generate_model_configuration(file_name, data, preprocessor, prediction_horiz
         "num_lagged_features": num_lagged_features,
         "num_features": num_features,
         "cat_features": cat_features,
+        "what_if_features": what_if_features,
         "test_size": test_size
     }
     # Save the generated config to a JSON file

@@ -165,14 +165,15 @@ glupredkit parse --parser ohio_t1dm --file-path data/raw/
 glupredkit generate_config 
 ```
 - `--file-name`: Give a file name to the configuration.
-- `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
+- `--data`: Name of the input CSV file containing the dataset. Note that this file needs to be located in `data/raw/`. 
 - `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
     - basic
     - ohio_t1dm
 - `--prediction-horizons`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces.  
-- `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. 
-- `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
+- `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour. These time-lagged features account for how historical data influences the predictions.
+- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the dataset. 
+- `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the dataset.
+- `--what-if-features`: List of what-if features, separated by comma. What-if features are time-lagged features between the time of prediction and the prediction horizon.
 - `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing. 
     - Note that for the Ohio T1DM dataset the test-size is automatically going to use the original separation between train and test data.
 
@@ -184,11 +185,11 @@ glupredkit generate_config
 ```
 Alternatively, the inputs can be passed directly through the terminal command:
 ```
-glupredkit generate_config --file-name my_config --data df.csv --preprocessor basic --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour --test-size 0.25
+glupredkit generate_config --file-name my_config --data df.csv --preprocessor basic --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs --test-size 0.25
 ```
-If you have no categorical features and want to avoid the prompt, you can use double quotes:
+If you have no categorical or what-if features and want to avoid the prompt, you can use double quotes:
 ```
-glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor ohio_t1dm --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features '' --test-size 0.25
+glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor ohio_t1dm --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features '' --what-if-features '' --test-size 0.25
 ```
 
 ---
