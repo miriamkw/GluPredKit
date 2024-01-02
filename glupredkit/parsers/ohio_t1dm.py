@@ -101,6 +101,8 @@ class Parser(BaseParser):
         df = pd.merge(df, df_basal, on="date", how='outer')
         df['basal'] = df['basal'].fillna(value=0.0)
 
+
+
         # Heart rate
         df = merge_data_type_into_dataframe(df, dataframes, 'basis_heart_rate', 'heartrate')
 
