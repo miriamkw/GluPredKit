@@ -160,7 +160,8 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'tcn',
                                             'tcn_pytorch',
                                             'stl',
-                                            'mlt'
+                                            'mlt',
+                                            'ensemble_nn_and_regression_tree'
                                             ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
