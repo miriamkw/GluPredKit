@@ -61,6 +61,8 @@ class Parser(BaseParser):
             df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
             df = pd.merge(df, df_carbs, on="date", how='outer')
             df['carbs'] = df['carbs'].fillna(value=0.0)
+        else:
+            df['carbs'] = 0.0
 
         # Bolus doses
         df_bolus = dataframes['bolus'].copy()
@@ -110,6 +112,9 @@ class Parser(BaseParser):
         # Skin temperature
         df = merge_data_type_into_dataframe(df, dataframes, 'basis_skin_temperature', 'skin_temp')
 
+        # Acceleration
+        df = merge_data_type_into_dataframe(df, dataframes, 'acceleration', 'acceleration')
+
         # Exercise
         df_exercise = dataframes['exercise'].copy()
         if not df_exercise.empty:
@@ -142,7 +147,10 @@ class Parser(BaseParser):
 
 
 def merge_data_type_into_dataframe(df, data, type_name, value_name):
-    df_data_type = data[type_name].copy()
+    try:
+        df_data_type = data[type_name].copy()
+    except KeyError:
+        return df
     if not df_data_type.empty:
         df_data_type['ts'] = pd.to_datetime(df_data_type['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df_data_type['value'] = pd.to_numeric(df_data_type['value'], errors='coerce')

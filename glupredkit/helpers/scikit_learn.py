@@ -3,7 +3,7 @@ from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 import numpy as np
 
 def add_time_lagged_features(col_name, df, num_lagged_features):
-    indexes = list(range(1, num_lagged_features + 1))
+    indexes = list(range(1, num_lagged_features))
 
     for i in indexes:
         new_col_name = col_name + "_" + str(i * 5)

@@ -19,11 +19,12 @@ class Model(BaseModel):
 
         # Define the parameter grid
         param_grid = {
-            'regressor__alpha': [0.0001]
+            'regressor__alpha': [0.0001, 0.001, 0.01, 0.1]
         }
 
         # Define GridSearchCV
         self.model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
+
         self.model.fit(x_train, y_train)
         return self
 

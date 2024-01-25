@@ -8,7 +8,7 @@ the ohio parser and preprocessor splits based on that, and not from the test_dat
 
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, StandardScaler
 import numpy as np
 
 
@@ -38,9 +38,9 @@ class Preprocessor(BasePreprocessor):
 
         # Interpolation using a nonlinear curve, without too much curvature
         train_df = train_df.sort_index()
-        train_df[self.numerical_features] = train_df[self.numerical_features].interpolate(method='akima')
+        train_df[self.numerical_features] = train_df[self.numerical_features].interpolate(limit_direction='both')
         test_df = test_df.sort_index()
-        test_df[self.numerical_features] = test_df[self.numerical_features].interpolate(method='akima')
+        test_df[self.numerical_features] = test_df[self.numerical_features].interpolate(limit_direction='forward')
 
         # Add target for train data after interpolation to use interpolated data for model training
         train_df = self.add_target(train_df)
@@ -50,14 +50,17 @@ class Preprocessor(BasePreprocessor):
 
         # Transform columns
         if self.numerical_features:
-            scaler = MinMaxScaler(feature_range=(0, 1))
+            """
+            # scaler = MinMaxScaler(feature_range=(0, 1))
+            scaler = StandardScaler()
 
             # Fit the scaler only on training data
             scaler.fit(train_df.loc[:, self.numerical_features])
-
+            
             # Transform data
             train_df.loc[:, self.numerical_features] = scaler.transform(train_df.loc[:, self.numerical_features])
             test_df.loc[:, self.numerical_features] = scaler.transform(test_df.loc[:, self.numerical_features])
+            """
 
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap

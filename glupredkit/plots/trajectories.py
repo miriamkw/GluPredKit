@@ -15,6 +15,10 @@ class Plot(BasePlot):
 
         #TODO: Predict trajectories when the models with different prediction horizons have the same config.
         """
+        font = {'family': 'normal',
+                'size': 22}
+
+        plt.rc('font', **font)
 
         def on_hover(event):
             if event.inaxes == ax:
@@ -23,7 +27,7 @@ class Plot(BasePlot):
                     if contains:
                         hover_line.set_alpha(1.0)
                     else:
-                        hover_line.set_alpha(0.2)
+                        hover_line.set_alpha(0.8)
                 fig.canvas.draw_idle()
 
         if unit_config_manager.use_mgdl:
@@ -119,6 +123,8 @@ class Plot(BasePlot):
             ax.set_xlabel('Time (minutes)')
             ax.set_ylabel(f'Blood glucose [{unit}]')
             ax.scatter(t[:len(y_true)], y_true, label='Blood glucose measurements', color='black')
+
+            plt.xlim(0, len(y_true)*5)
 
             lines = []
             # Add predicted trajectories

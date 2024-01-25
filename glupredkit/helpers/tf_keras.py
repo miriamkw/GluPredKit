@@ -3,7 +3,7 @@ import numpy as np
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
-def prepare_sequences(data, labels, window_size, real_time, step_size=12):
+def prepare_sequences(data, labels, window_size, real_time, step_size=1):
     X, y, dates = [], [], []
     exclude_list = ["target", "imputed"]
     sequence_columns = [item for item in data.columns if item not in exclude_list]
