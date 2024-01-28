@@ -15,11 +15,10 @@ class Model(BaseModel):
         self.double_lstm_model = None
         self.num_layers = 2
 
-    def build_model(self, input_shape):
+    def build_model(self, x1_shape, x2_shape):
         # create feedforward module
-        print("input_shape: ", input_shape)
-        input1 = Input(shape=(input_shape[1], input_shape[2]), name='input_with_bgl')
-        input2 = Input(shape=(input_shape[1], 5), name='input_without_bgl')
+        input1 = Input(shape=(x1_shape[1], x1_shape[2]), name='input_with_bgl')
+        input2 = Input(shape=(x2_shape[1], x2_shape[2]), name='input_without_bgl')
 
         last_layer = input1
         for i in range(self.num_layers):
@@ -59,33 +58,39 @@ class Model(BaseModel):
         return self.double_lstm_model
 
     def fit(self, x_train, y_train):
-        # convert string representationof list of lists back into an actual list of lists.
+        '''
+        # convert string representation of list of lists back into an actual list of lists.
         x_train = x_train['sequence'].apply(ast.literal_eval) 
         x_train = np.array(x_train.tolist())
-        
-        x_train1 = x_train[:, :, 0:1]  # BGL data, keep the third dimension by using 0:1 instead of just 0
-        x_train2 = x_train[:, :, 1:]  # all data without BGL data
+        '''
+        sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
+        targets = y_train.tolist()
+        sequences = np.array(sequences)
+        targets = np.array(targets)
+
+        x_train1 = sequences[:, :, 0:1]  # BGL data, keep the third dimension by using 0:1
+        x_train2 = sequences[:, :, 1:]  # all data without BGL data
 
         if self.double_output:
             y_train = [y_train, y_train]
 
         early_stopping = EarlyStopping(monitor='val_loss', patience=3)
 
-        self.build_model(x_train1.shape)
+        self.build_model(x_train1.shape, x_train2.shape)
         self.double_lstm_model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mean_absolute_error'])
-        self.double_lstm_model.fit([x_train1, x_train2], y_train, epochs=350,  callbacks=[early_stopping], validation_split=0.2)
+        self.double_lstm_model.fit([x_train1, x_train2], y_train, epochs=100,  callbacks=[early_stopping], validation_split=0.2)
         return self
 
     def predict(self, x_test):
-        x_test = x_test['sequence'].apply(ast.literal_eval) 
-        x_test = np.array(x_test.tolist())
-        
-        x_test1 = x_test[:, :, 0:1]
-        x_test2 = x_test[:, :, 1:]
-
+        sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
+        sequences = np.array(sequences)
+        x_test1 = sequences[:, :, 0:1]
+        x_test2 = sequences[:, :, 1:]
         x_test = [x_test1, x_test2]
-        return self.double_lstm_model.predict(x_test, batch_size=32)
 
+        predictions = self.double_lstm_model.predict(x_test)
+
+        return [val[0] for val in predictions]
 
     def best_params(self):
         # Return the best parameters found by GridSearchCV
