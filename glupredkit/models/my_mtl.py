@@ -38,7 +38,7 @@ class Model(BaseModel):
         dropout_lstm = 0.2
         dropout_fc = 0.5
         seq_len = 24
-        input_dim = 5
+        input_dim = 4
         out_dim = 1
 
         input_shape = (seq_len, input_dim)

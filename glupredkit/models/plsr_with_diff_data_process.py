@@ -1,9 +1,8 @@
-import itertools
-import time
+import ast
 from sklearn.base import BaseEstimator
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager
-from glupredkit.helpers.scikit_learn import process_data
-# from glupredkit.helpers.tf_keras import process_data
+# from glupredkit.helpers.scikit_learn import process_data
+from glupredkit.helpers.tf_keras import process_data
 from .base_model import BaseModel
 
 
@@ -23,6 +22,10 @@ class Model(BaseModel):
         self.model = None
 
     def fit(self, X_train, Y_train):
+        x_train = X_train['sequence'].apply(ast.literal_eval) 
+        x_train = np.array(x_train.tolist())
+        X_train = x_train.reshape(x_train.shape[0], -1)  # Flatten each sample
+        Y_train = np.array(Y_train.tolist())
         # maximum number of components based on the number of features
         componentmax = X_train.shape[1]
         component = np.arange(1, componentmax)
@@ -49,8 +52,11 @@ class Model(BaseModel):
         return self
 
     def predict(self, X_test):
-        predictions = self.model.predict(X_test)
-        return predictions 
+        x_test = X_test['sequence'].apply(ast.literal_eval) 
+        x_test = np.array(x_test.tolist())
+        x_test_flat = x_test.reshape(x_test.shape[0], -1)
+        predictions = self.model.predict(x_test_flat)
+        return predictions
     
     def best_params(self):
         # Return the best parameters found by GridSearchCV

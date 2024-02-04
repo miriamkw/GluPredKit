@@ -147,21 +147,36 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 @click.command()
 @click.argument('model', type=click.Choice(['arx',
+                                            'cnn_lstm',
+                                            'crnn',
                                             'elastic_net',
                                             'gradient_boosting_trees',
                                             'huber',
                                             'lasso',
                                             'lstm',
                                             'lstm_pytorch',
+                                            'plsr',
+                                            'plsr_with_diff_data_process',
                                             'random_forest',
                                             'ridge',
+                                            'stacked_mlp_and_plsr',
+                                            'stacked_with_plsr',
                                             'svr_linear',
                                             'svr_rbf',
                                             'tcn',
                                             'tcn_pytorch',
                                             'stl',
                                             'mlt',
-                                            'ensemble_nn_and_regression_tree'
+                                            'mlp',
+                                            'my_GBT',
+                                            'my_lstm',
+                                            'my_mlp',
+                                            'my_tcn',
+                                            'ensemble_1',
+                                            'ensemble_2',
+                                            'ensemble_nn_and_regression_tree',
+                                            'double_lstm',
+                                            'bidirectional_lstm'
                                             ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
@@ -219,6 +234,7 @@ def train_model(model, config_file_name):
 @click.option('--metrics', help='List of metrics to be computed, separated by comma. '
                                 'By default RMSE will be computed. ', default='rmse')
 def calculate_metrics(models, metrics):
+    print("metrics: {}".format(metrics))
     """
     This command stores a report of the given metrics in data/reports/.
     """
@@ -241,9 +257,11 @@ def calculate_metrics(models, metrics):
         model_config_manager = ModelConfigurationManager(config_file_name)
         model_instance = helpers.get_trained_model(model_file)
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-
+        #print("test_data: %s" % test_data)
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+        #print("processed_data: %s" % processed_data)
         x_test = processed_data.drop('target', axis=1)
+        #print("x_test: %s" % x_test)
         y_test = processed_data['target']
 
         y_pred = model_instance.predict(x_test)

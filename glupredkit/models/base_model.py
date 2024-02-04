@@ -2,7 +2,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
-class BaseModel(BaseEstimator, TransformerMixin):
+class BaseModel:
     def __init__(self, prediction_horizon):
         self.prediction_horizon = prediction_horizon
 
