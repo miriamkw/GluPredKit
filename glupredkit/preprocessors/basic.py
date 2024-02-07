@@ -40,25 +40,6 @@ class Preprocessor(BasePreprocessor):
         train_data = df[:split_index - margin]
         test_data = df[split_index + margin:]
 
-        # Transform columns
-        if self.numerical_features:
-            """
-            scaler = StandardScaler()
-
-            # Fit the scaler only on training data
-            scaler.fit(train_data.loc[:, self.numerical_features])
-
-            # Get the mean and standard deviation for each feature
-            for idx, col in enumerate(self.numerical_features):
-                mean = scaler.mean_[idx]
-                std_dev = scaler.scale_[idx]
-
-                # print(f"Column: {col}, Mean: {mean}, Std Deviation: {std_dev}")
-
-            # Transform data
-            train_data.loc[:, self.numerical_features] = scaler.transform(train_data.loc[:, self.numerical_features])
-            test_data.loc[:, self.numerical_features] = scaler.transform(test_data.loc[:, self.numerical_features])
-            """
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 

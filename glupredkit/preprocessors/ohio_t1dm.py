@@ -48,20 +48,6 @@ class Preprocessor(BasePreprocessor):
         train_df = train_df.dropna()
         test_df = test_df.dropna(subset=self.numerical_features + self.categorical_features)
 
-        # Transform columns
-        if self.numerical_features:
-            """
-            # scaler = MinMaxScaler(feature_range=(0, 1))
-            scaler = StandardScaler()
-
-            # Fit the scaler only on training data
-            scaler.fit(train_df.loc[:, self.numerical_features])
-            
-            # Transform data
-            train_df.loc[:, self.numerical_features] = scaler.transform(train_df.loc[:, self.numerical_features])
-            test_df.loc[:, self.numerical_features] = scaler.transform(test_df.loc[:, self.numerical_features])
-            """
-
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 
