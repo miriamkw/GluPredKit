@@ -246,10 +246,19 @@ def calculate_metrics(models, metrics):
         _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-        x_test = processed_data.drop('target', axis=1)
-        y_test = processed_data['target']
 
+        target_columns = [column for column in processed_data.columns if column.startswith('target')]
+        if len(target_columns) == 1:
+            y_test = processed_data['target']
+        else:
+            y_test = processed_data[f'target_{prediction_horizon}']
+
+        x_test = processed_data.drop(target_columns, axis=1)
+
+        # As temporary solution, we just use the last value for calculating metrics
+        # TODO: Inputs to calculate_metrics can indicate whether all PH are included, or which one and so on
         y_pred = model_instance.predict(x_test)
+        y_pred = [val[-1] for val in y_pred]
 
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)
