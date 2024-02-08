@@ -12,6 +12,10 @@ from .plots.base_plot import BasePlot
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager, generate_model_configuration
 import glupredkit.helpers.cli as helpers
+import warnings
+
+# Ignore the FutureWarning related to is_sparse
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
@@ -155,6 +159,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'lstm_pytorch',
                                             'random_forest',
                                             'ridge',
+                                            'ridge_multioutput',
                                             'svr_linear',
                                             'svr_rbf',
                                             'tcn',
@@ -185,8 +190,9 @@ def train_model(model, config_file_name):
         chosen_model = model_module.Model(prediction_horizon)
 
         processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
-        x_train = processed_data.drop('target', axis=1)
-        y_train = processed_data['target']
+        target_columns = [column for column in processed_data.columns if column.startswith('target')]
+        x_train = processed_data.drop(target_columns, axis=1)
+        y_train = processed_data[target_columns]
 
         click.echo(f"Training model...")
 
