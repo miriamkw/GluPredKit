@@ -3,6 +3,8 @@ from sklearn.linear_model import Ridge
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
 from sklearn.multioutput import MultiOutputRegressor
+import json
+import numpy as np
 
 
 class Model(BaseModel):
@@ -67,3 +69,31 @@ class Model(BaseModel):
             coefficients = ridge_regressor[0].coef_
             for feature_name, coefficient in zip(feature_names, coefficients):
                 print(f"Feature: {feature_name}, Coefficient: {coefficient:.4f}")
+
+    def save_model_weights(self, file_path):
+        # Extract coefficients for each output
+        coefficients = [estimator.coef_ for estimator in self.model.best_estimator_.estimators_]
+
+        # Convert coefficients to a list of lists
+        coefficients_list = [coef.tolist() for coef in coefficients]
+
+        # Convert numpy arrays to lists to ensure JSON serialization
+        coefficients_list = [[float(value) for value in coef_row] for coef_row in coefficients_list]
+
+        # Convert feature names to a list
+        feature_names = self.model.best_estimator_.feature_names_in_
+        feature_names_list = feature_names.tolist() if isinstance(feature_names, np.ndarray) else feature_names
+
+        # Create a dictionary to store the model weights
+        model_weights = {
+            "n_outputs": len(coefficients),
+            "n_features": len(coefficients[0]),
+            "feature_names": feature_names_list,
+            "coefficients": coefficients_list
+        }
+
+        # Save the model weights to a JSON file
+        with open(file_path, "w") as f:
+            json.dump(model_weights, f, indent=4)  # Use indent for pretty printing
+
+
