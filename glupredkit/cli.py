@@ -247,19 +247,23 @@ def calculate_metrics(models, metrics):
 
         processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
 
-        target_columns = [column for column in processed_data.columns if column.startswith('target')]
-        if len(target_columns) == 1:
-            y_test = processed_data['target']
-        else:
-            y_test = processed_data[f'target_{prediction_horizon}']
-
-        x_test = processed_data.drop(target_columns, axis=1)
-
         # As temporary solution, we just use the last value for calculating metrics
         # TODO: Inputs to calculate_metrics can indicate whether all PH are included, or which one and so on
-        y_pred = model_instance.predict(x_test)
-        y_pred = [val[-1] for val in y_pred]
-
+        target_columns = [column for column in processed_data.columns if column.startswith('target')]
+        x_test = processed_data.drop(target_columns, axis=1)
+        if len(target_columns) == 1:
+            y_test = processed_data['target']
+            y_pred = model_instance.predict(x_test)
+            y_pred = [val[-1] for val in y_pred]
+            print(f'PRED NORMAL: {y_pred[3:8]}')
+            print(f'TRUE NORMAL: {y_test[3:8]}')
+        else:
+            # y_test = processed_data[f'target_{prediction_horizon}']
+            y_test = processed_data[f'target_60']
+            y_pred = model_instance.predict(x_test)
+            print(f'PRED MULTI: {y_pred[0:5, 11]}')
+            print(f'TRUE MULTI: {y_test[0:5]}')
+            y_pred = [val[11] for val in y_pred]
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)
             chosen_metric = metric_module.Metric()

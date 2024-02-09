@@ -71,14 +71,16 @@ class Model(BaseModel):
                 print(f"Feature: {feature_name}, Coefficient: {coefficient:.4f}")
 
     def save_model_weights(self, file_path):
-        # Extract coefficients for each output
+        # Extract coefficients and intercepts for each output
         coefficients = [estimator.coef_ for estimator in self.model.best_estimator_.estimators_]
+        intercepts = [estimator.intercept_ for estimator in self.model.best_estimator_.estimators_]
 
         # Convert coefficients to a list of lists
         coefficients_list = [coef.tolist() for coef in coefficients]
 
         # Convert numpy arrays to lists to ensure JSON serialization
         coefficients_list = [[float(value) for value in coef_row] for coef_row in coefficients_list]
+        intercepts_list = [float(value) for value in intercepts]
 
         # Convert feature names to a list
         feature_names = self.model.best_estimator_.feature_names_in_
@@ -89,7 +91,8 @@ class Model(BaseModel):
             "n_outputs": len(coefficients),
             "n_features": len(coefficients[0]),
             "feature_names": feature_names_list,
-            "coefficients": coefficients_list
+            "coefficients": coefficients_list,
+            "intercepts": intercepts_list,
         }
 
         # Save the model weights to a JSON file
