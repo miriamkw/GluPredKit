@@ -10,8 +10,10 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
+    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
+                         num_lagged_features, test_size)
 
     def __call__(self, df):
 
@@ -51,7 +53,6 @@ class Preprocessor(BasePreprocessor):
             test_data = self.transform_with_encoder(test_data, encoder)
 
         train_data = train_data.drop(columns=['imputed'])
-
         return train_data, test_data
 
     def transform_with_encoder(self, df, encoder):

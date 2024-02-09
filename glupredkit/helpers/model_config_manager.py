@@ -8,7 +8,7 @@ import os
 
 
 def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
-                                 cat_features, test_size):
+                                 cat_features, what_if_features, test_size):
     # Check if the 'data' string is a valid file in the 'data/raw/' folder
     data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):
@@ -32,6 +32,7 @@ def generate_model_configuration(file_name, data, preprocessor, prediction_horiz
         "num_lagged_features": num_lagged_features,
         "num_features": num_features,
         "cat_features": cat_features,
+        "what_if_features": what_if_features,
         "test_size": test_size
     }
     # Save the generated config to a JSON file
@@ -49,6 +50,7 @@ class ModelConfigurationManager:
             "num_lagged_features": int,
             "num_features": list,
             "cat_features": list,
+            "what_if_features": list,
             "test_size": float
         }
         self.config = self.load_config()
@@ -86,6 +88,9 @@ class ModelConfigurationManager:
 
     def get_cat_features(self):
         return self.config["cat_features"]
+
+    def get_what_if_features(self):
+        return self.config["what_if_features"]
 
     def get_test_size(self):
         return self.config["test_size"]

@@ -255,14 +255,10 @@ def calculate_metrics(models, metrics):
             y_test = processed_data['target']
             y_pred = model_instance.predict(x_test)
             y_pred = [val[-1] for val in y_pred]
-            print(f'PRED NORMAL: {y_pred[3:8]}')
-            print(f'TRUE NORMAL: {y_test[3:8]}')
         else:
             # y_test = processed_data[f'target_{prediction_horizon}']
             y_test = processed_data[f'target_60']
             y_pred = model_instance.predict(x_test)
-            print(f'PRED MULTI: {y_pred[0:5, 11]}')
-            print(f'TRUE MULTI: {y_test[0:5]}')
             y_pred = [val[11] for val in y_pred]
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)

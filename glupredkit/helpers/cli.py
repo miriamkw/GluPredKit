@@ -76,6 +76,7 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     preprocessor_module = importlib.import_module(f'glupredkit.preprocessors.{preprocessor}')
     chosen_preprocessor = preprocessor_module.Preprocessor(config_manager.get_num_features(),
                                                            config_manager.get_cat_features(),
+                                                           config_manager.get_what_if_features(),
                                                            prediction_horizon, config_manager.get_num_lagged_features(),
                                                            config_manager.get_test_size())
     # Load the input CSV file into a DataFrame

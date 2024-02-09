@@ -8,7 +8,8 @@ All preprocessors must:
 """
 
 class BasePreprocessor:
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
+    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features, test_size):
         """
         Args:
             prediction_horizon (int): The prediction horizon in minutes.
@@ -19,6 +20,7 @@ class BasePreprocessor:
         """
         self.numerical_features = numerical_features
         self.categorical_features = categorical_features
+        self.what_if_features = what_if_features
         self.prediction_horizon = prediction_horizon
         self.num_lagged_features = num_lagged_features
         self.test_size = test_size

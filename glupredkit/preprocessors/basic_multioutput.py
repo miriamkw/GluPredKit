@@ -10,8 +10,10 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
+    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
+                         num_lagged_features, test_size)
 
     def __call__(self, df):
 
@@ -50,6 +52,9 @@ class Preprocessor(BasePreprocessor):
             train_data = self.transform_with_encoder(train_data, encoder)
             test_data = self.transform_with_encoder(test_data, encoder)
 
+        train_data = self.add_what_if(train_data)
+        test_data = self.add_what_if(test_data)
+
         train_data = train_data.drop(columns=['imputed'])
 
         return train_data, test_data
@@ -84,3 +89,17 @@ class Preprocessor(BasePreprocessor):
             df['imputed'] = df['imputed'] | shifted_imputed
 
         return df
+
+    def add_what_if(self, df):
+        max_index = self.prediction_horizon // 5
+        if self.prediction_horizon % 5 != 0:
+            raise ValueError("Prediction horizon must be divisible by 5.")
+
+        df = df.copy()
+
+        for col_name in self.what_if_features:
+            for i in range(1, max_index + 1):
+                df.loc[:, f'{col_name}_what_if_{i * 5}'] = df[col_name].shift(-i)
+
+        return df
+
