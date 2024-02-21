@@ -127,4 +127,53 @@ class Parser(BaseParser):
         # Add hour of day
         df['hour'] = df.index.hour
 
+        # Add insulin on board
+        df = self.add_insulin_on_board(df)
+
         return df
+
+    def add_insulin_on_board(self, df):
+        """
+        Adds a column 'iob' to the DataFrame representing the percentage of insulin remaining (IOB) for each row.
+
+        :param df: Pandas DataFrame with columns 'insulin' and 'time_since_dose'.
+        """
+        peak_time = 75
+        total_action_time = 240
+        df['iob'] = 0.0
+
+        for current_time in df.index:
+            iob_total = 0
+            for previous_time in df[df.index <= current_time].index:
+                time_since_dose = (current_time - previous_time).total_seconds() / 3600.0
+                if 0 < time_since_dose <= total_action_time:
+                    percentage_remaining = self.calculate_insulin_remaining(time_since_dose, peak_time, total_action_time)
+                    iob_total += df.at[previous_time, 'insulin'] * (percentage_remaining / 100)
+
+            df.at[current_time, 'iob'] = iob_total
+
+        return df
+
+    def calculate_insulin_remaining(self, time_since_dose, peak_time, total_action_time):
+        """
+        Calculate the percentage of insulin remaining based on time since last dose,
+        peak time, and total action time of the insulin.
+
+        :param time_since_dose: Time since last insulin dose in hours.
+        :param peak_time: The peak time of insulin action in hours.
+        :param total_action_time: The total action time of the insulin in hours.
+        :return: Percentage of insulin remaining.
+        """
+        if time_since_dose < 0 or time_since_dose > total_action_time:
+            return 0  # No insulin action expected outside of the action time range
+
+        if time_since_dose <= peak_time:
+            # Rising phase - assuming linear increase to peak
+            return (1 - (time_since_dose / peak_time)) * 100
+        else:
+            # Falling phase - assuming linear decrease after peak to total action time
+            remaining_action_time = total_action_time - time_since_dose
+            falling_phase_duration = total_action_time - peak_time
+            return (remaining_action_time / falling_phase_duration) * 100
+
+

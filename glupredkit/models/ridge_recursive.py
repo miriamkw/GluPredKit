@@ -6,6 +6,7 @@ import json
 import numpy as np
 import cvxpy as cp
 import pandas as pd
+import re
 
 class Model(BaseModel):
     def __init__(self, prediction_horizon, lambda_ridge=0.1):
@@ -16,19 +17,29 @@ class Model(BaseModel):
         self.beta = None  # To store the model coefficients
         self.intercept = None  # To store the model intercepts
         self.feature_names = []  # To store feature names for identifying insulin columns
+        self.recursive_samples = 6
 
     def fit(self, x_train, y_train):
-        self.feature_names = x_train.columns.tolist()
+        # Filter out irrelevant what-if values
+        regex = r'what_if_(\d+)$'
+        # Identify columns to delete
+        columns_to_delete = [col for col in x_train.columns if
+                             re.search(regex, col) and int(
+                                 re.search(regex, col).group(1)) >= self.recursive_samples * 5]
+        # Delete these columns from the DataFrame
+        x_train.drop(columns=columns_to_delete, inplace=True)
         n_features = x_train.shape[1]
-        n_outputs = y_train.shape[1]
+        # n_outputs = y_train.shape[1]
+
+        self.feature_names = x_train.columns.tolist()
 
         # TODO: Add hyperparameter tuning, preferably with a self-defined loss function
 
         # Initialize storage for model coefficients and intercepts for each output
-        self.beta = np.zeros((n_features, n_outputs))
-        self.intercept = np.zeros(n_outputs)
+        self.beta = np.zeros((n_features, self.recursive_samples))
+        self.intercept = np.zeros(self.recursive_samples)
 
-        for output_index in range(n_outputs):
+        for output_index in range(self.recursive_samples):
             # Define the optimization variables
             beta = cp.Variable(n_features)
             intercept = cp.Variable(1)
@@ -40,32 +51,10 @@ class Model(BaseModel):
             loss = (cp.sum_squares(cp.matmul(x_train.values, beta) + intercept - y_target)
                     + self.lambda_ridge * cp.sum_squares(beta))
 
-            """
-            # Quantile weights based on BG zones
-            low_quantile, high_quantile = np.percentile(y_target, [20, 80])
-            # low_limit = 80
-            # high_limit = 180
-    
-            weights = np.ones_like(y_target)
-            # Increase weights for observations outside the 10th and 90th percentiles
-            weights[y_target < low_quantile] = 2  # Example weight
-            weights[y_target > high_quantile] = 2  # Example weight
-
-            # Print the quantile limits
-            # print(f"Low Quantile Limit (20th percentile): {low_quantile}")
-            # print(f"High Quantile Limit (80th percentile): {high_quantile}")
-            
-
-            # Modified loss function with weights
-            weighted_loss = cp.sum(cp.multiply(weights, cp.square(cp.matmul(x_train.values, beta) + intercept - y_target)))
-            loss = weighted_loss + self.lambda_ridge * cp.sum_squares(beta)
-            """
-
             # Constraints: negative coefficients for features starting with "insulin", positive for carbs
             constraints = [beta[i] <= 0 for i, name in enumerate(self.feature_names) if name.startswith('insulin')]
-            constraints += [beta[i] <= 0 for i, name in enumerate(self.feature_names) if name.startswith('iob')]
-            constraints += [beta[i] <= 0 for i, name in enumerate(self.feature_names) if name.startswith('caloriesburned')]
-            constraints += [beta[i] >= 0 for i, name in enumerate(self.feature_names) if name.startswith('carbs')]
+            constraints = constraints + [beta[i] >= 0 for i, name in enumerate(self.feature_names) if
+                                         name.startswith('carbs')]
 
             # TODO: Add more constraints if physiologically reasonable
 
@@ -83,24 +72,43 @@ class Model(BaseModel):
         if self.beta is None or self.intercept is None:
             raise Exception("Model has not been fitted.")
 
+        # Filter out irrelevant what-if values
+        regex = r'what_if_(\d+)$'
+        # Identify columns to delete
+        columns_to_delete = [col for col in x_test.columns if
+                             re.search(regex, col) and int(
+                                 re.search(regex, col).group(1)) >= self.recursive_samples * 5]
+        # Delete these columns from the DataFrame
+        x_test.drop(columns=columns_to_delete, inplace=True)
+
+        steps = int(np.ceil(self.prediction_horizon / (5 * self.recursive_samples)))
         # Number of outputs
-        n_outputs = self.beta.shape[1]
+        n_outputs = steps * self.recursive_samples
 
         # Initialize an array to store predictions for each output
         y_pred = np.zeros((x_test.shape[0], n_outputs))
 
-        # Calculate predictions for each output
-        for output_index in range(n_outputs):
-            # Ensure x_test is a numpy array for matrix operations
-            y_pred[:, output_index] = np.dot(x_test.values, self.beta[:, output_index]) + self.intercept[output_index]
-            """
-            # Factor to amplify the coefficients
-            amplification_factor = 1 + (output_index * 0.5 / 12)
+        for i in range(steps):
+            for output_index in range(self.recursive_samples):
+                current_index = output_index + (self.recursive_samples * i)
 
-            # Apply the factor to the coefficients (betas) and make predictions
-            y_pred[:, output_index] = np.dot(x_test.values, self.beta[:, output_index] * amplification_factor) + \
-                                      self.intercept[output_index]
-            """
+                # Ensure x_test is a numpy array for matrix operations
+                y_pred[:, current_index] = (np.dot(x_test.values, self.beta[:, output_index]) +
+                                                   self.intercept[output_index])
+
+            # Assuming x_test is your pandas DataFrame
+            x_test = x_test.shift(-self.recursive_samples)
+
+            # Fill the NaN values created by shifting
+            x_test.fillna(method='ffill', inplace=True)
+
+            # Update x_test with predicted values
+            x_test['CGM'] = y_pred[:, current_index]
+
+            for j in range(self.recursive_samples - 1):
+                col_name = f'CGM_{int((j + 1) * 5)}'
+                if col_name in x_test.columns:
+                    x_test[col_name] = y_pred[:, self.recursive_samples - j - 2 + (self.recursive_samples * i)]
 
         return y_pred
 

@@ -18,7 +18,7 @@ class Preprocessor(BasePreprocessor):
     def __call__(self, df):
 
         # Drop columns that are not included
-        df = df[self.numerical_features + self.categorical_features]
+        df = df[self.numerical_features + self.categorical_features + ['iob']]
 
         # Add target column
         target_index = self.prediction_horizon // 5

@@ -160,6 +160,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'random_forest',
                                             'ridge',
                                             'ridge_multioutput',
+                                            'ridge_recursive',
                                             'ridge_multioutput_constrained',
                                             'svr_linear',
                                             'svr_rbf',

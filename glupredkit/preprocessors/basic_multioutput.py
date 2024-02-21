@@ -7,6 +7,7 @@ The basic preprocessor does the following:
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+import matplotlib.pyplot as plt
 
 
 class Preprocessor(BasePreprocessor):
@@ -16,6 +17,11 @@ class Preprocessor(BasePreprocessor):
                          num_lagged_features, test_size)
 
     def __call__(self, df):
+        """
+        df['iob'].hist(bins=60, alpha=0.5)
+        df['CGM'].hist(bins=60, alpha=0.5)
+        plt.show()
+        """
 
         # Drop columns that are not included
         df = df[self.numerical_features + self.categorical_features]
@@ -27,8 +33,11 @@ class Preprocessor(BasePreprocessor):
         df = df.copy()
 
         # Check if the CGM value has NaN values before imputation, add a column "flag"
-        df.loc[:, 'imputed'] = df.loc[:, ["CGM"]].isna().any(axis=1)
+        df.loc[:, 'imputed'] = df.loc[:, ['CGM']].isna().any(axis=1)
         df = self.add_targets(df)
+
+        df['iob_caloriesburned'] = df['iob'] * df['caloriesburned']
+        #df['iob_CGM'] = df['iob'] * df['CGM']
 
         # Interpolation using forward fill
         df[self.numerical_features] = df[self.numerical_features].interpolate(limit_direction='both')

@@ -37,6 +37,12 @@ class UnitConfigManager:
             return value / 18.018
         return value
 
+    def get_unit_string(self):
+        if self.use_mgdl:
+            return "mg/dL"
+        else:
+            return "mmol/L"
+
 
 # You can create a global instance of the config manager.
 unit_config_manager = UnitConfigManager()
