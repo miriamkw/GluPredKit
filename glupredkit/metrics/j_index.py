@@ -5,7 +5,7 @@ import sys
 
 class Metric(BaseMetric):
     def __init__(self):
-        pred_horizon = sys.argv[3].split("_")[6].replace(".pkl","")
+        pred_horizon = sys.argv[3].split("_")[-1].replace(".pkl","")
         super().__init__('JINDEX')
         self.PH = int(pred_horizon) // 5
         self.delta_t = 5 # measured every 5 minutes
