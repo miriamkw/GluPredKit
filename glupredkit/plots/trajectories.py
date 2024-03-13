@@ -9,20 +9,43 @@ import glupredkit.helpers.cli as helpers
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 import os
 
-'''
-# Eirik's
-activity_logs = [{'start_time': "2024-02-03 13:30", 'duration': 2, 'activity': 'cross-country skiing and snow-shoveling'},
+
+# participant 1
+activity_logs = [{'start_time': "2024-01-26 21:00", 'duration': 1, 'activity': 'cross-country skiing'},
+                 {'start_time': "2024-01-27 22:45", 'duration': 0.75, 'activity': 'biking'},
+                 {'start_time': "2024-01-30 23:00", 'duration': 0.5, 'activity': 'strength training'},
+                 {'start_time': "2024-01-31 20:15", 'duration': 0.75, 'activity': 'biking, walking, and snow shoveling'},
+                 {'start_time': "2024-02-01 21:00", 'duration': 1, 'activity': 'snow-shoveling'},
+                 {'start_time': "2024-02-02 22:30", 'duration': 0.25, 'activity': 'snow-shoveling'},
+                 {'start_time': "2024-02-03 13:30", 'duration': 2, 'activity': 'cross-country skiing and snow-shoveling'},
                  {'start_time': "2024-02-03 20:00", 'duration': 1, 'activity': 'snow-shoveling'},
                  {'start_time': "2024-02-04 13:00", 'duration': 0.5, 'activity': 'snow-shoveling'},
                  {'start_time': "2024-02-04 23:30", 'duration': 0.5, 'activity': 'snow-shoveling'},
                  {'start_time': "2024-02-05 22:00", 'duration': 0.5, 'activity': 'cross-country skiing'}
                  ]
 '''
-activity_logs = [{'start_time': "2024-02-17 17:00", 'duration': 0.67, 'activity': 'walk'},
+# participant 2
+activity_logs = [{'start_time': "2024-02-12 09:30", 'duration': 0.5, 'activity': 'walk'},
+                 {'start_time': "2024-02-12 12:30", 'duration': 0.5, 'activity': 'walk'},
+                 {'start_time': "2024-02-12 16:25", 'duration': 0.3, 'activity': 'walk'},
+                 {'start_time': "2024-02-12 19:55", 'duration': 0.25, 'activity': 'walk'},
+                 {'start_time': "2024-02-12 23:10", 'duration': 0.3, 'activity': 'walk'},
+
+                 {'start_time': "2024-02-13 07:50", 'duration': 0.3, 'activity': 'walk'},
+                 {'start_time': "2024-02-13 09:50", 'duration': 0.3, 'activity': 'walk'},
+
+                 {'start_time': "2024-02-14 14:15", 'duration': 0.3, 'activity': 'walk'},
+
+                 {'start_time': "2024-02-15 07:50", 'duration': 0.2, 'activity': 'walk'},
+                 {'start_time': "2024-02-15 13:40", 'duration': 0.5, 'activity': 'walk'},
+                 {'start_time': "2024-02-15 17:40", 'duration': 0.3, 'activity': 'walk'},
+
+                 {'start_time': "2024-02-17 17:00", 'duration': 0.67, 'activity': 'walk'},
+
                  {'start_time': "2024-02-18 17:30", 'duration': 0.5, 'activity': 'walk'},
                  {'start_time': "2024-02-18 22:00", 'duration': 0.5, 'activity': 'walk'}
                  ]
-
+'''
 
 class Plot(BasePlot):
     def __init__(self):
@@ -130,12 +153,12 @@ class Plot(BasePlot):
 
 
             # Get the period rmse for the model
-            rmse_at_specific_period_path = 'data/reports/period/rmse_at_specific_period.csv'
-            rmse_period = pd.read_csv(rmse_at_specific_period_path)
-            model_rmse_period = rmse_period[rmse_period['Model name'] == name]
-            period_rmse = model_rmse_period['Score'].iloc[0]
-            period_rmse = list(period_rmse.replace('[','').replace(']','').split(','))
-            counter = 0
+            # rmse_at_specific_period_path = 'data/reports/period/rmse_at_specific_period.csv'
+            # rmse_period = pd.read_csv(rmse_at_specific_period_path)
+            # model_rmse_period = rmse_period[rmse_period['Model name'] == name]
+            # period_rmse = model_rmse_period['Score'].iloc[0]
+            # period_rmse = list(period_rmse.replace('[','').replace(']','').split(','))
+            # counter = 0
 
             for day in range(num_days):
                 start_index = day * 24 * 60 // 5
@@ -183,12 +206,13 @@ class Plot(BasePlot):
                 ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
 
                 # format y-axis
-                ax.set_ylim(50, 280)
+                # ax.set_ylim(50, 350)
+                ax.set_ylim(20, 280)
                 ax.axhspan(70, 180, color='yellow', alpha=0.3)
 
                 # print("y_true_day: ", y_true_day.index[0])
                 # Mark the activity time
-                counter = mark_activity_time(activity_logs, y_true_day.index[0], period_rmse, counter)
+                mark_activity_time(activity_logs, y_true_day.index[0])
 
                 # save plot
                 save_dir = f"data/figures/" + model_name + '/'
@@ -201,7 +225,7 @@ class Plot(BasePlot):
 
 
 
-def mark_activity_time(periods, plot_start_date, period_rmse, counter):
+def mark_activity_time(periods, plot_start_date):
     plot_day = plot_start_date.date().strftime("%Y-%m-%d")
     for period in periods:
         # print("period['start_time'].split(' ')[0]: ", period['start_time'].split(' ')[0])
@@ -211,12 +235,12 @@ def mark_activity_time(periods, plot_start_date, period_rmse, counter):
             start_time = datetime.datetime.strptime(period['start_time'], "%Y-%m-%d %H:%M")
             end_time = start_time + datetime.timedelta(hours=period['duration'])
             # print("period_rmse: ", period_rmse)
-            temp_rmse = period_rmse[counter]
-            counter += 1
+            # temp_rmse = period_rmse[counter]
+            # counter += 1
             plt.axvline(x=start_time, color='r', linestyle='--')
-            plt.text(start_time, 230, '{}'.format(temp_rmse[:5]), verticalalignment='bottom')
+            # plt.text(start_time, 230, '{}'.format(temp_rmse[:5]), verticalalignment='bottom')
             plt.axvline(x=end_time, color='r', linestyle='--')
-    return counter   
+    #return counter   
 
 '''
         for trajectory_data in trajectories:
