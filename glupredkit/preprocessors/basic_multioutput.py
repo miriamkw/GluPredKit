@@ -24,7 +24,7 @@ class Preprocessor(BasePreprocessor):
         """
 
         # Drop columns that are not included
-        df = df[self.numerical_features + self.categorical_features]
+        df = df[self.numerical_features + self.categorical_features + ['cob', 'iob']]
 
         # Add target column
         target_index = self.prediction_horizon // 5
@@ -36,7 +36,7 @@ class Preprocessor(BasePreprocessor):
         df.loc[:, 'imputed'] = df.loc[:, ['CGM']].isna().any(axis=1)
         df = self.add_targets(df)
 
-        df['iob_caloriesburned'] = df['iob'] * df['caloriesburned']
+        #df['iob_caloriesburned'] = df['iob'] * df['caloriesburned']
         #df['iob_CGM'] = df['iob'] * df['CGM']
 
         # Interpolation using forward fill
@@ -51,6 +51,21 @@ class Preprocessor(BasePreprocessor):
         train_data = df[:split_index - margin]
         test_data = df[split_index + margin:]
 
+        if self.numerical_features:
+            scaler = StandardScaler()
+
+            # Fit the encoder only on training data
+            scaler.fit(train_data[self.numerical_features])
+
+            # Transform data
+            train_data[self.numerical_features] = scaler.transform(train_data[self.numerical_features])
+            test_data[self.numerical_features] = scaler.transform(test_data[self.numerical_features])
+
+            # Print mean and scale for each feature
+            print("Features:", self.numerical_features)
+            print("Feature Means:", scaler.mean_)
+            print("Feature Standard Deviations:", scaler.scale_)
+
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 
@@ -61,8 +76,8 @@ class Preprocessor(BasePreprocessor):
             train_data = self.transform_with_encoder(train_data, encoder)
             test_data = self.transform_with_encoder(test_data, encoder)
 
-        train_data = self.add_what_if(train_data)
-        test_data = self.add_what_if(test_data)
+        # train_data = self.add_what_if(train_data)
+        # test_data = self.add_what_if(test_data)
 
         train_data = train_data.drop(columns=['imputed'])
 
@@ -99,6 +114,7 @@ class Preprocessor(BasePreprocessor):
 
         return df
 
+    """
     def add_what_if(self, df):
         max_index = self.prediction_horizon // 5
         if self.prediction_horizon % 5 != 0:
@@ -111,4 +127,4 @@ class Preprocessor(BasePreprocessor):
                 df.loc[:, f'{col_name}_what_if_{i * 5}'] = df[col_name].shift(-i)
 
         return df
-
+    """

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import ast
 import re  # For regular expression operations
 from glupredkit.metrics.rmse import Metric
 from glupredkit.helpers.unit_config_manager import unit_config_manager
@@ -83,9 +84,11 @@ def draw_coefficients_across_outputs(model_file, column_prefix="insulin"):
     sorted_feature_numbers = feature_numbers[sorted_indices]
     sorted_relevant_coefficients = relevant_coefficients[sorted_indices, :]
 
+    interval = 1
+
     # Plotting
     plt.figure(figsize=(10, 6))  # Optional: Adjust figure size
-    for output_index in range(0, relevant_coefficients.shape[1], 4):
+    for output_index in range(0, relevant_coefficients.shape[1], interval):
         # Plot coefficients for each output
         plt.plot(sorted_feature_numbers, sorted_relevant_coefficients[:, output_index], marker='o',
                  label=f'Output {output_index + 1}')
@@ -116,12 +119,23 @@ def calculate_metrics(model_file, metric_file):
     target_columns = [column for column in processed_data.columns if column.startswith('target')]
     x_test = processed_data.drop(target_columns, axis=1)
 
+    targets = [np.array(ast.literal_eval(target_str)) for target_str in processed_data['target']]
+    y_pred = model_instance.predict(x_test)
+    n_predictions = len(y_pred[0])
+
+    for i in range(n_predictions):
+        curr_pred = [pred[i] for pred in y_pred]
+        curr_target = [tar[i] for tar in targets]
+        result = metric_file(curr_target, curr_pred)
+        results.append(result)
+
+    """
     for index, target_column in enumerate(target_columns):
-        # print("TARGET: ", target_column)
         # TODO: Add a test that targets are increasing, although I printed to verify
         y_pred = model_instance.predict(x_test)
         result = metric_file(processed_data[target_column], y_pred[:, index])
         results.append(result)
+    """
 
     return results
 
@@ -143,12 +157,23 @@ def calculate_slope(model_file):
     target_columns = [column for column in processed_data.columns if column.startswith('target')]
     x_test = processed_data.drop(target_columns, axis=1)
 
+    targets = [np.array(ast.literal_eval(target_str)) for target_str in processed_data['target']]
+    y_pred = model_instance.predict(x_test)
+    n_predictions = len(y_pred[0])
+
+    for i in range(n_predictions):
+        curr_pred = [pred[i] for pred in y_pred]
+        curr_target = [tar[i] for tar in targets]
+        slope, intercept = np.polyfit(curr_target, curr_pred, 1)
+        results.append(slope)
+
+    """
     for index, target_column in enumerate(target_columns):
-        # print("TARGET: ", target_column)
         # TODO: Add a test that targets are increasing, although I printed to verify
         y_pred = model_instance.predict(x_test)
         slope, intercept = np.polyfit(processed_data[target_column], y_pred[:, index], 1)
         results.append(slope)
+    """
 
     return results
 
@@ -157,6 +182,7 @@ def calculate_slope(model_file):
 metric = Metric()
 model = 'ridge_multioutput_constrained__me_multioutput__180.pkl'
 
-draw_slope_across_trajectory(model)
-draw_metric_across_trajectory(model, metric)
-# draw_coefficients_across_outputs(model, 'insulin')
+#draw_slope_across_trajectory(model)
+#draw_metric_across_trajectory(model, metric)
+draw_coefficients_across_outputs(model, 'insulin')
+draw_coefficients_across_outputs(model, 'carbs')

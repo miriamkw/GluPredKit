@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import ast
 import click
 import dill
 import os
 import importlib
+import numpy as np
 import pandas as pd
 from datetime import timedelta, datetime
 
@@ -157,6 +159,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'lasso',
                                             'lstm',
                                             'lstm_pytorch',
+                                            'lstm_multioutput',
                                             'random_forest',
                                             'ridge',
                                             'ridge_multioutput',
@@ -253,15 +256,36 @@ def calculate_metrics(models, metrics):
         # TODO: Inputs to calculate_metrics can indicate whether all PH are included, or which one and so on
         target_columns = [column for column in processed_data.columns if column.startswith('target')]
         x_test = processed_data.drop(target_columns, axis=1)
+        """
+        pred_index = 11
+        y_test = processed_data['target']
+        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_test]
+        y_test = [val[pred_index] for val in targets]
+
+        y_pred = model_instance.predict(x_test)
+        y_pred = [val[pred_index] for val in y_pred]
+        """
         if len(target_columns) == 1:
             y_test = processed_data['target']
             y_pred = model_instance.predict(x_test)
-            y_pred = [val[-1] for val in y_pred]
+            y_pred = np.array(y_pred)  # Convert to numpy array if not already
+
+            # Check if y_pred is 1D or 2D
+            if y_pred.ndim == 1:
+                # y_pred is 1D, no need to adjust
+                pass
+            elif y_pred.ndim == 2:
+                # y_pred is 2D, extract the last column if there are multiple columns
+                y_pred = [val[-1] for val in y_pred]
+            else:
+                # Handle unexpected y_pred shape
+                raise ValueError("Unexpected y_pred shape")
         else:
             # y_test = processed_data[f'target_{prediction_horizon}']
             y_test = processed_data[f'target_60']
             y_pred = model_instance.predict(x_test)
             y_pred = [val[11] for val in y_pred]
+
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)
             chosen_metric = metric_module.Metric()

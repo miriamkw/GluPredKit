@@ -3,7 +3,7 @@ import pickle
 import tensorflow as tf
 
 horizons = ['180']
-models = ['ridge_multioutput_constrained']
+models = ['lstm_multioutput']
 config = 'me_multioutput'
 
 for horizon in horizons:
@@ -32,9 +32,11 @@ for horizon in horizons:
             break
 
         # Code for converting models trained using Tensorflow or PyTorch
-        if model == 'lstm':
+        if model == 'lstm' or model == 'lstm_multioutput':
+            model = loaded_class.load_model()
             model = tf.keras.models.load_model(loaded_class.model_path,
-                                               custom_objects={"Adam": tf.keras.optimizers.legacy.Adam})
+                                               custom_objects={"Adam": tf.keras.optimizers.legacy.Adam,
+                                                               "loss": model.loss})
             mlmodel = ct.convert(model,
                                  source='tensorflow',
                                  # source='pytorch',
@@ -42,3 +44,4 @@ for horizon in horizons:
 
         output_mlmodel_file = f'{file_name}.mlpackage'
         mlmodel.save(f"data/trained_models/{output_mlmodel_file}")
+
