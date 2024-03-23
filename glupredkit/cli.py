@@ -5,6 +5,8 @@ import os
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -147,10 +149,6 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 @click.command()
 @click.argument('model', type=click.Choice(['arx',
-                                            'elastic_net',
-                                            'gradient_boosting_trees',
-                                            'huber',
-                                            'lasso',
                                             'lstm',
                                             'lstm_pytorch',
                                             'random_forest',
@@ -185,8 +183,9 @@ def train_model(model, config_file_name):
         chosen_model = model_module.Model(prediction_horizon)
 
         processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
-        x_train = processed_data.drop('target', axis=1)
-        y_train = processed_data['target']
+        target_columns = [column for column in processed_data.columns if column.startswith('target')]
+        x_train = processed_data.drop(target_columns, axis=1)
+        y_train = processed_data[target_columns]
 
         click.echo(f"Training model...")
 
@@ -352,6 +351,47 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
 
 
 @click.command()
+@click.option('--model', help='The name of the trained model to evaluate, without ".pkl".')
+def generate_evaluation_pdf(model):
+    """
+    This command stores a standardized pdf report of the given model in data/reports/.
+    """
+    trained_models_path = "data/trained_models/"
+
+    click.echo(f"Generating evaluation report...")
+    model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
+                                                        int(model.split('__')[2].split('.')[0]))
+
+    model_config_manager = ModelConfigurationManager(config_file_name)
+    model_instance = helpers.get_trained_model(f'{model}.pkl')
+    _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+    processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+
+    target_columns = [column for column in processed_data.columns if column.startswith('target')]
+    x_test = processed_data.drop(target_columns, axis=1)
+    y_test = processed_data[target_columns]
+
+    y_pred = model_instance.predict(x_test)
+
+    # Convert results to DataFrame and save as CSV
+    results_file_path = 'data/reports/'
+    os.makedirs(results_file_path, exist_ok=True)
+    results_file_name = f'{model}.pdf'
+
+    # Create a PDF canvas
+    c = canvas.Canvas(f"data/reports/{results_file_name}", pagesize=letter)
+    # Draw "Hello World" text
+    c.drawString(100, 750, "Hello World")
+    # Save the PDF
+    c.save()
+
+    click.echo(
+        f"An evaluation report for {model}.pkl is stored in '{results_file_path}' as '{results_file_name}'")
+
+
+
+@click.command()
 @click.option('--use-mgdl', type=bool, help='Set whether to use mg/dL or mmol/L')
 def set_unit(use_mgdl):
     # Update the config
@@ -367,6 +407,7 @@ cli = click.Group(commands={
     'train_model': train_model,
     'calculate_metrics': calculate_metrics,
     'draw_plots': draw_plots,
+    'generate_evaluation_pdf': generate_evaluation_pdf,
     'set_unit': set_unit,
 })
 

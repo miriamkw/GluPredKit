@@ -1,5 +1,5 @@
 from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import Pipeline
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import RandomForestRegressor
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
@@ -12,18 +12,20 @@ class Model(BaseModel):
         self.model = None
 
     def fit(self, x_train, y_train):
+        # Define the base regressor
+        base_regressor = RandomForestRegressor()
 
-        # Define the model
-        pipeline = Pipeline([('regressor', RandomForestRegressor())])
+        # Wrap the base regressor with MultiOutputRegressor
+        multi_output_regressor = MultiOutputRegressor(base_regressor)
 
         # Define the parameter grid
         param_grid = {
-            'regressor__n_estimators': [300],
-            'regressor__min_samples_split': [80],
+            'estimator__n_estimators': [300],
+            'estimator__min_samples_split': [80],
         }
 
         # Define GridSearchCV
-        self.model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
+        self.model = GridSearchCV(multi_output_regressor, param_grid, cv=5, scoring='neg_mean_squared_error')
         self.model.fit(x_train, y_train)
         return self
 
