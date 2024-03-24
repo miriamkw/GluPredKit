@@ -2,11 +2,19 @@
 import click
 import dill
 import os
+from io import BytesIO
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
+import matplotlib.pyplot as plt
+from io import BytesIO
 from reportlab.pdfgen import canvas
+from reportlab.graphics import renderPDF
+from svglib.svglib import svg2rlg
+
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -356,8 +364,6 @@ def generate_evaluation_pdf(model):
     """
     This command stores a standardized pdf report of the given model in data/reports/.
     """
-    trained_models_path = "data/trained_models/"
-
     click.echo(f"Generating evaluation report...")
     model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
                                                         int(model.split('__')[2].split('.')[0]))
@@ -371,8 +377,35 @@ def generate_evaluation_pdf(model):
     target_columns = [column for column in processed_data.columns if column.startswith('target')]
     x_test = processed_data.drop(target_columns, axis=1)
     y_test = processed_data[target_columns]
-
     y_pred = model_instance.predict(x_test)
+
+    prediction_range = int(prediction_horizon) // 5
+    rmse_list = []
+    rmse_module = helpers.get_metric_module("rmse")
+    rmse = rmse_module.Metric()
+
+    mae_list = []
+    mae_module = helpers.get_metric_module("mae")
+    mae = mae_module.Metric()
+
+    clarke_error_grid_list = []
+    clarke_module = helpers.get_metric_module("clarke_error_grid")
+    clarke = clarke_module.Metric()
+
+    hyperglycemia_detection_list = []
+    hyper_module = helpers.get_metric_module("hyperglycemia_detection")
+    hyper = hyper_module.Metric()
+
+    hypoglycemia_detection_list = []
+    hypo_module = helpers.get_metric_module("hypoglycemia_detection")
+    hypo = hypo_module.Metric()
+
+    for i in range(prediction_range):
+        rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]
+        mae_list += [mae(y_test[target_columns[i]], y_pred[:, i])]
+        clarke_error_grid_list += [clarke(y_test[target_columns[i]], y_pred[:, i])]
+        hyperglycemia_detection_list += [hyper(y_test[target_columns[i]], y_pred[:, i])]
+        hypoglycemia_detection_list += [hypo(y_test[target_columns[i]], y_pred[:, i])]
 
     # Convert results to DataFrame and save as CSV
     results_file_path = 'data/reports/'
@@ -381,14 +414,340 @@ def generate_evaluation_pdf(model):
 
     # Create a PDF canvas
     c = canvas.Canvas(f"data/reports/{results_file_name}", pagesize=letter)
-    # Draw "Hello World" text
-    c.drawString(100, 750, "Hello World")
+
+    # Set font and font size for title
+    c.setFont("Helvetica-Bold", 16)
+
+    # Centered title
+    c.drawCentredString(letter[0] / 2, 750, f'Model Evaluation for {model_name}')
+
+    # Subtitle
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(100, 720, f'Model Configuration')
+
+    # Normal text
+    c.setFont("Helvetica", 12)
+    c.drawString(100, 700, f'Prediction horizon: {prediction_horizon} minutes')
+    c.drawString(100, 680, f'Numerical features: [...]')
+    c.drawString(100, 660, f'Categorical features: [...]')
+    c.drawString(100, 640, f'What-if features: [...]')
+
+    # Subtitle
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(100, 600, f'Data Description')
+
+    # Normal text
+    c.setFont("Helvetica", 12)
+    c.drawString(100, 580, f'Dataset: Name + citation')
+    c.drawString(100, 560, f'Training samples: xxx')
+    c.drawString(100, 540, f'Test samples: yyy')
+    c.drawString(100, 520, f'Data variability index: zzz')
+    c.drawString(100, 500, f'Hypoglcemia samples: zzz')
+    c.drawString(100, 480, f'Hyperglycemia samples: zzz')
+
+    # Subtitle
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(100, 440, f'Model Evaluation Summary')
+
+    # Normal text
+    c.setFont("Helvetica", 12)
+    c.drawString(100, 420, f'Summary of each part of the evaluation report...')
+
+    # Bottom text
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
+                                            f'(https://github.com/miriamkw/GluPredKit)')
+
+    # Show the first page
+    c.showPage()
+
+    # Page 2
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(letter[0] / 2, 750, "Evaluation Metrics")
+
+    # Table data
+    data = [
+        ['Prediction Horizon', f'RMSE [{unit_config_manager.get_unit()}]', f'MAE [{unit_config_manager.get_unit()}]']
+    ]
+
+    for i in range(5, prediction_range, 6):
+        rmse_str = "{:.1f}".format(rmse_list[i])
+        mae_str = "{:.1f}".format(mae_list[i])
+        new_row = [[str(i*5 + 5), rmse_str, mae_str]]
+        data += new_row
+
+    # Create a table
+    table = Table(data)
+    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
+
+    # Draw the table on the canvas
+    table.wrapOn(c, 0, 0)
+    table.drawOn(c, 100, 600)
+
+    # Plotting rmse values
+    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
+    fig = plt.figure(figsize=(5, 3))
+    plt.plot(x_values, rmse_list, marker='o', label=f'RMSE [{unit_config_manager.get_unit()}]')
+    plt.plot(x_values, mae_list, marker='o', label=f'MAE [{unit_config_manager.get_unit()}]')
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title(f'Error Metrics for {model_name}')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, 300)
+
+    # Subtitle
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(100, 250, f'Clarke Error Grid Analysis')
+
+    # Table data
+    data = [
+        ['Prediction Horizon', f'Zone A [%]', f'Zone B [%]', f'Zone C [%]', f'Zone D [%]', f'Zone E [%]']
+    ]
+
+    for i in range(5, prediction_range, 6):
+        current_row = clarke_error_grid_list[i]
+        new_row = [[str(i * 5 + 5), current_row[0], current_row[1], current_row[2], current_row[3], current_row[4]]]
+        data += new_row
+
+    # Create a table
+    table = Table(data)
+    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
+
+    # Draw the table on the canvas
+    table.wrapOn(c, 0, 0)
+    table.drawOn(c, 100, 100)
+
+    # Bottom text
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
+                                            f'(https://github.com/miriamkw/GluPredKit)')
+
+    # Show the second page
+    c.showPage()
+
+    # TODO: Reduce redundancy in this code
+    # Page 3
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(letter[0] / 2, 750, "Scatter Plots")
+    """
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[5]], y_pred[:, 5], alpha=0.5)
+
+    if unit_config_manager.use_mgdl:
+        unit = "mg/dL"
+        max_val = 400
+    else:
+        unit = "mmol/L"
+        max_val = unit_config_manager.convert_value(400)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"30 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 100, 520)
+
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[11]], y_pred[:, 11], alpha=0.5)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"60 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 400, 520)
+
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[17]], y_pred[:, 17], alpha=0.5)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"90 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 100, 300)
+
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[23]], y_pred[:, 23], alpha=0.5)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"120 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 400, 300)
+
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[29]], y_pred[:, 29], alpha=0.5)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"150 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 100, 80)
+
+    # Plotting rmse values
+    fig = plt.figure(figsize=(2, 2))
+    plt.scatter(y_test[target_columns[35]], y_pred[:, 35], alpha=0.5)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"180 minutes")
+    plt.legend(loc='upper left')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 400, 80)
+
+    """
+    # Bottom text
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
+                                            f'(https://github.com/miriamkw/GluPredKit)')
+
+    # Show the page
+    c.showPage()
+
+    # Page 4
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(letter[0] / 2, 750, "Critical Clinical Aspects")
+
+    # Normal text
+    c.setFont("Helvetica", 12)
+    c.drawString(100, 730, f'The detection of hypo- and hyperglycemia assesses the percentage of target ')
+    c.drawString(100, 715, f'values below 70 mg/dL or above 180 mg/dL, where the predicted values also fall')
+    c.drawString(100, 700, f'below 70 mg/dL or above 180 mg/dL.')
+
+    # Table data
+    data = [
+        ['Prediction Horizon', f'Hypoglycemia Detection', f'Hyperglycemia Detection']
+    ]
+
+    for i in range(5, prediction_range, 6):
+        hypoglycemia_str = "{:.1f}%".format(hypoglycemia_detection_list[i])
+        hyperglycemia_str = "{:.1f}%".format(hyperglycemia_detection_list[i])
+        new_row = [[str(i * 5 + 5), hypoglycemia_str, hyperglycemia_str]]
+        data += new_row
+
+    # Create a table
+    table = Table(data)
+    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
+
+    # Draw the table on the canvas
+    table.wrapOn(c, 0, 0)
+    table.drawOn(c, 100, 550)
+
+    # TODO: Add a plot for hypo- and hyperglycemia detection!
+
+    # Plotting rmse values
+    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
+    fig = plt.figure(figsize=(5, 3))
+    plt.plot(x_values, hypoglycemia_detection_list, marker='o', label=f'Hypoglycemia Detection [%]')
+    plt.plot(x_values, hyperglycemia_detection_list, marker='o', label=f'Hyperglycemia Detection [%]')
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title(f'Glycemia Detection for {model_name}')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, 250)
+
+
+    # Bottom text
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
+                                            f'(https://github.com/miriamkw/GluPredKit)')
+
+    # Show the page
+    c.showPage()
+
     # Save the PDF
     c.save()
 
     click.echo(
         f"An evaluation report for {model}.pkl is stored in '{results_file_path}' as '{results_file_name}'")
-
 
 
 @click.command()
