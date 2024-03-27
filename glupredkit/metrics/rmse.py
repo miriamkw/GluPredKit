@@ -11,7 +11,7 @@ class Metric(BaseMetric):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        rmse = np.sqrt(np.mean(np.square(y_true - y_pred)))
+        rmse = np.sqrt(np.nanmean(np.square(y_true - y_pred)))
         if unit_config_manager.use_mgdl:
             return rmse
         else:

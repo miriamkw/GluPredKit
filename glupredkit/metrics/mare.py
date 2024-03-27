@@ -10,6 +10,6 @@ class Metric(BaseMetric):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        mare = np.mean(np.abs((y_true - y_pred) / y_true))
+        mare = np.nanmean(np.abs((y_true - y_pred) / y_true))
 
         return mare

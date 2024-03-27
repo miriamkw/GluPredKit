@@ -1,4 +1,4 @@
-# opsb-pyloopkit==0.1.0 # This is the original pyloopkit
+opsb-pyloopkit==0.1.0 # This is the original pyloopkit with linear meal model
 matplotlib
 pandas
 scikit-learn

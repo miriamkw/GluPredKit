@@ -164,7 +164,8 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'svr_linear',
                                             'svr_rbf',
                                             'tcn',
-                                            'tcn_pytorch'
+                                            'tcn_pytorch',
+                                            'loop'
                                             ]))
 @click.argument('config-file-name', type=str)
 def train_model(model, config_file_name):
@@ -399,6 +400,11 @@ def generate_evaluation_pdf(model):
     hypoglycemia_detection_list = []
     hypo_module = helpers.get_metric_module("hypoglycemia_detection")
     hypo = hypo_module.Metric()
+
+    # TODO: This must be removed
+    start_index = 360
+    end_index = start_index + 50
+    y_test = y_test.iloc[start_index:end_index]
 
     for i in range(prediction_range):
         rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]
@@ -762,7 +768,7 @@ def generate_evaluation_pdf(model):
     fig = plt.figure(figsize=(5, 3))
 
     insulin_units = [0, 5, 10]
-    test_column = 'insulin'
+    test_column = 'bolus'
 
     for insulin_dose in insulin_units:
         x_test = processed_data.drop(target_columns, axis=1)
@@ -788,16 +794,16 @@ def generate_evaluation_pdf(model):
     x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
     fig = plt.figure(figsize=(5, 3))
 
-    insulin_units = [0, 50, 100]
+    carb_intakes = [0, 50, 100]
     test_column = 'carbs'
 
-    for insulin_dose in insulin_units:
+    for carbs in carb_intakes:
         x_test = processed_data.drop(target_columns, axis=1)
-        x_test[test_column] = insulin_dose
+        x_test[test_column] = carbs
         y_pred = model_instance.predict(x_test)
         # Calculate the average of elements at each index position
         averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        plt.plot(x_values, averages, marker='o', label=f'{insulin_dose} U')
+        plt.plot(x_values, averages, marker='o', label=f'{carbs} g')
 
     # Setting the title and labels with placeholders for the metric unit
     plt.title(f'Partial Dependence Plot for {test_column}')
