@@ -548,6 +548,7 @@ def generate_evaluation_pdf(model):
     # Page 3
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(letter[0] / 2, 750, "Scatter Plots")
+
     """
     # Plotting rmse values
     fig = plt.figure(figsize=(2, 2))
@@ -669,8 +670,9 @@ def generate_evaluation_pdf(model):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 400, 80)
-
+    
     """
+
     # Bottom text
     c.setFont("Helvetica", 10)
     c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
@@ -739,6 +741,81 @@ def generate_evaluation_pdf(model):
     c.setFont("Helvetica", 10)
     c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
                                             f'(https://github.com/miriamkw/GluPredKit)')
+
+    # Show the page
+    c.showPage()
+
+    # NEW PAGE
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(letter[0] / 2, 750, "Feature Impact on Blood Glucose Prediction Output")
+
+    # Normal text
+    c.setFont("Helvetica", 12)
+    c.drawString(100, 730, f'The Partial Dependence Plots below illustrate how adjustments to model input ')
+    c.drawString(100, 715, f'variables influence the model outputs across the predicted trajectory. ')
+    c.drawString(100, 700, f'Each line on the plot represents the average predicted trajectory given a ')
+    c.drawString(100, 685, f'specific input. In the physical reality, increased insulin should always decrease')
+    c.drawString(100, 670, f'blood glucose, and increased carbohydrates should always increase blood glucose. ')
+
+    # Plotting Partial Dependence Plots
+    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
+    fig = plt.figure(figsize=(5, 3))
+
+    insulin_units = [0, 5, 10]
+    test_column = 'insulin'
+
+    for insulin_dose in insulin_units:
+        x_test = processed_data.drop(target_columns, axis=1)
+        x_test[test_column] = insulin_dose
+        y_pred = model_instance.predict(x_test)
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        plt.plot(x_values, averages, marker='o', label=f'{insulin_dose} U')
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title(f'Partial Dependence Plot for {test_column}')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, 390)
+
+    # Plotting Partial Dependence Plots
+    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
+    fig = plt.figure(figsize=(5, 3))
+
+    insulin_units = [0, 50, 100]
+    test_column = 'carbs'
+
+    for insulin_dose in insulin_units:
+        x_test = processed_data.drop(target_columns, axis=1)
+        x_test[test_column] = insulin_dose
+        y_pred = model_instance.predict(x_test)
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        plt.plot(x_values, averages, marker='o', label=f'{insulin_dose} U')
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title(f'Partial Dependence Plot for {test_column}')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, 100)
+
+
+    # Bottom text
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
+                                           f'(https://github.com/miriamkw/GluPredKit)')
 
     # Show the page
     c.showPage()
