@@ -14,11 +14,22 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
         self.DIA = 360  # TODO: Is this the default in Loop?
+        self.basal = None
+        self.insulin_sensitivity_factor = None
+        self.carb_ratio = None
 
     def fit(self, x_train, y_train):
-        # Manually adjust the therapy settings at the bottom of this file to adjust the prediction model
+        # Calculate total daily insulin
+        x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
+        daily_avg_insulin = np.mean(x_train.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-        # TODO: Use a data-driven method to determine carb ratio, ISF and basal rate
+        print("Daily average insulin: ", daily_avg_insulin)
+
+        self.insulin_sensitivity_factor = 1800 / daily_avg_insulin  # ISF 1800 rule
+        self.carb_ratio = 500 / daily_avg_insulin  # CR 500 rule
+        self.basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+
+        print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
 
         return self
 
@@ -42,7 +53,7 @@ class Model(BaseModel):
         y_pred = []
 
         # TODO: Remove this. Its only for the sake of testing
-        n_predictions = 50
+        # n_predictions = 50
 
         print(f"Prediction number 0 of {n_predictions}")
 
@@ -207,16 +218,16 @@ class Model(BaseModel):
                 },
             'sensitivity_ratio_start_times': [datetime.time(0, 0)],
             'sensitivity_ratio_end_times': [datetime.time(0, 0)],
-            'sensitivity_ratio_values': [45.0],
+            'sensitivity_ratio_values': [self.insulin_sensitivity_factor],
             'sensitivity_ratio_value_units': 'mg/dL/U',
 
             'carb_ratio_start_times': [datetime.time(0, 0)],
-            'carb_ratio_values': [12.5],
+            'carb_ratio_values': [self.carb_ratio],
             'carb_ratio_value_units': 'g/U',
 
             'basal_rate_start_times': [datetime.time(0, 0)],
             'basal_rate_minutes': [1440],  # the length of time the basal runs for (in minutes)
-            'basal_rate_values': [0.9],  # the infusion rate in U/hour
+            'basal_rate_values': [self.basal],  # the infusion rate in U/hour
 
             'target_range_start_times': [datetime.time(0, 0)],
             'target_range_end_times': [datetime.time(0, 0)],
