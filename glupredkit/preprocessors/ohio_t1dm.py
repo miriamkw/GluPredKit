@@ -13,8 +13,10 @@ import numpy as np
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
+    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features, test_size):
+        super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
+                         num_lagged_features, test_size)
 
     def __call__(self, df):
 
@@ -45,8 +47,8 @@ class Preprocessor(BasePreprocessor):
         # Add target for train data after interpolation to use interpolated data for model training
         train_df = self.add_targets(train_df)
 
-        train_df = train_df.dropna()
-        test_df = test_df.dropna(subset=self.numerical_features + self.categorical_features)
+        # train_df = train_df.dropna()
+        # test_df = test_df.dropna(subset=self.numerical_features + self.categorical_features)
 
         # Transform columns
         if self.numerical_features:

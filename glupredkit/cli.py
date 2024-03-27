@@ -401,10 +401,6 @@ def generate_evaluation_pdf(model):
     hypo_module = helpers.get_metric_module("hypoglycemia_detection")
     hypo = hypo_module.Metric()
 
-    # TODO: This must be removed
-    #end_index = 50
-    #y_test = y_test.iloc[0:end_index]
-
     for i in range(prediction_range):
         rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]
         mae_list += [mae(y_test[target_columns[i]], y_pred[:, i])]
@@ -554,7 +550,6 @@ def generate_evaluation_pdf(model):
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(letter[0] / 2, 750, "Scatter Plots")
 
-    """
     # Plotting rmse values
     fig = plt.figure(figsize=(2, 2))
     plt.scatter(y_test[target_columns[5]], y_pred[:, 5], alpha=0.5)
@@ -675,8 +670,6 @@ def generate_evaluation_pdf(model):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 400, 80)
-    
-    """
 
     # Bottom text
     c.setFont("Helvetica", 10)

@@ -11,6 +11,15 @@ def add_time_lagged_features(col_name, df, num_lagged_features):
     return df
 
 
+def add_what_if_features(col_name, df, num_lagged_features):
+    indexes = list(range(1, num_lagged_features + 1))
+
+    for i in indexes:
+        new_col_name = col_name + "_what_if_" + str(i * 5)
+        df = pd.concat([df, df[col_name].shift(-i).rename(new_col_name)], axis=1)
+    return df
+
+
 def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
 
     if "imputed" in df.columns:

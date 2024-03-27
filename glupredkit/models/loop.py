@@ -52,9 +52,6 @@ class Model(BaseModel):
         # Skip iteration if there are not enough predictions.
         y_pred = []
 
-        # TODO: Remove this. Its only for the sake of testing
-        # n_predictions = 50
-
         print(f"Prediction number 0 of {n_predictions}")
 
         for i in range(0, n_predictions):
@@ -92,6 +89,10 @@ class Model(BaseModel):
                 if col == column:
                     values.append(data[col])
                     dates.append(data.name)
+                elif "what_if" in col:
+                    values.append(data[col])
+                    new_date = data.name + datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
                 else:
                     values.append(data[col])
                     new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
@@ -151,6 +152,10 @@ class Model(BaseModel):
                 if col == column:
                     values.append(data[col])
                     dates.append(data.name)
+                elif "what_if" in col:
+                    values.append(data[col])
+                    new_date = data.name + datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
                 else:
                     values.append(data[col])
                     new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
