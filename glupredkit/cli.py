@@ -402,9 +402,8 @@ def generate_evaluation_pdf(model):
     hypo = hypo_module.Metric()
 
     # TODO: This must be removed
-    start_index = 360
-    end_index = start_index + 50
-    y_test = y_test.iloc[start_index:end_index]
+    end_index = 50
+    y_test = y_test.iloc[0:end_index]
 
     for i in range(prediction_range):
         rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]

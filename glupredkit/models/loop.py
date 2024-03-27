@@ -1,5 +1,5 @@
 from glupredkit.models.base_model import BaseModel
-from glupredkit.helpers.unit_config_manager import unit_config_manager
+from glupredkit.helpers.scikit_learn import process_data
 import datetime
 import pandas as pd
 import numpy as np
@@ -27,8 +27,7 @@ class Model(BaseModel):
         Return:
         y_pred -- A list of lists of the predicted trajectories.
         """
-        history_length = 24 * 12 + int(self.DIA / 5)  # = 360
-        n_predictions = x_test.shape[0] - history_length
+        n_predictions = x_test.shape[0]
 
         if n_predictions <= 0:
             print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
@@ -48,7 +47,7 @@ class Model(BaseModel):
         print(f"Prediction number 0 of {n_predictions}")
 
         for i in range(0, n_predictions):
-            df_subset = x_test.iloc[i:i + history_length]
+            df_subset = x_test.iloc[i]
             output_dict = self.get_prediction_output(df_subset, input_dict)
 
             if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
@@ -64,28 +63,48 @@ class Model(BaseModel):
 
         return np.array(y_pred)
 
-    def get_prediction_output(self, df, input_dict, time_to_calculate=None):
+    def get_prediction_output(self, df_row, input_dict, time_to_calculate=None):
         # Important docs: https://github.com/miriamkw/PyLoopKit/blob/develop/pyloopkit/docs/pyloopkit_documentation.md
         # For correct predictions, at least 24 hours + duration of insulin absorption (DIA) of data is needed
         # NOTE: Not filtering away future glucose values will lead to erroneous prediction results!
         if not time_to_calculate:
-            time_to_calculate = df.index[-1]
-
-        history_length = 24 * 12 - int(self.DIA / 5)
-        n_predictions = df.shape[0] - history_length
-
-        if n_predictions <= 0:
-            print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
-            return
-
-        filtered_df = df[df.index <= time_to_calculate].tail(history_length)
+            time_to_calculate = df_row.name
 
         input_dict["time_to_calculate_at"] = time_to_calculate
 
-        input_dict["glucose_dates"] = filtered_df.index.tolist()
-        input_dict["glucose_values"] = filtered_df.CGM.tolist()
+        # TODO: Does this have to be sorted?
+        def get_dates_and_values(column, data):
+            relevant_columns = [val for val in data.index if val.startswith(column)]
+            dates = []
+            values = []
+            for col in relevant_columns:
+                if col == column:
+                    values.append(data[col])
+                    dates.append(data.name)
+                else:
+                    values.append(data[col])
+                    new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
 
-        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df)
+            if not dates or not values:
+                # Handle the case where one or both lists are empty
+                # print("Either 'dates' or 'values' is empty.")
+                pass
+            else:
+                # Sorting
+                combined = list(zip(dates, values))
+                # Sort by the dates (first element of each tuple)
+                combined.sort(key=lambda x: x[0])
+                # Separate into individual lists
+                dates, values = zip(*combined)
+
+            return dates, values
+
+        glucose_dates, glucose_values = get_dates_and_values("CGM", df_row)
+        input_dict["glucose_dates"] = glucose_dates
+        input_dict["glucose_values"] = glucose_values
+
+        dose_types, start_times, end_times, dose_values, dose_delivered_units = self.get_insulin_data(df_row)
 
         input_dict["dose_types"] = dose_types
         input_dict["dose_start_times"] = start_times
@@ -93,16 +112,18 @@ class Model(BaseModel):
         input_dict["dose_values"] = dose_values
         input_dict["dose_delivered_units"] = dose_delivered_units
 
-        input_dict["carb_dates"] = filtered_df[filtered_df.carbs > 0].index.tolist()
-        input_dict["carb_values"] = filtered_df[filtered_df.carbs > 0].carbs.tolist()
+        carb_data = df_row[~df_row.index.str.startswith('carbs') | (df_row != 0)]
+        carb_dates, carb_values = get_dates_and_values("carbs", carb_data)
+        input_dict["carb_dates"] = carb_dates
+        input_dict["carb_values"] = carb_values
 
         # Adding the default carb absorption time because it is not available in data sources.
-        input_dict["carb_absorption_times"] = [180 for _ in filtered_df[filtered_df.carbs > 0].index.tolist()]
+        input_dict["carb_absorption_times"] = [180 for _ in carb_values]
 
         return update(input_dict)
 
 
-    def get_insulin_data(self, df):
+    def get_insulin_data(self, df_row):
         def get_dose_type(x):
             if x == 'temp':
                 return DoseType.from_str("tempbasal")
@@ -111,21 +132,36 @@ class Model(BaseModel):
             else:
                 return DoseType.from_str("basal")
 
+        def get_dates_and_values(column, data):
+            relevant_columns = [val for val in data.index if val.startswith(column)]
+            dates = []
+            values = []
+            for col in relevant_columns:
+                if col == column:
+                    values.append(data[col])
+                    dates.append(data.name)
+                else:
+                    values.append(data[col])
+                    new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
+            return dates, values
+
+        basal_dates, basal_values = get_dates_and_values("basal", df_row)
         # Using tempbasal as default, assuming that users are using
-        basal_dose_types = [get_dose_type("tempbasal") for _ in df.index.tolist()]
-        basal_start_times = df.index.tolist()
-        basal_end_times = [val + pd.Timedelta(minutes=5) for val in df.index.tolist()]
+        basal_dose_types = [get_dose_type("tempbasal") for _ in basal_dates]
+        basal_start_times = basal_dates
+        basal_end_times = [val + pd.Timedelta(minutes=5) for val in basal_dates]
         # TODO: Are basals in U or U/hr in dataframe? PyLoopKit is expecting U/hr
         # basal_values = [value / 5 * 60 for value in df.basal.tolist()]
-        basal_values = df.basal.tolist()
-        basal_units = [None for _ in df.index.tolist()]
+        basal_values = basal_values
+        basal_units = [None for _ in basal_values]
 
-        df_bolus = df.copy()[df.bolus > 0]
-        bolus_dose_types = [get_dose_type("bolus") for _ in df_bolus.index.tolist()]
-        bolus_start_times = df_bolus.index.tolist()
-        bolus_end_times = df_bolus.index.tolist()
-        bolus_values = df_bolus.bolus.tolist()
-        bolus_units = [None for _ in df_bolus.index.tolist()]
+        bolus_data = df_row[~df_row.index.str.startswith('bolus') | (df_row != 0)]
+        bolus_dates, bolus_values = get_dates_and_values("bolus", bolus_data)
+        bolus_dose_types = [get_dose_type("bolus") for _ in bolus_values]
+        bolus_start_times = bolus_dates
+        bolus_end_times = bolus_dates
+        bolus_units = [None for _ in bolus_values]
 
         # Step 1: Combine into tuples
         combined_basal = list(zip(basal_dose_types, basal_start_times, basal_end_times, basal_values, basal_units))
@@ -192,8 +228,7 @@ class Model(BaseModel):
         })
 
     def process_data(self, df, model_config_manager, real_time):
-        # Implement library specific preprocessing steps that are required before training a pandas dataframe
-        return df
+        return process_data(df, model_config_manager, real_time)
 
     def best_params(self):
         # Return the best parameters found by GridSearchCV
