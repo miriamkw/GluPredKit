@@ -132,7 +132,6 @@ glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--userna
 - `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
 - `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
     - For the Ohio T1DM parser, the file path is the folder where the `test` and `train` folder are located. Example: `data/raw/`. 
-- `--subject-id`: (Optional): The subject id for the data that shall be parsed (required for the Ohio T1DM parser).
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 - `--output-file-name` (Optional): The filename for the output file after parsing, without file extension.
