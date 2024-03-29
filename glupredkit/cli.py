@@ -115,13 +115,18 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
             ids_2018 = ['559', '563', '570', '575', '588', '591']
             ids_2020 = ['540', '544', '552', '567', '584', '596']
 
+            merged_df = pd.DataFrame()
+
             for subject_id in ids_2018:
                 parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id, year='2018')
-                save_data(output_file_name=subject_id, data=parsed_data)
+                parsed_data['id'] = subject_id
+                merged_df = pd.concat([parsed_data, merged_df], ignore_index=False)
 
             for subject_id in ids_2020:
                 parsed_data = chosen_parser(file_path=file_path, subject_id=subject_id, year='2020')
-                save_data(output_file_name=subject_id, data=parsed_data)
+                parsed_data['id'] = subject_id
+                merged_df = pd.concat([parsed_data, merged_df], ignore_index=False)
+            save_data(output_file_name="OhioT1DM", data=merged_df)
 
             return
     else:
