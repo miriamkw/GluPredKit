@@ -14,20 +14,26 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
         self.DIA = 360  # TODO: Is this the default in Loop?
-        self.basal = None
-        self.insulin_sensitivity_factor = None
-        self.carb_ratio = None
+        self.subject_ids = None
+        self.basal = []
+        self.insulin_sensitivity_factor = []
+        self.carb_ratio = []
 
     def fit(self, x_train, y_train):
-        # Calculate total daily insulin
+        self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
-        daily_avg_insulin = np.mean(x_train.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-        print("Daily average insulin: ", daily_avg_insulin)
+        # TODO: Create a map for those values? Or store subject_ids in a list?
+        for subject_id in self.subject_ids:
+            filter_df = x_train['id'] == subject_id
+            # Calculate total daily insulin
+            daily_avg_insulin = np.mean(x_train[filter_df].groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-        self.insulin_sensitivity_factor = 1800 / daily_avg_insulin  # ISF 1800 rule
-        self.carb_ratio = 500 / daily_avg_insulin  # CR 500 rule
-        self.basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+            print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
+
+            self.insulin_sensitivity_factor += [1800 / daily_avg_insulin]  # ISF 1800 rule
+            self.carb_ratio += [500 / daily_avg_insulin]  # CR 500 rule
+            self.basal += [daily_avg_insulin * 0.45 / 24]  # Basal 45% of TDI
 
         print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
 
@@ -80,7 +86,6 @@ class Model(BaseModel):
 
         input_dict["time_to_calculate_at"] = time_to_calculate
 
-        # TODO: Does this have to be sorted?
         def get_dates_and_values(column, data):
             relevant_columns = [val for val in data.index if val.startswith(column)]
             dates = []
@@ -100,7 +105,6 @@ class Model(BaseModel):
 
             if not dates or not values:
                 # Handle the case where one or both lists are empty
-                # print("Either 'dates' or 'values' is empty.")
                 pass
             else:
                 # Sorting

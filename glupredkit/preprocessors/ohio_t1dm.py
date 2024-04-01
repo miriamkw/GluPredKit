@@ -13,9 +13,9 @@ import numpy as np
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+    def __init__(self, subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
                  num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, what_if_features, prediction_horizon,
+        super().__init__(subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
                          num_lagged_features, test_size)
 
     def __call__(self, df):
@@ -25,30 +25,40 @@ class Preprocessor(BasePreprocessor):
 
     def preprocess(self, df):
         is_test_col = 'is_test'
+
+        # Filter out subject ids if not configuration is None
+        if self.subject_ids:
+            df = df[df['id'].isin(self.subject_ids)]
+
         train_df = df[df[is_test_col] == False]
         test_df = df[df[is_test_col] == True]
 
+        dataset_ids = train_df['id'].unique()
+
         # Drop columns that are not included
-        train_df = train_df[self.numerical_features + self.categorical_features]
-        test_df = test_df[self.numerical_features + self.categorical_features]
+        train_df = train_df[self.numerical_features + self.categorical_features + ['id']]
+        test_df = test_df[self.numerical_features + self.categorical_features + ['id']]
 
         # Check if any numerical features have NaN values before imputation, add a column "flag"
         test_df.loc[:, 'imputed'] = test_df.loc[:, self.numerical_features].isna().any(axis=1)
 
-        # Add target for test data before interpolation to perceive NaN values
-        test_df = self.add_targets(test_df)
+        for subject_id in dataset_ids:
+            filter_df_train = train_df['id'] == subject_id
+            filter_df_test = test_df['id'] == subject_id
 
-        # Interpolation using a nonlinear curve, without too much curvature
-        train_df = train_df.sort_index()
-        train_df[self.numerical_features] = train_df[self.numerical_features].interpolate(method='akima')
-        test_df = test_df.sort_index()
-        test_df[self.numerical_features] = test_df[self.numerical_features].interpolate(method='akima')
+            # Add target for test data before interpolation to perceive NaN values
+            test_df[filter_df_test] = self.add_targets(test_df[filter_df_test])
 
-        # Add target for train data after interpolation to use interpolated data for model training
-        train_df = self.add_targets(train_df)
+            # Interpolation using a nonlinear curve, without too much curvature
+            train_df[filter_df_train] = train_df[filter_df_train].sort_index()
+            train_df[filter_df_train][self.numerical_features] = (train_df[filter_df_train][self.numerical_features]
+                                                                  .interpolate(method='akima'))
+            test_df[filter_df_test] = test_df[filter_df_test].sort_index()
+            test_df[filter_df_test][self.numerical_features] = (test_df[filter_df_test][self.numerical_features]
+                                                                .interpolate(method='akima'))
 
-        # train_df = train_df.dropna()
-        # test_df = test_df.dropna(subset=self.numerical_features + self.categorical_features)
+            # Add target for train data after interpolation to use interpolated data for model training
+            train_df[filter_df_train] = self.add_targets(train_df[filter_df_train])
 
         # Transform columns
         if self.numerical_features:

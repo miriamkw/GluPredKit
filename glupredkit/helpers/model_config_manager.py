@@ -44,6 +44,7 @@ class ModelConfigurationManager:
         self.config_file = 'data/configurations/' + config_file + '.json'
         self.schema = {
             "data": str,
+            "subject_ids": list,
             "preprocessor": str,
             "prediction_horizons": list,
             "num_lagged_features": int,
@@ -72,6 +73,9 @@ class ModelConfigurationManager:
 
     def get_data(self):
         return self.config["data"]
+
+    def get_subject_ids(self):
+        return self.config["subject_ids"]
 
     def get_preprocessor(self):
         return self.config["preprocessor"]

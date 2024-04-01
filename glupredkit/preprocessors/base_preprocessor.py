@@ -8,7 +8,7 @@ All preprocessors must:
 """
 
 class BasePreprocessor:
-    def __init__(self, numerical_features, categorical_features, what_if_features, prediction_horizon,
+    def __init__(self, subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
                  num_lagged_features, test_size):
         """
         Args:
@@ -16,8 +16,8 @@ class BasePreprocessor:
             num_lagged_features (int): The number of time-lagged features to generate (12 samples corresponds to one
             hour).
             test_size (float): The fraction of data to reserve for testing.
-            include_hour (bool): Whether to include the hour of the day as a feature.
         """
+        self.subject_ids = subject_ids
         self.numerical_features = numerical_features
         self.categorical_features = categorical_features
         self.what_if_features = what_if_features

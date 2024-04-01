@@ -74,7 +74,8 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     print(f"Preprocessing data using {preprocessor} from file data/raw/{input_file_name}, with a prediction "
           f"horizon of {prediction_horizon} minutes...")
     preprocessor_module = importlib.import_module(f'glupredkit.preprocessors.{preprocessor}')
-    chosen_preprocessor = preprocessor_module.Preprocessor(config_manager.get_num_features(),
+    chosen_preprocessor = preprocessor_module.Preprocessor(config_manager.get_subject_ids(),
+                                                           config_manager.get_num_features(),
                                                            config_manager.get_cat_features(),
                                                            config_manager.get_what_if_features(),
                                                            prediction_horizon, config_manager.get_num_lagged_features(),
@@ -172,7 +173,6 @@ def validate_feature_list(ctx, param, value):
         raise click.BadParameter('List must be a comma-separated list of strings without spaces.')
 
 
-
 def validate_test_size(ctx, param, value):
     try:
         test_size = float(value)
@@ -182,4 +182,3 @@ def validate_test_size(ctx, param, value):
         raise click.BadParameter('Test size must be a float between 0 and 1. Decimal values are represented using a '
                                  'period (dot).')
     return test_size
-

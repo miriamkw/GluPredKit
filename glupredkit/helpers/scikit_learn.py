@@ -2,26 +2,30 @@ import pandas as pd
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 import numpy as np
 
-def add_time_lagged_features(col_name, df, num_lagged_features):
+
+def add_time_lagged_features(df, lagged_cols, num_lagged_features):
+    lagged_df = df.copy()
     indexes = list(range(1, num_lagged_features + 1))
 
-    for i in indexes:
-        new_col_name = col_name + "_" + str(i * 5)
-        df = pd.concat([df, df[col_name].shift(i).rename(new_col_name)], axis=1)
-    return df
+    for col in lagged_cols:
+        for i in indexes:
+            new_col_name = col + "_" + str(i * 5)
+            lagged_df = pd.concat([lagged_df, lagged_df[col].shift(i).rename(new_col_name)], axis=1)
+    return lagged_df
 
 
-def add_what_if_features(col_name, df, num_lagged_features):
+def add_what_if_features(df, what_if_cols, num_lagged_features):
+    what_if_df = df.copy()
     indexes = list(range(1, num_lagged_features + 1))
 
-    for i in indexes:
-        new_col_name = col_name + "_what_if_" + str(i * 5)
-        df = pd.concat([df, df[col_name].shift(-i).rename(new_col_name)], axis=1)
-    return df
+    for col in what_if_cols:
+        for i in indexes:
+            new_col_name = col + "_what_if_" + str(i * 5)
+            what_if_df = pd.concat([what_if_df, what_if_df[col].shift(-i).rename(new_col_name)], axis=1)
+    return what_if_df
 
 
 def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
-
     if "imputed" in df.columns:
         # Temporarily convert 'imputed' to float
         df['imputed'] = df['imputed'].astype(float)
@@ -29,9 +33,24 @@ def process_data(df, model_config_manager: ModelConfigurationManager, real_time=
         df.loc[df['imputed'] == 1.0, :] = np.nan
         df = df.drop(columns=['imputed'])
 
-    # Add time-lagged features
-    for col in model_config_manager.get_num_features():
-        df = add_time_lagged_features(col, df, model_config_manager.get_num_lagged_features())
+    subject_ids = df['id'].unique()
+    for subject_id in subject_ids:
+        # Filter DataFrame for the current subject ID
+        filter_df = df['id'] == subject_id
+
+        # Add time-lagged features
+        lagged_df = add_time_lagged_features(df[filter_df], model_config_manager.get_num_features(),
+                                             model_config_manager.get_num_lagged_features())
+        # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
+        df = df.join(lagged_df.drop(columns=df.columns), how='outer')
+        filter_df = df['id'] == subject_id
+
+        # Add what-if features
+        what_if_df = add_what_if_features(df[filter_df], model_config_manager.get_what_if_features(),
+                                          model_config_manager.get_num_lagged_features())
+
+        # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
+        df = df.join(what_if_df.drop(columns=df.columns), how='outer')
 
     if real_time:
         df = df.dropna(subset=df.columns.difference(['target']))
@@ -39,4 +58,3 @@ def process_data(df, model_config_manager: ModelConfigurationManager, real_time=
         df = df.dropna()
 
     return df
-
