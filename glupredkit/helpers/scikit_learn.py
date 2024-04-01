@@ -4,61 +4,64 @@ import numpy as np
 
 
 def add_time_lagged_features(df, lagged_cols, num_lagged_features):
-    lagged_df = df.copy()
+    lagged_df = pd.DataFrame()
     indexes = list(range(1, num_lagged_features + 1))
 
     for col in lagged_cols:
         for i in indexes:
             new_col_name = col + "_" + str(i * 5)
-            lagged_df = pd.concat([lagged_df, lagged_df[col].shift(i).rename(new_col_name)], axis=1)
+            lagged_df = pd.concat([lagged_df, df[col].shift(i).rename(new_col_name)], axis=1)
     return lagged_df
 
 
 def add_what_if_features(df, what_if_cols, prediction_horizons):
-    what_if_df = df.copy()
+    what_if_df = pd.DataFrame()
     prediction_index = prediction_horizons[0] // 5
     indexes = list(range(1, prediction_index + 1))
 
     for col in what_if_cols:
         for i in indexes:
             new_col_name = col + "_what_if_" + str(i * 5)
-            what_if_df = pd.concat([what_if_df, what_if_df[col].shift(-i).rename(new_col_name)], axis=1)
+            what_if_df = pd.concat([what_if_df, df[col].shift(-i).rename(new_col_name)], axis=1)
     return what_if_df
 
 
 def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
+    """
     if "imputed" in df.columns:
         # Temporarily convert 'imputed' to float
         df['imputed'] = df['imputed'].astype(float)
         # Set entire rows to NaN where 'imputed' is True
         df.loc[df['imputed'] == 1.0, :] = np.nan
         df = df.drop(columns=['imputed'])
+    """
 
     subject_ids = df['id'].unique()
     subject_ids = list(filter(lambda x: not np.isnan(x), subject_ids))
 
+    processed_df = pd.DataFrame()
+
     for subject_id in subject_ids:
-        # Filter DataFrame for the current subject ID
-        filter_df = df['id'] == subject_id
+        # Identify the subset of the DataFrame for the current subject ID
+        subset_df = df[df['id'] == subject_id]
 
-        # Add time-lagged features
-        lagged_df = add_time_lagged_features(df.loc[filter_df, :], model_config_manager.get_num_features(),
-                                             model_config_manager.get_num_lagged_features())
-
-        # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
-        df = df.join(lagged_df.drop(columns=df.columns), how='outer')
-        filter_df = df['id'] == subject_id
-
+        # Add time-lagged features directly to the subset
+        lagged_features = add_time_lagged_features(subset_df, model_config_manager.get_num_features(),
+                                                   model_config_manager.get_num_lagged_features())
         # Add what-if features
-        what_if_df = add_what_if_features(df.loc[filter_df, :], model_config_manager.get_what_if_features(),
+        what_if_df = add_what_if_features(subset_df, model_config_manager.get_what_if_features(),
                                           model_config_manager.get_prediction_horizons())
 
-        # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
-        df = df.join(what_if_df.drop(columns=df.columns), how='outer')
+        # Update the subset DataFrame with the new time-lagged features
+        subset_df = pd.concat([subset_df, lagged_features], axis=1)
+        subset_df = pd.concat([subset_df, what_if_df], axis=1)
+
+        # Adding new rows to the processed_df for this subset of the df
+        processed_df = pd.concat([processed_df, subset_df], axis=0)
 
     if real_time:
-        df = df.dropna(subset=df.columns.difference(['target']))
+        processed_df = processed_df.dropna(subset=processed_df.columns.difference(['target']))
     else:
-        df = df.dropna()
+        processed_df = processed_df.dropna()
 
-    return df
+    return processed_df

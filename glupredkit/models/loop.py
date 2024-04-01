@@ -43,7 +43,7 @@ class Model(BaseModel):
         y_pred -- A list of lists of the predicted trajectories.
         """
         n_predictions = x_test.shape[0]
-        print("N PRED", x_test.shape)
+        print("SUBJECTS", self.subject_ids)
 
         if n_predictions <= 0:
             print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
@@ -56,28 +56,25 @@ class Model(BaseModel):
         # Skip iteration if there are not enough predictions.
         y_pred = []
 
-        print(f"Prediction number 0 of {n_predictions}")
+        for index, subject_id in enumerate(self.subject_ids):
+            n_predictions = x_test[x_test['id'] == subject_id].shape[0]
+            input_dict = self.get_input_dict(self.insulin_sensitivity_factor[index], self.carb_ratio[index],
+                                             self.basal[index])
 
-        for subject_id, index in self.subject_ids.enumerate():
-            print(subject_id)
-            print(index)
+            for i in range(0, n_predictions):
+                df_subset = x_test.iloc[i]
+                output_dict = self.get_prediction_output(df_subset, input_dict)
 
-            input_dict = self.get_input_dict()
+                if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
+                    print(f"Prediction number {i} of {n_predictions} for {subject_id}")
 
-        for i in range(0, n_predictions):
-            df_subset = x_test.iloc[i]
-            output_dict = self.get_prediction_output(df_subset, input_dict)
-
-            if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
-                print(f"Prediction number {i} of {n_predictions}")
-
-            if len(output_dict.get("predicted_glucose_values")) < prediction_index:
-                print("Not enough predictions. Skipping iteration...")
-                # TODO: Here we should just repeat the last predicted value until enough predictions
-                continue
-            else:
-                current_predictions = output_dict.get("predicted_glucose_values")[1:prediction_index + 1]
-                y_pred.append(current_predictions)
+                if len(output_dict.get("predicted_glucose_values")) < prediction_index:
+                    print("Not enough predictions. Skipping iteration...")
+                    # TODO: Here we should just repeat the last predicted value until enough predictions
+                    continue
+                else:
+                    current_predictions = output_dict.get("predicted_glucose_values")[1:prediction_index + 1]
+                    y_pred.append(current_predictions)
 
         return np.array(y_pred)
 

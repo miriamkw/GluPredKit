@@ -374,15 +374,16 @@ def generate_evaluation_pdf(model):
     model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
                                                         int(model.split('__')[2].split('.')[0]))
 
+
     model_config_manager = ModelConfigurationManager(config_file_name)
     model_instance = helpers.get_trained_model(f'{model}.pkl')
     _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
 
     target_columns = [column for column in processed_data.columns if column.startswith('target')]
     x_test = processed_data.drop(target_columns, axis=1)
     y_test = processed_data[target_columns]
+
     y_pred = model_instance.predict(x_test)
 
     prediction_range = int(prediction_horizon) // 5

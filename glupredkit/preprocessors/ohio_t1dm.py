@@ -34,6 +34,7 @@ class Preprocessor(BasePreprocessor):
         test_df = df[df[is_test_col] == True]
 
         dataset_ids = train_df['id'].unique()
+        dataset_ids = list(filter(lambda x: not np.isnan(x), dataset_ids))
 
         # Drop columns that are not included
         train_df = train_df[self.numerical_features + self.categorical_features + ['id']]
@@ -42,27 +43,30 @@ class Preprocessor(BasePreprocessor):
         # Check if any numerical features have NaN values before imputation, add a column "flag"
         test_df.loc[:, 'imputed'] = test_df.loc[:, self.numerical_features].isna().any(axis=1)
 
+        processed_train_df = pd.DataFrame()
+        processed_test_df = pd.DataFrame()
+
         for subject_id in dataset_ids:
-            filter_df_train = train_df['id'] == subject_id
-            filter_df_test = test_df['id'] == subject_id
+            subset_df_train = train_df[train_df['id'] == subject_id]
+            subset_df_test = test_df[test_df['id'] == subject_id]
 
             # Add target for test data before interpolation to perceive NaN values
-            subset_test_df_with_targets = self.add_targets(test_df[filter_df_test])
-            # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
-            test_df = test_df.join(subset_test_df_with_targets.drop(columns=test_df.columns), how='outer')
+            subset_test_df_with_targets = self.add_targets(subset_df_test)
 
             # Interpolation using a nonlinear curve, without too much curvature
-            train_df[filter_df_train] = train_df[filter_df_train].sort_index()
-            train_df[filter_df_train][self.numerical_features] = (train_df[filter_df_train][self.numerical_features]
-                                                                  .interpolate(method='akima'))
-            test_df[filter_df_test] = test_df[filter_df_test].sort_index()
-            test_df[filter_df_test][self.numerical_features] = (test_df[filter_df_test][self.numerical_features]
+            subset_df_train = subset_df_train.sort_index()
+            subset_df_train[self.numerical_features] = (subset_df_train[self.numerical_features]
+                                                        .interpolate(method='akima'))
+            subset_test_df_with_targets = subset_test_df_with_targets.sort_index()
+            subset_test_df_with_targets[self.numerical_features] = (subset_test_df_with_targets[self.numerical_features]
                                                                 .interpolate(method='akima'))
 
             # Add target for train data after interpolation to use interpolated data for model training
-            subset_train_df_with_targets = self.add_targets(train_df[filter_df_train])
-            # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
-            train_df = train_df.join(subset_train_df_with_targets.drop(columns=train_df.columns), how='outer')
+            subset_train_df_with_targets = self.add_targets(subset_df_train)
+
+            # Add the processed data to the dataframes
+            processed_train_df = pd.concat([processed_train_df, subset_train_df_with_targets], axis=0)
+            processed_test_df = pd.concat([processed_test_df, subset_test_df_with_targets], axis=0)
 
         # Transform columns
         if self.numerical_features:
@@ -86,7 +90,7 @@ class Preprocessor(BasePreprocessor):
             train_df = self.transform_with_encoder(train_df, encoder)
             test_df = self.transform_with_encoder(test_df, encoder)
 
-        return train_df, test_df
+        return processed_train_df, processed_test_df
 
     def transform_with_encoder(self, df, encoder):
         encoded_cols = encoder.transform(df.loc[:, self.categorical_features])
