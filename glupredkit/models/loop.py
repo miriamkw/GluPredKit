@@ -3,9 +3,7 @@ from glupredkit.helpers.scikit_learn import process_data
 import datetime
 import pandas as pd
 import numpy as np
-
 from pyloopkit.dose import DoseType
-from pyloopkit.loop_math import predict_glucose
 from pyloopkit.loop_data_manager import update
 
 
@@ -45,6 +43,7 @@ class Model(BaseModel):
         y_pred -- A list of lists of the predicted trajectories.
         """
         n_predictions = x_test.shape[0]
+        print("N PRED", x_test.shape)
 
         if n_predictions <= 0:
             print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")
@@ -52,13 +51,18 @@ class Model(BaseModel):
 
         # Note that the prediction output starts at the reference value, so element 1 is the first prediction
         prediction_index = int(self.prediction_horizon / 5)
-        input_dict = self.get_input_dict()
 
         # For each glucose measurement, get a new prediction
         # Skip iteration if there are not enough predictions.
         y_pred = []
 
         print(f"Prediction number 0 of {n_predictions}")
+
+        for subject_id, index in self.subject_ids.enumerate():
+            print(subject_id)
+            print(index)
+
+            input_dict = self.get_input_dict()
 
         for i in range(0, n_predictions):
             df_subset = x_test.iloc[i]
@@ -205,7 +209,7 @@ class Model(BaseModel):
 
         return dose_types, start_times, end_times, values, units
 
-    def get_input_dict(self):
+    def get_input_dict(self, insulin_sensitivity, carb_ratio, basal):
         return ({
             'carb_value_units': 'g',
             'settings_dictionary':
@@ -227,16 +231,16 @@ class Model(BaseModel):
                 },
             'sensitivity_ratio_start_times': [datetime.time(0, 0)],
             'sensitivity_ratio_end_times': [datetime.time(0, 0)],
-            'sensitivity_ratio_values': [self.insulin_sensitivity_factor],
+            'sensitivity_ratio_values': [insulin_sensitivity],
             'sensitivity_ratio_value_units': 'mg/dL/U',
 
             'carb_ratio_start_times': [datetime.time(0, 0)],
-            'carb_ratio_values': [self.carb_ratio],
+            'carb_ratio_values': [carb_ratio],
             'carb_ratio_value_units': 'g/U',
 
             'basal_rate_start_times': [datetime.time(0, 0)],
             'basal_rate_minutes': [1440],  # the length of time the basal runs for (in minutes)
-            'basal_rate_values': [self.basal],  # the infusion rate in U/hour
+            'basal_rate_values': [basal],  # the infusion rate in U/hour
 
             'target_range_start_times': [datetime.time(0, 0)],
             'target_range_end_times': [datetime.time(0, 0)],

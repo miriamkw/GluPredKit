@@ -14,9 +14,10 @@ def add_time_lagged_features(df, lagged_cols, num_lagged_features):
     return lagged_df
 
 
-def add_what_if_features(df, what_if_cols, num_lagged_features):
+def add_what_if_features(df, what_if_cols, prediction_horizons):
     what_if_df = df.copy()
-    indexes = list(range(1, num_lagged_features + 1))
+    prediction_index = prediction_horizons[0] // 5
+    indexes = list(range(1, prediction_index + 1))
 
     for col in what_if_cols:
         for i in indexes:
@@ -34,20 +35,23 @@ def process_data(df, model_config_manager: ModelConfigurationManager, real_time=
         df = df.drop(columns=['imputed'])
 
     subject_ids = df['id'].unique()
+    subject_ids = list(filter(lambda x: not np.isnan(x), subject_ids))
+
     for subject_id in subject_ids:
         # Filter DataFrame for the current subject ID
         filter_df = df['id'] == subject_id
 
         # Add time-lagged features
-        lagged_df = add_time_lagged_features(df[filter_df], model_config_manager.get_num_features(),
+        lagged_df = add_time_lagged_features(df.loc[filter_df, :], model_config_manager.get_num_features(),
                                              model_config_manager.get_num_lagged_features())
+
         # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
         df = df.join(lagged_df.drop(columns=df.columns), how='outer')
         filter_df = df['id'] == subject_id
 
         # Add what-if features
-        what_if_df = add_what_if_features(df[filter_df], model_config_manager.get_what_if_features(),
-                                          model_config_manager.get_num_lagged_features())
+        what_if_df = add_what_if_features(df.loc[filter_df, :], model_config_manager.get_what_if_features(),
+                                          model_config_manager.get_prediction_horizons())
 
         # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
         df = df.join(what_if_df.drop(columns=df.columns), how='outer')

@@ -47,7 +47,9 @@ class Preprocessor(BasePreprocessor):
             filter_df_test = test_df['id'] == subject_id
 
             # Add target for test data before interpolation to perceive NaN values
-            test_df[filter_df_test] = self.add_targets(test_df[filter_df_test])
+            subset_test_df_with_targets = self.add_targets(test_df[filter_df_test])
+            # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
+            test_df = test_df.join(subset_test_df_with_targets.drop(columns=test_df.columns), how='outer')
 
             # Interpolation using a nonlinear curve, without too much curvature
             train_df[filter_df_train] = train_df[filter_df_train].sort_index()
@@ -58,7 +60,9 @@ class Preprocessor(BasePreprocessor):
                                                                 .interpolate(method='akima'))
 
             # Add target for train data after interpolation to use interpolated data for model training
-            train_df[filter_df_train] = self.add_targets(train_df[filter_df_train])
+            subset_train_df_with_targets = self.add_targets(train_df[filter_df_train])
+            # Join the DataFrames on their index columns and keep only the columns that are unique to each DataFrame
+            train_df = train_df.join(subset_train_df_with_targets.drop(columns=train_df.columns), how='outer')
 
         # Transform columns
         if self.numerical_features:
@@ -91,23 +95,6 @@ class Preprocessor(BasePreprocessor):
                                   index=df.index)
         df = df.drop(columns=self.categorical_features)
         df = pd.concat([df, encoded_df], axis=1)
-        return df
-
-    def add_target(self, df):
-        target_index = self.prediction_horizon // 5
-        if self.prediction_horizon % 5 != 0:
-            raise ValueError("Prediction horizon must be divisible by 5.")
-        df = df.copy()
-        df.loc[:, 'target'] = df['CGM'].shift(-target_index)
-
-        # Check if 'imputed' column exists and handle it accordingly
-        if 'imputed' in df.columns:
-            # Create a shifted 'imputed' column
-            shifted_imputed = df['imputed'].shift(-target_index)
-
-            # Use logical OR to combine current and shifted 'imputed' status
-            df['imputed'] = df['imputed'] | shifted_imputed
-
         return df
 
     def add_targets(self, df):
