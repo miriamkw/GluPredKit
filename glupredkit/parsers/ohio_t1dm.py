@@ -66,6 +66,8 @@ class Parser(BaseParser):
             df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
             df = pd.merge(df, df_carbs, on="date", how='outer')
             df['carbs'] = df['carbs'].fillna(value=0.0)
+        else:
+            df['carbs'] = 0.0
 
         # Bolus doses
         df_bolus = dataframes['bolus'].copy()

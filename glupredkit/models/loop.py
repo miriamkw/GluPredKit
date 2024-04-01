@@ -43,7 +43,6 @@ class Model(BaseModel):
         y_pred -- A list of lists of the predicted trajectories.
         """
         n_predictions = x_test.shape[0]
-        print("SUBJECTS", self.subject_ids)
 
         if n_predictions <= 0:
             print("Not enough data to predict. Needs to be at least 24 hours plus duration of insulin absorption.")

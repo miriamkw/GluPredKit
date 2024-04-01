@@ -27,14 +27,12 @@ def add_what_if_features(df, what_if_cols, prediction_horizons):
 
 
 def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
-    """
     if "imputed" in df.columns:
         # Temporarily convert 'imputed' to float
         df['imputed'] = df['imputed'].astype(float)
         # Set entire rows to NaN where 'imputed' is True
         df.loc[df['imputed'] == 1.0, :] = np.nan
         df = df.drop(columns=['imputed'])
-    """
 
     subject_ids = df['id'].unique()
     subject_ids = list(filter(lambda x: not np.isnan(x), subject_ids))

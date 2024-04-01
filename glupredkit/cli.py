@@ -374,7 +374,6 @@ def generate_evaluation_pdf(model):
     model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
                                                         int(model.split('__')[2].split('.')[0]))
 
-
     model_config_manager = ModelConfigurationManager(config_file_name)
     model_instance = helpers.get_trained_model(f'{model}.pkl')
     _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
@@ -383,7 +382,6 @@ def generate_evaluation_pdf(model):
     target_columns = [column for column in processed_data.columns if column.startswith('target')]
     x_test = processed_data.drop(target_columns, axis=1)
     y_test = processed_data[target_columns]
-
     y_pred = model_instance.predict(x_test)
 
     prediction_range = int(prediction_horizon) // 5
@@ -435,30 +433,32 @@ def generate_evaluation_pdf(model):
     # Normal text
     c.setFont("Helvetica", 12)
     c.drawString(100, 700, f'Prediction horizon: {prediction_horizon} minutes')
-    c.drawString(100, 680, f'Numerical features: [...]')
-    c.drawString(100, 660, f'Categorical features: [...]')
-    c.drawString(100, 640, f'What-if features: [...]')
+    c.drawString(100, 680, f'Numerical features: {model_config_manager.get_num_features()}')
+    c.drawString(100, 660, f'Categorical features: {model_config_manager.get_cat_features()}')
+    c.drawString(100, 640, f'What-if features: {model_config_manager.get_what_if_features()}')
+    c.drawString(100, 620, f'Number of lagged features: {model_config_manager.get_num_lagged_features()}')
 
     # Subtitle
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 600, f'Data Description')
+    c.drawString(100, 580, f'Data Description')
 
     # Normal text
     c.setFont("Helvetica", 12)
-    c.drawString(100, 580, f'Dataset: Name + citation')
-    c.drawString(100, 560, f'Training samples: xxx')
-    c.drawString(100, 540, f'Test samples: yyy')
-    c.drawString(100, 520, f'Data variability index: zzz')
-    c.drawString(100, 500, f'Hypoglcemia samples: zzz')
-    c.drawString(100, 480, f'Hyperglycemia samples: zzz')
+    c.drawString(100, 560, f'Dataset: {model_config_manager.get_data()}')
+    c.drawString(100, 540, f'Data ids: {model_config_manager.get_subject_ids()}')
+    c.drawString(100, 520, f'Training samples: xxx')
+    c.drawString(100, 500, f'Test samples: {x_test.shape[0]}')
+    c.drawString(100, 480, f'Data variability index: zzz')
+    c.drawString(100, 460, f'Hypoglycemia samples: {x_test[x_test["CGM"] < 70].shape[0]}')
+    c.drawString(100, 440, f'Hyperglycemia samples: {x_test[x_test["CGM"] > 180].shape[0]}')
 
     # Subtitle
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 440, f'Model Evaluation Summary')
+    c.drawString(100, 400, f'Model Evaluation Summary')
 
     # Normal text
     c.setFont("Helvetica", 12)
-    c.drawString(100, 420, f'Summary of each part of the evaluation report...')
+    c.drawString(100, 380, f'Summary of each part of the evaluation report...')
 
     # Bottom text
     c.setFont("Helvetica", 10)
@@ -752,7 +752,7 @@ def generate_evaluation_pdf(model):
     # NEW PAGE
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(letter[0] / 2, 750, "Feature Impact on Blood Glucose Prediction Output")
-
+    """
     # Normal text
     c.setFont("Helvetica", 12)
     c.drawString(100, 730, f'The Partial Dependence Plots below illustrate how adjustments to model input ')
@@ -814,7 +814,7 @@ def generate_evaluation_pdf(model):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, 100)
-
+    """
 
     # Bottom text
     c.setFont("Helvetica", 10)
