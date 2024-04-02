@@ -56,13 +56,14 @@ class Model(BaseModel):
         y_pred = []
 
         for index, subject_id in enumerate(self.subject_ids):
-            n_predictions = x_test[x_test['id'] == subject_id].shape[0]
+            df_subset = x_test[x_test['id'] == subject_id]
+            n_predictions = df_subset.shape[0]
             input_dict = self.get_input_dict(self.insulin_sensitivity_factor[index], self.carb_ratio[index],
                                              self.basal[index])
 
             for i in range(0, n_predictions):
-                df_subset = x_test.iloc[i]
-                output_dict = self.get_prediction_output(df_subset, input_dict)
+                current_data = df_subset.iloc[i]
+                output_dict = self.get_prediction_output(current_data, input_dict)
 
                 if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
                     print(f"Prediction number {i} of {n_predictions} for {subject_id}")
