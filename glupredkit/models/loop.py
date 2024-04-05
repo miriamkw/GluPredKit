@@ -21,17 +21,47 @@ class Model(BaseModel):
         self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
 
-        # TODO: Create a map for those values? Or store subject_ids in a list?
+        target_col = 'target_' + str(self.prediction_horizon)
+        print(target_col)
+
+        # TODO: Add some cross-validation for different therapy settings
+        # TODO: Print the predicted distribution, the rmse, and the mae for the cross validation
+        # TODO: Use only the last prediction horizon for this cross validation
         for subject_id in self.subject_ids:
-            filter_df = x_train['id'] == subject_id
+            x_train_filtered = x_train[x_train['id'] == subject_id]
+            y_train_filtered = y_train[x_train['id'] == subject_id]
+
+            print("Measured distribution: ", np.std(y_train_filtered[target_col]))
+
             # Calculate total daily insulin
-            daily_avg_insulin = np.mean(x_train[filter_df].groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+            daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
             print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
 
             self.insulin_sensitivity_factor += [1800 / daily_avg_insulin]  # ISF 1800 rule
             self.carb_ratio += [500 / daily_avg_insulin]  # CR 500 rule
             self.basal += [daily_avg_insulin * 0.45 / 24]  # Basal 45% of TDI
+
+            """
+            isf = 1800 / daily_avg_insulin  # ISF 1800 rule
+            cr = 500 / daily_avg_insulin  # CR 500 rule
+            basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+
+            mult_factors = [0.85, 1.0, 1.15]
+
+            for i in mult_factors:
+                for j in mult_factors:
+                    for z in mult_factors:
+                        y_pred = self.get_current_predictions(df_subset=x_train_filtered,
+                                                              insulin_sensitivity_factor=isf*i,
+                                                              carb_ratio=cr*j, basal=basal*z)
+
+                        print(f'Factors {i}, {j} and {z}')
+                        print("RMSE: ", 399)
+                        print("Distribution: ", np.std([val[-1] for val in y_pred]))
+
+            # TODO: Set the therapy settings that provide the best results
+            """
 
         print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
 
@@ -77,6 +107,31 @@ class Model(BaseModel):
                     y_pred.append(current_predictions)
 
         return np.array(y_pred)
+
+    def get_current_predictions(self, df_subset, insulin_sensitivity_factor, carb_ratio, basal):
+        y_pred = []
+        n_predictions = df_subset.shape[0]
+        input_dict = self.get_input_dict(insulin_sensitivity_factor, carb_ratio, basal)
+        # Note that the prediction output starts at the reference value, so element 1 is the first prediction
+        prediction_index = int(self.prediction_horizon / 5)
+
+        for i in range(0, n_predictions):
+            current_data = df_subset.iloc[i]
+            output_dict = self.get_prediction_output(current_data, input_dict)
+
+            if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
+                print(f"Prediction number {i} of {n_predictions}")
+
+            if len(output_dict.get("predicted_glucose_values")) < prediction_index:
+                print("Not enough predictions. Skipping iteration...")
+                # TODO: Here we should just repeat the last predicted value until enough predictions
+                continue
+            else:
+                current_predictions = output_dict.get("predicted_glucose_values")[1:prediction_index + 1]
+                y_pred.append(current_predictions)
+
+        return y_pred
+
 
     def get_prediction_output(self, df_row, input_dict, time_to_calculate=None):
         # Important docs: https://github.com/miriamkw/PyLoopKit/blob/develop/pyloopkit/docs/pyloopkit_documentation.md

@@ -12,14 +12,17 @@ class Metric(BaseMetric):
         super().__init__('Hyperglycemia Detection')
 
     def __call__(self, y_true, y_pred):
+        hyper_threshold = 180
+
         # Filter out indices where y_true values are above 10
-        filtered_indices = [i for i, val in enumerate(y_true) if val >= 180]
+        filtered_indices = [i for i, val in enumerate(y_true) if val > hyper_threshold]
         filtered_y_true = [y_true[i] for i in filtered_indices]
         filtered_y_pred = [y_pred[i] for i in filtered_indices]
 
         # Calculate the total number of instances where both filtered y_true and filtered y_pred are above 10
         total_instances = sum(
-            1 for true_val, pred_val in zip(filtered_y_true, filtered_y_pred) if true_val > 180 and pred_val > 180)
+            1 for true_val, pred_val in zip(filtered_y_true, filtered_y_pred) if true_val > hyper_threshold and
+            pred_val > hyper_threshold)
 
         # Calculate the total number of instances in the filtered data
         total_filtered_instances = len(filtered_y_true)
