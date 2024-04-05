@@ -46,7 +46,7 @@ class ModelConfigurationManager:
             "data": str,
             "subject_ids": list,
             "preprocessor": str,
-            "prediction_horizons": list,
+            "prediction_horizon": int,
             "num_lagged_features": int,
             "num_features": list,
             "cat_features": list,
@@ -80,8 +80,8 @@ class ModelConfigurationManager:
     def get_preprocessor(self):
         return self.config["preprocessor"]
 
-    def get_prediction_horizons(self):
-        return self.config["prediction_horizons"]
+    def get_prediction_horizon(self):
+        return self.config["prediction_horizon"]
 
     def get_num_lagged_features(self):
         return self.config["num_lagged_features"]

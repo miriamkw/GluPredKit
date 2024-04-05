@@ -14,9 +14,9 @@ def add_time_lagged_features(df, lagged_cols, num_lagged_features):
     return lagged_df
 
 
-def add_what_if_features(df, what_if_cols, prediction_horizons):
+def add_what_if_features(df, what_if_cols, prediction_horizon):
     what_if_df = pd.DataFrame()
-    prediction_index = prediction_horizons[0] // 5
+    prediction_index = prediction_horizon // 5
     indexes = list(range(1, prediction_index + 1))
 
     for col in what_if_cols:
@@ -48,7 +48,7 @@ def process_data(df, model_config_manager: ModelConfigurationManager, real_time=
                                                    model_config_manager.get_num_lagged_features())
         # Add what-if features
         what_if_df = add_what_if_features(subset_df, model_config_manager.get_what_if_features(),
-                                          model_config_manager.get_prediction_horizons())
+                                          model_config_manager.get_prediction_horizon())
 
         # Update the subset DataFrame with the new time-lagged features
         subset_df = pd.concat([subset_df, lagged_features], axis=1)

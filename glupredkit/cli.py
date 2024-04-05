@@ -223,6 +223,75 @@ def train_model(model, config_file_name):
 
 
 @click.command()
+@click.argument('model_file', type=str)
+def test_model(model_file):
+    tested_models_path = "data/tested_models"
+
+    model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                        int(model_file.split('__')[2].split('.')[0]))
+
+    model_config_manager = ModelConfigurationManager(config_file_name)
+    model_instance = helpers.get_trained_model(model_file)
+    training_data, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+    processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+    target_cols = [col for col in test_data if col.startswith('target')]
+    x_test = processed_data.drop(target_cols, axis=1)
+    y_test = processed_data[target_cols]
+    y_pred = model_instance.predict(x_test)
+
+    hypo_threshold = 70
+    hyper_threshold = 180
+
+    # Create a dataframe to store the model name, configuration, predictions, and other results
+    results_df = pd.DataFrame({
+        'Model Name': [model_name],
+        'training_samples': [training_data.shape[0]],
+        'test_samples': [test_data.shape[0]],
+        'hypo_training_samples': [training_data[training_data['CGM'] < hypo_threshold].shape[0]],
+        'hypo_test_samples': [test_data[test_data['CGM'] < hypo_threshold].shape[0]],
+        'hyper_training_samples': [training_data[training_data['CGM'] > hyper_threshold].shape[0]],
+        'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]]
+    })
+
+    configs = model_config_manager.load_config()
+    for config in configs:
+        results_df[config] = [configs[config]]
+
+    for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
+        curr_y_test = y_test[target_cols[i]]
+        curr_y_pred = [val[i] for val in y_pred]
+        results_df = results_df.copy() #  To silent PerformanceWarning
+        results_df[target_cols[i]] = [curr_y_test]
+        results_df[f'y_pred_{minutes}'] = [curr_y_pred]
+
+        metrics = ['rmse', 'mare', 'me', 'parkes_error_grid']
+        for metric in metrics:
+            metric_module = helpers.get_metric_module(metric)
+            chosen_metric = metric_module.Metric()
+            score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
+            results_df[f'{metric}_{minutes}'] = [score]
+            if metric == 'mare':
+                print(f"me_{minutes}", score)
+
+    print(results_df.columns)
+
+
+    # Calculate average error metrics
+
+
+
+    # Define the path to store the dataframe
+    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
+
+    # Store the dataframe in a file
+    results_df.to_csv(output_file, index=False)
+
+    #  TODO: I should also add error metrics here. They might take long to compute, like SHAP numbers.
+    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
+
+
+@click.command()
 @click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
                                'models will be evaluated. ',
               default=None)
@@ -1258,6 +1327,7 @@ cli = click.Group(commands={
     'parse': parse,
     'generate_config': generate_config,
     'train_model': train_model,
+    'test_model': test_model,
     'calculate_metrics': calculate_metrics,
     'draw_plots': draw_plots,
     'generate_evaluation_pdf': generate_evaluation_pdf,
