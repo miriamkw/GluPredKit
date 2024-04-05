@@ -259,7 +259,7 @@ def test_model(model_file):
     for config in configs:
         results_df[config] = [configs[config]]
 
-    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid']
+    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection']
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]
@@ -510,6 +510,15 @@ def generate_evaluation_pdf(results_file):
 
     # GLYCEMIA DETECTION
     c = generate_report.set_title(c, f'Glycemia Detection')
+
+    # Plot confusion matrixes
+    classes = ['Hypo', 'Target', 'Hyper']
+
+    c = generate_report.plot_confusion_matrix(c, df, classes, 30, 50, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, 60, 320, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon - 50, 50, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
+
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
@@ -519,154 +528,6 @@ def generate_evaluation_pdf(results_file):
     click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
 
     """
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 250, f'Clarke Error Grid Analysis')
-
-    # Table data
-    data = [
-        ['Prediction Horizon', f'Zone A [%]', f'Zone B [%]', f'Zone C [%]', f'Zone D [%]', f'Zone E [%]']
-    ]
-
-    for i in range(5, prediction_range, 6):
-        current_row = clarke_error_grid_list[i]
-        new_row = [[str(i * 5 + 5), current_row[0], current_row[1], current_row[2], current_row[3], current_row[4]]]
-        data += new_row
-
-    # Show the second page
-    c.showPage()
-
-    # TODO: Reduce redundancy in this code
-    # Page 3
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Scatter Plots")
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[5]], y_pred[:, 5], alpha=0.5)
-
-    if unit_config_manager.use_mgdl:
-        unit = "mg/dL"
-        max_val = 400
-    else:
-        unit = "mmol/L"
-        max_val = unit_config_manager.convert_value(400)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"30 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 100, 520)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[11]], y_pred[:, 11], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"60 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 400, 520)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[17]], y_pred[:, 17], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"90 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 100, 300)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[23]], y_pred[:, 23], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"120 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 400, 300)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[29]], y_pred[:, 29], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"150 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 100, 80)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[35]], y_pred[:, 35], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"180 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 400, 80)
-
-
-    # Show the page
-    c.showPage()
-
-
     # TODO: Reduce redundancy in this code
     # Hypoglycamia
     c.setFont("Helvetica-Bold", 16)

@@ -9,6 +9,9 @@ from glupredkit.helpers.unit_config_manager import unit_config_manager
 from io import BytesIO
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
 
 
 def get_df_from_results_file(file_name):
@@ -140,6 +143,26 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
+    return c
+
+
+def plot_confusion_matrix(c, df, classes, ph, x_placement, y_placement, cmap=plt.cm.Blues):
+    percentages = df[f'glycemia_detection_{ph}'][0]
+    percentages = ast.literal_eval(percentages)
+
+    fig = plt.figure(figsize=(3, 2.5))
+    sns.heatmap(percentages, annot=True, cmap=cmap, fmt='.2%', xticklabels=classes, yticklabels=classes)
+    plt.title(f'{ph} minutes')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, x_placement, y_placement)
+
     return c
 
 
