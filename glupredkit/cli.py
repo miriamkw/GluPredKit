@@ -2,7 +2,6 @@
 import click
 import dill
 import os
-from io import BytesIO
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
@@ -22,6 +21,7 @@ from .plots.base_plot import BasePlot
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager, generate_model_configuration
 import glupredkit.helpers.cli as helpers
+import glupredkit.helpers.generate_report as generate_report
 
 
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
@@ -258,28 +258,26 @@ def test_model(model_file):
     for config in configs:
         results_df[config] = [configs[config]]
 
+    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid']
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]]
         curr_y_pred = [val[i] for val in y_pred]
-        results_df = results_df.copy() #  To silent PerformanceWarning
+        results_df = results_df.copy()  # To silent PerformanceWarning
         results_df[target_cols[i]] = [curr_y_test]
         results_df[f'y_pred_{minutes}'] = [curr_y_pred]
 
-        metrics = ['rmse', 'mare', 'me', 'parkes_error_grid']
         for metric in metrics:
             metric_module = helpers.get_metric_module(metric)
             chosen_metric = metric_module.Metric()
             score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
             results_df[f'{metric}_{minutes}'] = [score]
-            if metric == 'mare':
-                print(f"me_{minutes}", score)
 
-    print(results_df.columns)
-
-
+    metrics = ['rmse', 'mare', 'me']
     # Calculate average error metrics
-
-
+    for metric in metrics:
+        metric_cols = [col for col in results_df.columns if col.startswith(metric)]
+        avg_score = np.mean(results_df[metric_cols].iloc[0])
+        results_df[f'{metric}_avg'] = [avg_score]
 
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
@@ -434,138 +432,74 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
 
 
 @click.command()
-@click.option('--model', help='The name of the trained model to evaluate, without ".pkl".')
-def generate_evaluation_pdf(model):
+@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".')
+def generate_evaluation_pdf(results_file):
     """
     This command stores a standardized pdf report of the given model in data/reports/.
     """
     click.echo(f"Generating evaluation report...")
-    model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
-                                                        int(model.split('__')[2].split('.')[0]))
-
-    model_config_manager = ModelConfigurationManager(config_file_name)
-    model_instance = helpers.get_trained_model(f'{model}.pkl')
-    _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-    processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-
-    target_columns = [column for column in processed_data.columns if column.startswith('target')]
-    x_test = processed_data.drop(target_columns, axis=1)
-    y_test = processed_data[target_columns]
-    y_pred = model_instance.predict(x_test)
-
-    prediction_range = int(prediction_horizon) // 5
-    rmse_list = []
-    rmse_module = helpers.get_metric_module("rmse")
-    rmse = rmse_module.Metric()
-
-    mae_list = []
-    mae_module = helpers.get_metric_module("mae")
-    mae = mae_module.Metric()
-
-    clarke_error_grid_list = []
-    clarke_module = helpers.get_metric_module("clarke_error_grid")
-    clarke = clarke_module.Metric()
-
-    hyperglycemia_detection_list = []
-    hyper_module = helpers.get_metric_module("hyperglycemia_detection")
-    hyper = hyper_module.Metric()
-
-    hypoglycemia_detection_list = []
-    hypo_module = helpers.get_metric_module("hypoglycemia_detection")
-    hypo = hypo_module.Metric()
-
-    for i in range(prediction_range):
-        rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]
-        mae_list += [mae(y_test[target_columns[i]], y_pred[:, i])]
-        clarke_error_grid_list += [clarke(y_test[target_columns[i]], y_pred[:, i])]
-        hyperglycemia_detection_list += [hyper(y_test[target_columns[i]], y_pred[:, i])]
-        hypoglycemia_detection_list += [hypo(y_test[target_columns[i]], y_pred[:, i])]
+    df = generate_report.get_df_from_results_file(results_file)
 
     # Convert results to DataFrame and save as CSV
     results_file_path = 'data/reports/'
     os.makedirs(results_file_path, exist_ok=True)
-    results_file_name = f'{model}.pdf'
+    results_file_name = f'{results_file.split(".")[0]}.pdf'
 
     # Create a PDF canvas
     c = canvas.Canvas(f"data/reports/{results_file_name}", pagesize=letter)
 
-    # Set font and font size for title
-    c.setFont("Helvetica-Bold", 16)
-
-    # Centered title
-    c.drawCentredString(letter[0] / 2, 750, f'Model Evaluation for {model_name}')
-
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 720, f'Model Configuration')
-
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 700, f'Prediction horizon: {prediction_horizon} minutes')
-    c.drawString(100, 680, f'Numerical features: {model_config_manager.get_num_features()}')
-    c.drawString(100, 660, f'Categorical features: {model_config_manager.get_cat_features()}')
-    c.drawString(100, 640, f'What-if features: {model_config_manager.get_what_if_features()}')
-    c.drawString(100, 620, f'Number of lagged features: {model_config_manager.get_num_lagged_features()}')
-
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 580, f'Data Description')
-
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 560, f'Dataset: {model_config_manager.get_data()}')
-    c.drawString(100, 540, f'Data ids: {model_config_manager.get_subject_ids()}')
-    c.drawString(100, 520, f'Training samples: xxx')
-    c.drawString(100, 500, f'Test samples: {x_test.shape[0]}')
-    c.drawString(100, 480, f'Data variability index: zzz')
-    c.drawString(100, 460, f'Hypoglycemia samples: {x_test[x_test["CGM"] < 70].shape[0]}')
-    c.drawString(100, 440, f'Hyperglycemia samples: {x_test[x_test["CGM"] > 180].shape[0]}')
-
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 400, f'Model Evaluation Summary')
-
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 380, f'Summary of each part of the evaluation report...')
-
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
-
-    # Show the first page
+    # FRONT PAGE
+    c = generate_report.set_title(c, f'Model Evaluation for {df["Model Name"][0]}')
+    c = generate_report.generate_single_model_front_page(c, df)
+    c = generate_report.set_bottom_text(c)
     c.showPage()
 
-    # Page 2
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Evaluation Metrics")
-
-    # Table data
-    data = [
-        ['Prediction Horizon', f'RMSE [{unit_config_manager.get_unit()}]', f'MAE [{unit_config_manager.get_unit()}]']
+    # MODEL ACCURACY
+    c = generate_report.set_title(c, f'Model Accuracy')
+    table_data = [
+        ['Prediction Horizon', f'RMSE [{unit_config_manager.get_unit()}]',
+         f'ME [{unit_config_manager.get_unit()}]', 'MARE [%]']
     ]
+    table_interval = 30
+    # TODO: Add some color coding in the table?
+    for ph in range(table_interval, int(df['prediction_horizon'][0]) + 1, table_interval):
+        rmse_str = "{:.1f}".format(float(df[f'rmse_{ph}'][0]))
+        me_str = "{:.1f}".format(float(df[f'me_{ph}'][0]))
+        mare_str = "{:.1f}".format(float(df[f'mare_{ph}'][0]))
+        new_row = [[str(ph), rmse_str, me_str, mare_str]]
+        table_data += new_row
+    rmse_str = "{:.1f}".format(float(df[f'rmse_avg'][0]))
+    me_str = "{:.1f}".format(float(df[f'me_avg'][0]))
+    mare_str = "{:.1f}".format(float(df[f'mare_avg'][0]))
+    new_row = [['Average', rmse_str, me_str, mare_str]]
+    table_data += new_row
+    c = generate_report.draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+    plot_height = 1.3  # TODO: Dynamically scale when table is larger
+    c = generate_report.plot_across_prediction_horizons(c, df, f'RMSE [{unit_config_manager.get_unit()}]',
+                                                        ['rmse'], y_placement=420, height=plot_height)
+    c = generate_report.plot_across_prediction_horizons(c, df, f'ME [{unit_config_manager.get_unit()}]',
+                                                        ['me'], y_placement=260, height=plot_height)
+    c = generate_report.plot_across_prediction_horizons(c, df, f'MARE [%]',
+                                                        ['mare'], y_placement=100, height=plot_height)
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
 
-    for i in range(5, prediction_range, 6):
-        rmse_str = "{:.1f}".format(rmse_list[i])
-        mae_str = "{:.1f}".format(mae_list[i])
-        new_row = [[str(i * 5 + 5), rmse_str, mae_str]]
-        data += new_row
+    c = generate_report.set_title(c, f'Error Grid Analysis')
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
 
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
+    # GLYCEMIA DETECTION
+    c = generate_report.set_title(c, f'Glycemia Detection')
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
 
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 600)
+    # Save the PDF
+    c.save()
 
+    click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
+
+    """
+    
     # Plotting rmse values
     x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
     fig = plt.figure(figsize=(5, 3))
@@ -612,10 +546,6 @@ def generate_evaluation_pdf(model):
     table.wrapOn(c, 0, 0)
     table.drawOn(c, 100, 100)
 
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
 
     # Show the second page
     c.showPage()
@@ -746,10 +676,6 @@ def generate_evaluation_pdf(model):
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 400, 80)
 
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
 
     # Show the page
     c.showPage()
@@ -835,10 +761,6 @@ def generate_evaluation_pdf(model):
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 400, 80)
 
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
 
     # Show the page
     c.showPage()
@@ -899,10 +821,6 @@ def generate_evaluation_pdf(model):
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, 250)
 
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
 
     # Show the page
     c.showPage()
@@ -910,6 +828,8 @@ def generate_evaluation_pdf(model):
     # NEW PAGE
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(letter[0] / 2, 750, "Feature Impact on Blood Glucose Prediction Output")
+    """
+
     """
     # Normal text
     c.setFont("Helvetica", 12)
@@ -973,20 +893,6 @@ def generate_evaluation_pdf(model):
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, 100)
     """
-
-    # Bottom text
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(letter[0] / 2, 50, f'This report is generated using GluPredKit '
-                                           f'(https://github.com/miriamkw/GluPredKit)')
-
-    # Show the page
-    c.showPage()
-
-    # Save the PDF
-    c.save()
-
-    click.echo(
-        f"An evaluation report for {model}.pkl is stored in '{results_file_path}' as '{results_file_name}'")
 
 
 @click.command()
