@@ -3,6 +3,7 @@ import click
 import dill
 import os
 import importlib
+import ast
 import pandas as pd
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
@@ -260,7 +261,7 @@ def test_model(model_file):
 
     metrics = ['rmse', 'mare', 'me', 'parkes_error_grid']
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
-        curr_y_test = y_test[target_cols[i]]
+        curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]
         results_df = results_df.copy()  # To silent PerformanceWarning
         results_df[target_cols[i]] = [curr_y_test]
@@ -462,7 +463,8 @@ def generate_evaluation_pdf(results_file):
     ]
     table_interval = 30
     # TODO: Add some color coding in the table?
-    for ph in range(table_interval, int(df['prediction_horizon'][0]) + 1, table_interval):
+    prediction_horizon = int(df['prediction_horizon'][0])
+    for ph in range(table_interval, prediction_horizon + 1, table_interval):
         rmse_str = "{:.1f}".format(float(df[f'rmse_{ph}'][0]))
         me_str = "{:.1f}".format(float(df[f'me_{ph}'][0]))
         mare_str = "{:.1f}".format(float(df[f'mare_{ph}'][0]))
@@ -485,6 +487,24 @@ def generate_evaluation_pdf(results_file):
     c.showPage()
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
+    table_data = [
+        ['Prediction Horizon', f'Zone A', f'Zone B', f'Zone C', f'Zone D', f'Zone E']
+    ]
+    table_interval = 30
+    # TODO: Add some color coding in the table?
+    for ph in range(table_interval, int(df['prediction_horizon'][0]) + 1, table_interval):
+        new_row = [str(ph)]
+        current_data = df[f'parkes_error_grid_{ph}'][0]
+        current_data = ast.literal_eval(current_data)
+        for i in range(5):
+            new_row += [current_data[i]]
+        table_data += [new_row]
+    c = generate_report.draw_table(c, table_data, 720 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+    c = generate_report.draw_scatter_plot(c, df, 30, 100, 360)
+    c = generate_report.draw_scatter_plot(c, df, 60, 380, 360)
+    c = generate_report.draw_scatter_plot(c, df, prediction_horizon - 30, 100, 120)
+    c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
+
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
@@ -499,25 +519,6 @@ def generate_evaluation_pdf(results_file):
     click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
 
     """
-    
-    # Plotting rmse values
-    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
-    fig = plt.figure(figsize=(5, 3))
-    plt.plot(x_values, rmse_list, marker='o', label=f'RMSE [{unit_config_manager.get_unit()}]')
-    plt.plot(x_values, mae_list, marker='o', label=f'MAE [{unit_config_manager.get_unit()}]')
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Error Metrics for {model_name}')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 300)
-
     # Subtitle
     c.setFont("Helvetica-Bold", 12)
     c.drawString(100, 250, f'Clarke Error Grid Analysis')
@@ -531,21 +532,6 @@ def generate_evaluation_pdf(results_file):
         current_row = clarke_error_grid_list[i]
         new_row = [[str(i * 5 + 5), current_row[0], current_row[1], current_row[2], current_row[3], current_row[4]]]
         data += new_row
-
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
-
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 100)
-
 
     # Show the second page
     c.showPage()

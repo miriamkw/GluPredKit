@@ -1,5 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import ast
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors
@@ -85,7 +87,7 @@ def plot_across_prediction_horizons(c, df, title, columns, height=2, y_labels=No
     for i, val in enumerate(columns):
         values = []
         for ph in x_values:
-            values += [float(df[f'{val}_{ph}'])]
+            values += [float(df[f'{val}_{ph}'][0])]
 
         if y_labels:
             plt.plot(x_values, values, marker='o', label=y_labels[i])
@@ -106,6 +108,40 @@ def plot_across_prediction_horizons(c, df, title, columns, height=2, y_labels=No
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
     return c
+
+
+def draw_scatter_plot(c, df, ph, x_placement, y_placement):
+    fig = plt.figure(figsize=(2, 2))
+
+    y_test = df[f'target_{ph}'][0]
+    y_pred = df[f'y_pred_{ph}'][0]
+    y_test = ast.literal_eval(y_test)
+    y_pred = ast.literal_eval(y_pred)
+
+    plt.scatter(y_test, y_pred, alpha=0.5)
+
+    if unit_config_manager.use_mgdl:
+        unit = "mg/dL"
+        max_val = 400
+    else:
+        unit = "mmol/L"
+        max_val = unit_config_manager.convert_value(400)
+
+    # Plotting the line x=y
+    plt.plot([0, max_val], [0, max_val], 'k-')
+
+    plt.xlabel(f"True Blood Glucose [{unit}]")
+    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
+    plt.title(f"{ph} minutes")
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, x_placement, y_placement)
+    return c
+
 
 
 def get_ph(df):
