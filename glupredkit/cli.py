@@ -259,7 +259,7 @@ def test_model(model_file):
     for config in configs:
         results_df[config] = [configs[config]]
 
-    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection']
+    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper']
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]
@@ -509,7 +509,41 @@ def generate_evaluation_pdf(results_file):
     c.showPage()
 
     # GLYCEMIA DETECTION
-    c = generate_report.set_title(c, f'Glycemia Detection')
+    c = generate_report.set_title(c, f'Glycemia Detection - Matthews Correlation Coefficient (MCC)')
+    table_data = [
+        ['Prediction Horizon', 'MCC Hypoglycemia', 'MCC Hyperglycemia', 'Average']
+    ]
+    table_interval = 30
+    # TODO: Add some color coding in the table?
+    prediction_horizon = int(df['prediction_horizon'][0])
+    for ph in range(table_interval, prediction_horizon + 1, table_interval):
+        mcc_hypo = float(df[f'mcc_hypo_{ph}'][0])
+        mcc_hyper = float(df[f'mcc_hyper_{ph}'][0])
+        mcc_hypo_str = "{:.2f}".format(mcc_hypo)
+        mcc_hyper_str = "{:.2f}".format(mcc_hyper)
+        mcc_avg_str = "{:.2f}".format(np.mean([mcc_hypo, mcc_hyper]))
+        new_row = [[str(ph), mcc_hypo_str, mcc_hyper_str, mcc_avg_str]]
+        table_data += new_row
+
+    mcc_hypo_avg = np.mean([float(df[f'mcc_hypo_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
+    mcc_hyper_avg = np.mean([float(df[f'mcc_hyper_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
+    total_avg = np.mean([mcc_hypo_avg, mcc_hyper_avg])
+    mcc_hypo_avg_str = "{:.2f}".format(mcc_hypo_avg)
+    mcc_hyper_avg_str = "{:.2f}".format(mcc_hyper_avg)
+    total_avg_str = "{:.2f}".format(total_avg)
+    new_row = [['Average', mcc_hypo_avg_str, mcc_hyper_avg_str, total_avg_str]]
+    table_data += new_row
+    c = generate_report.draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+
+    c = generate_report.plot_across_prediction_horizons(c, df, f'Matthews Correlation Coefficient (MCC)',
+                                                        ['mcc_hypo', 'mcc_hyper'], y_placement=150,
+                                                        height=4, y_label='MCC',
+                                                        y_labels=['MCC Hypoglycemia', 'MCC Hyperglycemia'])
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    # GLYCEMIA DETECTION PAGE 2
+    c = generate_report.set_title(c, f'Glycemia Detection - Confusion Matrices')
 
     # Plot confusion matrixes
     classes = ['Hypo', 'Target', 'Hyper']
@@ -528,89 +562,6 @@ def generate_evaluation_pdf(results_file):
     click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
 
     """
-    # TODO: Reduce redundancy in this code
-    # Hypoglycamia
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Hypoglycemia Scatter Plots")
-
-    # TODO: Write how many percentages of the data are hypoglycemia samples
-    if unit_config_manager.use_mgdl:
-        unit = "mg/dL"
-        max_val = 400
-        hypo_threshold = 70
-    else:
-        unit = "mmol/L"
-        max_val = unit_config_manager.convert_value(400)
-        hypo_threshold = 4.0
-
-    # Filter out pairs of values where either one exceeds the threshold
-    filtered_indices = np.where((y_test[target_columns[5]] <= hypo_threshold) | (y_pred[:, 5] <= hypo_threshold))
-
-    # Extract filtered values
-    y_test_filtered = y_test[target_columns[5]][filtered_indices]
-    y_pred_filtered = y_pred[:, 5][filtered_indices]
-
-    # Plotting scatter plots
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test_filtered, y_pred_filtered, alpha=0.5)
-
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"30 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 100, 520)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[29]], y_pred[:, 29], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"150 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 100, 80)
-
-    # Plotting rmse values
-    fig = plt.figure(figsize=(2, 2))
-    plt.scatter(y_test[target_columns[35]], y_pred[:, 35], alpha=0.5)
-
-    # Plotting the line x=y
-    plt.plot([0, max_val], [0, max_val], 'k-')
-
-    plt.xlabel(f"True Blood Glucose [{unit}]")
-    plt.ylabel(f"Predicted Blood Glucose [{unit}]")
-    plt.title(f"180 minutes")
-    plt.legend(loc='upper left')
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 400, 80)
-
-
-    # Show the page
-    c.showPage()
 
     # Page 4
     c.setFont("Helvetica-Bold", 16)

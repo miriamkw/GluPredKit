@@ -153,8 +153,8 @@ def plot_confusion_matrix(c, df, classes, ph, x_placement, y_placement, cmap=plt
     fig = plt.figure(figsize=(3, 2.5))
     sns.heatmap(percentages, annot=True, cmap=cmap, fmt='.2%', xticklabels=classes, yticklabels=classes)
     plt.title(f'{ph} minutes')
-    plt.xlabel('Predicted label')
-    plt.ylabel('True label')
+    plt.xlabel('True label')
+    plt.ylabel('Predicted label')
 
     # Save the plot as an image
     buffer = BytesIO()
