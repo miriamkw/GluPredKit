@@ -140,23 +140,31 @@ class Model(BaseModel):
         if not time_to_calculate:
             time_to_calculate = df_row.name
 
+        if isinstance(time_to_calculate, np.int64):
+            time_to_calculate = datetime.datetime.now()
+
         input_dict["time_to_calculate_at"] = time_to_calculate
 
         def get_dates_and_values(column, data):
             relevant_columns = [val for val in data.index if val.startswith(column)]
             dates = []
             values = []
+
+            date = data.name
+            if isinstance(date, np.int64):
+                date = datetime.datetime.now()
+
             for col in relevant_columns:
                 if col == column:
                     values.append(data[col])
-                    dates.append(data.name)
+                    dates.append(date)
                 elif "what_if" in col:
                     values.append(data[col])
-                    new_date = data.name + datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    new_date = date + datetime.timedelta(minutes=int(col.split("_")[-1]))
                     dates.append(new_date)
                 else:
                     values.append(data[col])
-                    new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    new_date = date - datetime.timedelta(minutes=int(col.split("_")[-1]))
                     dates.append(new_date)
 
             if not dates or not values:
@@ -184,10 +192,13 @@ class Model(BaseModel):
         input_dict["dose_values"] = dose_values
         input_dict["dose_delivered_units"] = dose_delivered_units
 
-        carb_data = df_row[~df_row.index.str.startswith('carbs') | (df_row != 0)]
+        carb_data = df_row[df_row.index.str.startswith('carbs') & (df_row != 0)]
         carb_dates, carb_values = get_dates_and_values("carbs", carb_data)
         input_dict["carb_dates"] = carb_dates
         input_dict["carb_values"] = carb_values
+
+        print("Carb dates", carb_dates)
+        print("Carb dates", carb_values)
 
         # Adding the default carb absorption time because it is not available in data sources.
         input_dict["carb_absorption_times"] = [180 for _ in carb_values]
@@ -208,17 +219,22 @@ class Model(BaseModel):
             relevant_columns = [val for val in data.index if val.startswith(column)]
             dates = []
             values = []
+
+            date = data.name
+            if isinstance(date, np.int64):
+                date = datetime.datetime.now()
+
             for col in relevant_columns:
                 if col == column:
                     values.append(data[col])
-                    dates.append(data.name)
+                    dates.append(date)
                 elif "what_if" in col:
                     values.append(data[col])
-                    new_date = data.name + datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    new_date = date + datetime.timedelta(minutes=int(col.split("_")[-1]))
                     dates.append(new_date)
                 else:
                     values.append(data[col])
-                    new_date = data.name - datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    new_date = date - datetime.timedelta(minutes=int(col.split("_")[-1]))
                     dates.append(new_date)
             return dates, values
 
@@ -232,7 +248,7 @@ class Model(BaseModel):
         basal_values = basal_values
         basal_units = [None for _ in basal_values]
 
-        bolus_data = df_row[~df_row.index.str.startswith('bolus') | (df_row != 0)]
+        bolus_data = df_row[df_row.index.str.startswith('bolus') & (df_row != 0)]
         bolus_dates, bolus_values = get_dates_and_values("bolus", bolus_data)
         bolus_dose_types = [get_dose_type("bolus") for _ in bolus_values]
         bolus_start_times = bolus_dates

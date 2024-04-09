@@ -15,6 +15,7 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics import renderPDF
 from svglib.svglib import svg2rlg
 import numpy as np
+import shap
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -238,8 +239,13 @@ def test_model(model_file):
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in test_data if col.startswith('target')]
     x_test = processed_data.drop(target_cols, axis=1)
-    y_test = processed_data[target_cols]
-    y_pred = model_instance.predict(x_test)
+
+    # TODO: remove this after finished testing
+    subset_size = 10
+    subset_df_x = x_test.sample(n=subset_size, random_state=42)
+
+    y_test = processed_data[target_cols].sample(n=subset_size, random_state=42)
+    y_pred = model_instance.predict(subset_df_x)
 
     hypo_threshold = 70
     hyper_threshold = 180
@@ -279,6 +285,34 @@ def test_model(model_file):
         metric_cols = [col for col in results_df.columns if col.startswith(metric)]
         avg_score = np.mean(results_df[metric_cols].iloc[0])
         results_df[f'{metric}_avg'] = [avg_score]
+
+    insulin_dose = 1
+    carb_intake = 50
+    bolus_columns = [col for col in subset_df_x.columns if col.startswith('bolus')]
+    carbs_columns = [col for col in subset_df_x.columns if col.startswith('carbs')]
+
+    # TODO: Add a conditional check for the model, that decides how big the subset should be. 100 should be enough
+    partial_dependency_dict = {}
+    for col in bolus_columns:
+        x_test_copy = subset_df_x.copy()
+        x_test_copy[col] = insulin_dose
+        y_pred = model_instance.predict(x_test_copy)
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        averages = [x - averages[0] for x in averages]
+        partial_dependency_dict[col] = averages
+
+    for col in carbs_columns:
+        x_test_copy = subset_df_x.copy()
+        x_test_copy[col] = carb_intake
+        y_pred = model_instance.predict(x_test_copy)
+
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        averages = [x - averages[0] for x in averages]
+        partial_dependency_dict[col] = averages
+
+    results_df['partial_dependencies'] = [partial_dependency_dict]
 
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
@@ -457,25 +491,7 @@ def generate_evaluation_pdf(results_file):
 
     # MODEL ACCURACY
     c = generate_report.set_title(c, f'Model Accuracy')
-    table_data = [
-        ['Prediction Horizon', f'RMSE [{unit_config_manager.get_unit()}]',
-         f'ME [{unit_config_manager.get_unit()}]', 'MARE [%]']
-    ]
-    table_interval = 30
-    # TODO: Add some color coding in the table?
-    prediction_horizon = int(df['prediction_horizon'][0])
-    for ph in range(table_interval, prediction_horizon + 1, table_interval):
-        rmse_str = "{:.1f}".format(float(df[f'rmse_{ph}'][0]))
-        me_str = "{:.1f}".format(float(df[f'me_{ph}'][0]))
-        mare_str = "{:.1f}".format(float(df[f'mare_{ph}'][0]))
-        new_row = [[str(ph), rmse_str, me_str, mare_str]]
-        table_data += new_row
-    rmse_str = "{:.1f}".format(float(df[f'rmse_avg'][0]))
-    me_str = "{:.1f}".format(float(df[f'me_avg'][0]))
-    mare_str = "{:.1f}".format(float(df[f'mare_avg'][0]))
-    new_row = [['Average', rmse_str, me_str, mare_str]]
-    table_data += new_row
-    c = generate_report.draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+    c = generate_report.draw_model_accuracy_table(c, df)
     plot_height = 1.3  # TODO: Dynamically scale when table is larger
     c = generate_report.plot_across_prediction_horizons(c, df, f'RMSE [{unit_config_manager.get_unit()}]',
                                                         ['rmse'], y_placement=420, height=plot_height)
@@ -487,21 +503,10 @@ def generate_evaluation_pdf(results_file):
     c.showPage()
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
-    table_data = [
-        ['Prediction Horizon', f'Zone A', f'Zone B', f'Zone C', f'Zone D', f'Zone E']
-    ]
-    table_interval = 30
-    # TODO: Add some color coding in the table?
-    for ph in range(table_interval, int(df['prediction_horizon'][0]) + 1, table_interval):
-        new_row = [str(ph)]
-        current_data = df[f'parkes_error_grid_{ph}'][0]
-        current_data = ast.literal_eval(current_data)
-        for i in range(5):
-            new_row += [current_data[i]]
-        table_data += [new_row]
-    c = generate_report.draw_table(c, table_data, 720 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+    c = generate_report.draw_error_grid_table(c, df)
     c = generate_report.draw_scatter_plot(c, df, 30, 100, 360)
     c = generate_report.draw_scatter_plot(c, df, 60, 380, 360)
+    prediction_horizon = generate_report.get_ph(df)
     c = generate_report.draw_scatter_plot(c, df, prediction_horizon - 30, 100, 120)
     c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
@@ -556,141 +561,30 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
-    # Save the PDF
-    c.save()
+    # PHYSIOLOGICAL ALIGNMENT PAGE
+    c = generate_report.set_title(c, f'Physiological Alignment')
+    c = generate_report.set_subtitle(c, f'Physiological Alignment for insulin', 720)
+    c = generate_report.draw_physiological_alignment_table(c, df, 'bolus', 670)
+    c = generate_report.plot_partial_dependency_heatmap(c, df, 'bolus', 100, 440,
+                                                        f'Average impact on prediction for 1U of insulin')
+    c = generate_report.set_subtitle(c, f'Physiological Alignment for carbohydrates', 380)
+    c = generate_report.draw_physiological_alignment_table(c, df, 'carbs', 330)
+    c = generate_report.plot_partial_dependency_heatmap(c, df, 'carbs', 100, 100,
+                                                        f'Average impact on prediction for 50g of carbohydrates')
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
 
-    click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
-
-    """
-
-    # Page 4
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Critical Clinical Aspects")
-
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 730, f'The detection of hypo- and hyperglycemia assesses the percentage of target ')
-    c.drawString(100, 715, f'values below 70 mg/dL or above 180 mg/dL, where the predicted values also fall')
-    c.drawString(100, 700, f'below 70 mg/dL or above 180 mg/dL.')
-
-    # Table data
-    data = [
-        ['Prediction Horizon', f'Hypoglycemia Detection', f'Hyperglycemia Detection']
-    ]
-
-    for i in range(5, prediction_range, 6):
-        hypoglycemia_str = "{:.1f}%".format(hypoglycemia_detection_list[i])
-        hyperglycemia_str = "{:.1f}%".format(hyperglycemia_detection_list[i])
-        new_row = [[str(i * 5 + 5), hypoglycemia_str, hyperglycemia_str]]
-        data += new_row
-
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                               ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                               ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                               ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                               ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                               ('GRID', (0, 0), (-1, -1), 1, colors.black)]))
-
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 550)
-
-    # TODO: Add a plot for hypo- and hyperglycemia detection!
-
-    # Plotting glycemia detection
-    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
-    fig = plt.figure(figsize=(5, 3))
-    plt.plot(x_values, hypoglycemia_detection_list, marker='o', label=f'Hypoglycemia Detection [%]')
-    plt.plot(x_values, hyperglycemia_detection_list, marker='o', label=f'Hyperglycemia Detection [%]')
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Glycemia Detection for {model_name}')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.xlabel('Glycemia Detection [%]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 250)
-
+    # PREDICTION DISTRIBUTION PAGE
+    c = generate_report.set_title(c, f'Distribution of Predictions')
+    c = generate_report.plot_predicted_distribution(c, df, 100, 400)
 
     # Show the page
     c.showPage()
 
-    # NEW PAGE
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Feature Impact on Blood Glucose Prediction Output")
-    """
+    # Save the PDF
+    c.save()
 
-    """
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 730, f'The Partial Dependence Plots below illustrate how adjustments to model input ')
-    c.drawString(100, 715, f'variables influence the model outputs across the predicted trajectory. ')
-    c.drawString(100, 700, f'Each line on the plot represents the average predicted trajectory given a ')
-    c.drawString(100, 685, f'specific input. In the physical reality, increased insulin should always decrease')
-    c.drawString(100, 670, f'blood glucose, and increased carbohydrates should always increase blood glucose. ')
-
-    # Plotting Partial Dependence Plots
-    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
-    fig = plt.figure(figsize=(5, 3))
-
-    insulin_units = [0, 5, 10]
-    test_column = 'bolus'
-
-    for insulin_dose in insulin_units:
-        x_test = processed_data.drop(target_columns, axis=1)
-        x_test[test_column] = insulin_dose
-        y_pred = model_instance.predict(x_test)
-        # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        plt.plot(x_values, averages, marker='o', label=f'{insulin_dose} U')
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Partial Dependence Plot for {test_column}')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 390)
-
-    # Plotting Partial Dependence Plots
-    x_values = list(range(5, 5 * len(rmse_list) + 1, 5))
-    fig = plt.figure(figsize=(5, 3))
-
-    carb_intakes = [0, 50, 100]
-    test_column = 'carbs'
-
-    for carbs in carb_intakes:
-        x_test = processed_data.drop(target_columns, axis=1)
-        x_test[test_column] = carbs
-        y_pred = model_instance.predict(x_test)
-        # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        plt.plot(x_values, averages, marker='o', label=f'{carbs} g')
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Partial Dependence Plot for {test_column}')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 100)
-    """
+    click.echo(f"An evaluation report for {results_file} is stored in '{results_file_path}' as '{results_file_name}'")
 
 
 @click.command()

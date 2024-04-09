@@ -77,8 +77,8 @@ class Model(BaseModel):
             # Iterate over the fitted Ridge regressors and add the alpha for each output
             for i, ridge_regressor in enumerate(ridge_regressors):
                 print(f'Coefficients for model {i}')
-                feature_names = ridge_regressor[0].feature_names_in_
-                coefficients = ridge_regressor[0].coef_
+                feature_names = ridge_regressor.feature_names_in_
+                coefficients = ridge_regressor.coef_
                 for feature_name, coefficient in zip(feature_names, coefficients):
                     print(f"Feature: {feature_name}, Coefficient: {coefficient:.4f}")
 

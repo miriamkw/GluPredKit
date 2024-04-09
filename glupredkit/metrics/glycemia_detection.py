@@ -27,10 +27,11 @@ class Metric(BaseMetric):
                 relevant_predictions = y_pred[relevant_indices]
                 pred_count = np.sum(self.condition(relevant_predictions, i))
 
-                percentage = pred_count / true_count
-                percentages += [percentage]
-                # samples = pred_count
-                # tuples.append((percentage, samples))
+                if true_count > 0:
+                    percentage = pred_count / true_count
+                    percentages += [percentage]
+                else:
+                    percentages += [1.0]
 
         matrix = np.array(percentages).reshape(3, 3).tolist()
         return matrix
