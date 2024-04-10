@@ -345,9 +345,6 @@ def plot_partial_dependency_heatmap(c, df, feature, x_placement, y_placement, ti
         elif time_lag == 0:
             pd_numbers += [partial_dependencies_dict[f'{feature}']]
         else:
-            # new_row = partial_dependencies_dict[f'{feature}_what_if_{np.abs(time_lag)}']
-            # new_row[4] = np.nan
-
             pd_numbers += [partial_dependencies_dict[f'{feature}_what_if_{np.abs(time_lag)}']]
 
     # Determine the maximum absolute value in the partial dependency numbers
@@ -355,10 +352,10 @@ def plot_partial_dependency_heatmap(c, df, feature, x_placement, y_placement, ti
 
     # Set the bounds for the colormap symmetrically around 0
     bounds = np.linspace(-max_abs_pd, max_abs_pd, 101)  # Adjust the number of levels as needed
+    if max_abs_pd == 0:
+        bounds = np.linspace(-0.01, 0.01, 101)  # Small range around zero
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
-
     fig = plt.figure(figsize=(5, 2.5))
-
     ax = sns.heatmap(pd_numbers, annot=False, cmap=cmap, norm=norm, xticklabels=x_tick_labels,
                      yticklabels=y_tick_labels)
 

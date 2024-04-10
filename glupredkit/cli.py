@@ -172,6 +172,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'tcn',
                                             'tcn_pytorch',
                                             'loop',
+                                            'zero_order',
                                             'uva_padova'
                                             ]))
 @click.argument('config-file-name', type=str)
@@ -184,44 +185,42 @@ def train_model(model, config_file_name):
     click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
     model_config_manager = ModelConfigurationManager(config_file_name)
 
-    prediction_horizons = model_config_manager.get_prediction_horizons()
+    prediction_horizon = model_config_manager.get_prediction_horizon()
     model_module = helpers.get_model_module(model)
 
-    for prediction_horizon in prediction_horizons:
-        # PREPROCESSING
+    # PREPROCESSING
+    # Perform data preprocessing using your preprocessor
+    train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+    click.echo(f"Training data finished preprocessing...")
 
-        # Perform data preprocessing using your preprocessor
-        train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-        click.echo(f"Training data finished preprocessing...")
+    # MODEL TRAINING
+    # Create an instance of the chosen model
+    chosen_model = model_module.Model(prediction_horizon)
 
-        # MODEL TRAINING
-        # Create an instance of the chosen model
-        chosen_model = model_module.Model(prediction_horizon)
+    processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
+    target_columns = [column for column in processed_data.columns if column.startswith('target')]
+    x_train = processed_data.drop(target_columns, axis=1)
+    y_train = processed_data[target_columns]
 
-        processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
-        target_columns = [column for column in processed_data.columns if column.startswith('target')]
-        x_train = processed_data.drop(target_columns, axis=1)
-        y_train = processed_data[target_columns]
+    click.echo(f"Training model...")
 
-        click.echo(f"Training model...")
+    # Initialize and train the model
+    model_instance = chosen_model.fit(x_train, y_train)
+    click.echo(f"Model {model} with prediction horizon {prediction_horizon} minutes trained successfully!")
 
-        # Initialize and train the model
-        model_instance = chosen_model.fit(x_train, y_train)
-        click.echo(f"Model {model} with prediction horizon {prediction_horizon} minutes trained successfully!")
+    # Assuming model_instance is your class instance
+    output_path = "data/trained_models/"
+    output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
 
-        # Assuming model_instance is your class instance
-        output_path = "data/trained_models/"
-        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    try:
+        with open(f'{output_path}{output_file_name}', 'wb') as f:
+            click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
+            dill.dump(model_instance, f)
+    except Exception as e:
+        click.echo(f"Error saving model {model}: {e}")
 
-        try:
-            with open(f'{output_path}{output_file_name}', 'wb') as f:
-                click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
-                dill.dump(model_instance, f)
-        except Exception as e:
-            click.echo(f"Error saving model {model}: {e}")
-
-        if hasattr(model_instance, 'best_params'):
-            click.echo(f"Model hyperparameters: {model_instance.best_params()}")
+    if hasattr(model_instance, 'best_params'):
+        click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 
 
 @click.command()
@@ -239,13 +238,8 @@ def test_model(model_file):
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in test_data if col.startswith('target')]
     x_test = processed_data.drop(target_cols, axis=1)
-
-    # TODO: remove this after finished testing
-    subset_size = 10
-    subset_df_x = x_test.sample(n=subset_size, random_state=42)
-
-    y_test = processed_data[target_cols].sample(n=subset_size, random_state=42)
-    y_pred = model_instance.predict(subset_df_x)
+    y_test = processed_data[target_cols]
+    y_pred = model_instance.predict(x_test)
 
     hypo_threshold = 70
     hyper_threshold = 180
@@ -288,10 +282,15 @@ def test_model(model_file):
 
     insulin_dose = 1
     carb_intake = 50
-    bolus_columns = [col for col in subset_df_x.columns if col.startswith('bolus')]
-    carbs_columns = [col for col in subset_df_x.columns if col.startswith('carbs')]
+    bolus_columns = [col for col in x_test.columns if col.startswith('bolus')]
+    carbs_columns = [col for col in x_test.columns if col.startswith('carbs')]
 
     # TODO: Add a conditional check for the model, that decides how big the subset should be. 100 should be enough
+    subset_size = x_test.shape[0]
+    if model_name == 'loop':
+        subset_size = 100
+    subset_df_x = x_test.sample(n=subset_size, random_state=42)
+
     partial_dependency_dict = {}
     for col in bolus_columns:
         x_test_copy = subset_df_x.copy()
@@ -319,8 +318,6 @@ def test_model(model_file):
 
     # Store the dataframe in a file
     results_df.to_csv(output_file, index=False)
-
-    #  TODO: I should also add error metrics here. They might take long to compute, like SHAP numbers.
     click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
 
 

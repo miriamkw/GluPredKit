@@ -20,48 +20,54 @@ class Model(BaseModel):
     def fit(self, x_train, y_train):
         self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
-
         target_col = 'target_' + str(self.prediction_horizon)
-        print(target_col)
 
-        # TODO: Add some cross-validation for different therapy settings
-        # TODO: Print the predicted distribution, the rmse, and the mae for the cross validation
-        # TODO: Use only the last prediction horizon for this cross validation
         for subject_id in self.subject_ids:
             x_train_filtered = x_train[x_train['id'] == subject_id]
             y_train_filtered = y_train[x_train['id'] == subject_id]
 
-            print("Measured distribution: ", np.std(y_train_filtered[target_col]))
+            subset_df_x = x_train_filtered.sample(n=100, random_state=42)
+            subset_df_y = y_train_filtered.sample(n=100, random_state=42)
+
+            std_target = np.std(subset_df_y[target_col])
+            daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
 
             # Calculate total daily insulin
             daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-
             print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
 
-            self.insulin_sensitivity_factor += [1800 / daily_avg_insulin]  # ISF 1800 rule
-            self.carb_ratio += [500 / daily_avg_insulin]  # CR 500 rule
-            self.basal += [daily_avg_insulin * 0.45 / 24]  # Basal 45% of TDI
+            basal = daily_avg_basal
+            # basal += daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+            self.basal += [basal]  # Basal average of the daily basal rate of the person
 
-            """
             isf = 1800 / daily_avg_insulin  # ISF 1800 rule
             cr = 500 / daily_avg_insulin  # CR 500 rule
+            # basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
             basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
 
-            mult_factors = [0.85, 1.0, 1.15]
+            mult_factors = [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]
+            y_true = subset_df_y[target_col]
+            rmse = lambda actual, predicted: np.sqrt(np.mean((np.array(actual) - np.array(predicted)) ** 2))
 
+            best_rmse = np.inf
+            best_isf = isf
+            best_cr = cr
             for i in mult_factors:
                 for j in mult_factors:
-                    for z in mult_factors:
-                        y_pred = self.get_current_predictions(df_subset=x_train_filtered,
-                                                              insulin_sensitivity_factor=isf*i,
-                                                              carb_ratio=cr*j, basal=basal*z)
+                    y_pred = self.get_current_predictions(df_subset=subset_df_x,
+                                                          insulin_sensitivity_factor=isf*i,
+                                                          carb_ratio=cr*j, basal=basal)
+                    last_y_pred = [val[-1] for val in y_pred]
+                    print(f'Factors {i} and {j}')
+                    print("RMSE: ", int(rmse(y_true, last_y_pred)))
+                    # print("Distribution difference: ", int(np.std(last_y_pred) - std_target))
+                    if rmse(y_true, last_y_pred) < best_rmse:
+                        best_isf = isf*i
+                        best_cr = cr*j
+                        best_rmse = rmse(y_true, last_y_pred)
 
-                        print(f'Factors {i}, {j} and {z}')
-                        print("RMSE: ", 399)
-                        print("Distribution: ", np.std([val[-1] for val in y_pred]))
-
-            # TODO: Set the therapy settings that provide the best results
-            """
+            self.insulin_sensitivity_factor += [best_isf]
+            self.carb_ratio += [best_cr]
 
         print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
 
@@ -196,9 +202,6 @@ class Model(BaseModel):
         carb_dates, carb_values = get_dates_and_values("carbs", carb_data)
         input_dict["carb_dates"] = carb_dates
         input_dict["carb_values"] = carb_values
-
-        print("Carb dates", carb_dates)
-        print("Carb dates", carb_values)
 
         # Adding the default carb absorption time because it is not available in data sources.
         input_dict["carb_absorption_times"] = [180 for _ in carb_values]
