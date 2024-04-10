@@ -91,6 +91,40 @@ def draw_model_accuracy_table(c, df):
     return c
 
 
+def draw_model_comparison_accuracy_table(c, dfs):
+    data = [
+        ['Rank', 'Model', f'Average RMSE [{unit_config_manager.get_unit()}]']
+    ]
+
+    models = []
+    rmse_list = []
+    for df in dfs:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        models += [df['Model Name'][0]]
+        rmse_values = []
+        for ph in prediction_horizons:
+            rmse_values += [df[f'rmse_{ph}'][0]]
+        rmse_list += [np.mean(rmse_values)]
+
+    # Sort for ranking
+    pairs = zip(rmse_list, models)
+
+    # Sort the pairs based on the RMSE values (in ascending order)
+    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=False)
+
+    # Unpack the sorted pairs back into separate lists
+    sorted_rmse_list, sorted_models_list = zip(*sorted_pairs)
+
+    for i in range(len(models)):
+        rmse_str = "{:.1f}".format(sorted_rmse_list[i])
+        new_row = [f'#{i + 1}', sorted_models_list[i], rmse_str]
+        data += [new_row]
+
+    c = draw_table(c, data, 700 - 20*len(dfs))
+
+    return c
+
+
 def draw_error_grid_table(c, df):
     table_data = [
         ['Prediction Horizon', f'Zone A', f'Zone B', f'Zone C', f'Zone D', f'Zone E']
@@ -105,6 +139,34 @@ def draw_error_grid_table(c, df):
             new_row += [current_data[i]]
         table_data += [new_row]
     c = draw_table(c, table_data, 720 - 20 * int(df['prediction_horizon'][0]) // table_interval)
+    return c
+
+
+def draw_mcc_table(c, df):
+    table_data = [
+        ['Prediction Horizon', 'MCC Hypoglycemia', 'MCC Hyperglycemia', 'Average']
+    ]
+    table_interval = 30
+    # TODO: Add some color coding in the table?
+    prediction_horizon = int(df['prediction_horizon'][0])
+    for ph in range(table_interval, prediction_horizon + 1, table_interval):
+        mcc_hypo = float(df[f'mcc_hypo_{ph}'][0])
+        mcc_hyper = float(df[f'mcc_hyper_{ph}'][0])
+        mcc_hypo_str = "{:.2f}".format(mcc_hypo)
+        mcc_hyper_str = "{:.2f}".format(mcc_hyper)
+        mcc_avg_str = "{:.2f}".format(np.mean([mcc_hypo, mcc_hyper]))
+        new_row = [[str(ph), mcc_hypo_str, mcc_hyper_str, mcc_avg_str]]
+        table_data += new_row
+
+    mcc_hypo_avg = np.mean([float(df[f'mcc_hypo_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
+    mcc_hyper_avg = np.mean([float(df[f'mcc_hyper_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
+    total_avg = np.mean([mcc_hypo_avg, mcc_hyper_avg])
+    mcc_hypo_avg_str = "{:.2f}".format(mcc_hypo_avg)
+    mcc_hyper_avg_str = "{:.2f}".format(mcc_hyper_avg)
+    total_avg_str = "{:.2f}".format(total_avg)
+    new_row = [['Average', mcc_hypo_avg_str, mcc_hyper_avg_str, total_avg_str]]
+    table_data += new_row
+    c = draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
     return c
 
 
@@ -157,14 +219,14 @@ def draw_physiological_alignment_table(c, df, feature, y_placement):
             if not np.isnan(val):
                 total_values += 1
                 if feature == 'carbs':
-                    if val >= 0:
+                    if val > 0:
                         correct_sign_values += 1
-                    if val >= prev_value:
+                    if val > prev_value:
                         persistant_values += 1
                 else:
-                    if val <= 0:
+                    if val < 0:
                         correct_sign_values += 1
-                    if val <= prev_value:
+                    if val < prev_value:
                         persistant_values += 1
                 prev_value = val
 
@@ -224,6 +286,34 @@ def plot_across_prediction_horizons(c, df, title, columns, height=2, y_labels=No
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
     return c
+
+
+def plot_rmse_across_prediction_horizons(c, dfs, height=2, y_placement=300):
+    fig = plt.figure(figsize=(5.5, height))
+
+    for df in dfs:
+        model_name = df['Model Name'][0]
+        x_values = list(range(5, get_ph(df) + 1, 5))
+        y_values = []
+        for ph in x_values:
+            y_values += [float(df[f'rmse_{ph}'][0])]
+
+        plt.plot(x_values, y_values, marker='o', label=model_name)
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title('Model Accuracy in RMSE')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.ylabel(f'RMSE [{unit_config_manager.get_unit()}]')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, y_placement)
+    return c
+
 
 
 def draw_scatter_plot(c, df, ph, x_placement, y_placement):

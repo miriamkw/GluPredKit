@@ -173,6 +173,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'tcn_pytorch',
                                             'loop',
                                             'zero_order',
+                                            'naive_linear_regressor',
                                             'uva_padova'
                                             ]))
 @click.argument('config-file-name', type=str)
@@ -512,31 +513,7 @@ def generate_evaluation_pdf(results_file):
 
     # GLYCEMIA DETECTION
     c = generate_report.set_title(c, f'Glycemia Detection - Matthews Correlation Coefficient (MCC)')
-    table_data = [
-        ['Prediction Horizon', 'MCC Hypoglycemia', 'MCC Hyperglycemia', 'Average']
-    ]
-    table_interval = 30
-    # TODO: Add some color coding in the table?
-    prediction_horizon = int(df['prediction_horizon'][0])
-    for ph in range(table_interval, prediction_horizon + 1, table_interval):
-        mcc_hypo = float(df[f'mcc_hypo_{ph}'][0])
-        mcc_hyper = float(df[f'mcc_hyper_{ph}'][0])
-        mcc_hypo_str = "{:.2f}".format(mcc_hypo)
-        mcc_hyper_str = "{:.2f}".format(mcc_hyper)
-        mcc_avg_str = "{:.2f}".format(np.mean([mcc_hypo, mcc_hyper]))
-        new_row = [[str(ph), mcc_hypo_str, mcc_hyper_str, mcc_avg_str]]
-        table_data += new_row
-
-    mcc_hypo_avg = np.mean([float(df[f'mcc_hypo_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
-    mcc_hyper_avg = np.mean([float(df[f'mcc_hyper_{ph}'][0]) for ph in range(5, prediction_horizon + 1, 5)])
-    total_avg = np.mean([mcc_hypo_avg, mcc_hyper_avg])
-    mcc_hypo_avg_str = "{:.2f}".format(mcc_hypo_avg)
-    mcc_hyper_avg_str = "{:.2f}".format(mcc_hyper_avg)
-    total_avg_str = "{:.2f}".format(total_avg)
-    new_row = [['Average', mcc_hypo_avg_str, mcc_hyper_avg_str, total_avg_str]]
-    table_data += new_row
-    c = generate_report.draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
-
+    c = generate_report.draw_mcc_table(c, df)
     c = generate_report.plot_across_prediction_horizons(c, df, f'Matthews Correlation Coefficient (MCC)',
                                                         ['mcc_hypo', 'mcc_hyper'], y_placement=150,
                                                         height=4, y_label='MCC',
@@ -585,158 +562,50 @@ def generate_evaluation_pdf(results_file):
 
 
 @click.command()
-@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
-                               'models will be evaluated. ')
-def generate_comparison_pdf(models):
+@click.option('--results-files', help='The name of the tested model results to evaluate, with ".csv". If '
+                                      'None, all models will be tested.')
+def generate_comparison_pdf(results_files):
     """
     This command stores a standardized pdf comparison report of the given models in data/reports/.
     """
     click.echo(f"Generating comparison report...")
 
-    trained_models_path = "data/trained_models/"
-
-    if models is None:
-        models = helpers.list_files_in_directory(trained_models_path)
+    if results_files is None:
+        results_files = helpers.list_files_in_directory('data/tested_models/')
     else:
-        models = helpers.split_string(models)
+        results_files = helpers.split_string(results_files)
 
-    rmse_lists = []
-    rmse_module = helpers.get_metric_module("rmse")
-    rmse = rmse_module.Metric()
+    results_file_path = "data/reports/"
+    results_file_name = f'comparison__{results_files}.pdf'
 
-    mae_lists = []
-    mae_module = helpers.get_metric_module("mae")
-    mae = mae_module.Metric()
-
-    clarke_error_grid_lists = []
-    clarke_module = helpers.get_metric_module("clarke_error_grid")
-    clarke = clarke_module.Metric()
-
-    hyperglycemia_detection_lists = []
-    hyper_module = helpers.get_metric_module("hyperglycemia_detection")
-    hyper = hyper_module.Metric()
-
-    hypoglycemia_detection_lists = []
-    hypo_module = helpers.get_metric_module("hypoglycemia_detection")
-    hypo = hypo_module.Metric()
-
-    glycemia_detection_list = []
-    std_lists = []
-    std_diff_lists = []
-
-    max_prediction_range = 0
-
-    for model in models:
-        model_name, config_file_name, prediction_horizon = (model.split('__')[0], model.split('__')[1],
-                                                            int(model.split('__')[2].split('.')[0]))
-
-        model_config_manager = ModelConfigurationManager(config_file_name)
-        model_instance = helpers.get_trained_model(f'{model}.pkl')
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-
-        target_columns = [column for column in processed_data.columns if column.startswith('target')]
-        x_test = processed_data.drop(target_columns, axis=1)
-        y_test = processed_data[target_columns]
-        y_pred = model_instance.predict(x_test)
-
-        prediction_range = int(prediction_horizon) // 5
-
-        if prediction_range > max_prediction_range:
-            max_prediction_range = prediction_range
-
-        rmse_list = []
-        hypo_list = []
-        hyper_list = []
-        std_list = []
-        std_diff_list = []
-        for i in range(prediction_range):
-            rmse_list += [rmse(y_test[target_columns[i]], y_pred[:, i])]
-            # mae_lists += [mae(y_test[target_columns[i]], y_pred[:, i])]
-            # clarke_error_grid_lists += [clarke(y_test[target_columns[i]], y_pred[:, i])]
-            hypo_list += [hypo(y_test[target_columns[i]], y_pred[:, i])]
-            hyper_list += [hyper(y_test[target_columns[i]], y_pred[:, i])]
-            std_list += [np.std(y_pred[:, i])]
-            std_diff_list += [np.std(y_pred[:, i]) - np.std(y_test[target_columns[i]])]
-
-        rmse_lists += [rmse_list]
-        hyperglycemia_detection_lists += [hyper_list]
-        hypoglycemia_detection_lists += [hypo_list]
-        glycemia_detection_list += [np.mean(hyper_list + hypo_list)]
-        std_lists += [std_list]
-        std_diff_lists += [std_diff_list]
-
-    # Store comparison report as pdf
-    results_file_path = 'data/reports/'
-    os.makedirs(results_file_path, exist_ok=True)
-    results_file_name = f'Comparison__{models}.pdf'
+    dfs = []
+    for results_file in results_files:
+        df = generate_report.get_df_from_results_file(results_file)
+        dfs += [df]
 
     # Create a PDF canvas
     c = canvas.Canvas(f"data/reports/{results_file_name}", pagesize=letter)
 
-    # Set font and font size for title
-    c.setFont("Helvetica-Bold", 16)
-
-    # Centered title
-    c.drawCentredString(letter[0] / 2, 750, f'Model Comparison')
-
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 720, f'Model Configuration')
-
-    # Normal text
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 700, f'Compared models: {models}')
-    # TODO: Add a table that summarizes the configuration for each model
-    # TODO: Add an official ranking overview
-
-    # Subtitle
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(100, 660, f'Total Model Ranking... (TO DO!)')
-
-    # Show the page
+    # FRONT PAGE
+    c = generate_report.set_title(c, f'Model Comparison Report')
+    # TODO: Add front page summary of all parts
+    c = generate_report.set_bottom_text(c)
     c.showPage()
 
-    # Page 2
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Model Accuracy")
+    # MODEL ACCURACY
+    c = generate_report.set_title(c, f'Model Accuracy')
+    c = generate_report.draw_model_comparison_accuracy_table(c, dfs)
+    c = generate_report.plot_rmse_across_prediction_horizons(c, dfs)
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
 
-    # Table data
-    data = [
-        ['Rank', 'Model', f'Average RMSE [{unit_config_manager.get_unit()}]']
-    ]
-    # Sort for ranking
-    pairs = zip([np.mean(values) for values in rmse_lists], models)
+    # Save the PDF
+    c.save()
 
-    # Sort the pairs based on the RMSE values (in ascending order)
-    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=False)
+    click.echo(f"An evaluation report for {results_files} is stored in '{results_file_path}' as '{results_file_name}'")
 
-    # Unpack the sorted pairs back into separate lists
-    sorted_rmse_list, sorted_models_list = zip(*sorted_pairs)
 
-    for i in range(len(models)):
-        rmse_str = "{:.1f}".format(sorted_rmse_list[i])
-        new_row = [f'#{i + 1}', sorted_models_list[i], rmse_str]
-        data += [new_row]
-
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('TOPPADDING', (0, 0), (-1, 0), 4),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ('GRID', (0, 1), (-1, -1), 1, colors.black),
-        ('GRID', (0, 0), (-1, -1), 0, colors.black)
-    ]))
-
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 600)
-
+    """
     fig = plt.figure(figsize=(5, 3))
 
     for i in range(len(models)):
@@ -906,6 +775,7 @@ def generate_comparison_pdf(models):
 
     click.echo(
         f"An evaluation report for {models} is stored in '{results_file_path}' as '{results_file_name}'")
+    """
 
 
 @click.command()
