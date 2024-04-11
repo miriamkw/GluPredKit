@@ -260,7 +260,8 @@ def test_model(model_file):
     for config in configs:
         results_df[config] = [configs[config]]
 
-    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper']
+    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
+               'parkes_error_grid_exp']
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]
@@ -594,8 +595,36 @@ def generate_comparison_pdf(results_files):
 
     # MODEL ACCURACY
     c = generate_report.set_title(c, f'Model Accuracy')
-    c = generate_report.draw_model_comparison_accuracy_table(c, dfs)
-    c = generate_report.plot_rmse_across_prediction_horizons(c, dfs)
+    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'rmse', 700 - 20*len(dfs))
+    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20*len(dfs))
+    c = generate_report.plot_rmse_across_prediction_horizons(c, dfs, y_placement=200)
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    c = generate_report.set_title(c, f'Error Grid Analysis')
+    c = generate_report.draw_model_comparison_error_grid_table(c, dfs, 700 - 20 * len(dfs))
+    c = generate_report.plot_error_grid_across_prediction_horizons(c, dfs, y_placement=400 - 20 * len(dfs))
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    # GLYCEMIA DETECTION
+    c = generate_report.set_title(c, f'Model Accuracy')
+    # TODO: Draw both in the table, and add a total score. Plot the total score for each model.
+    c = generate_report.draw_model_comparison_glycemia_detection_table(c, dfs, 700 - 20 * len(dfs))
+    c = generate_report.plot_mcc_across_prediction_horizons(c, dfs, y_placement=400 - 20 * len(dfs))
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    # PHYSIOLOGICAL ALIGNMENT
+    c = generate_report.set_title(c, f'Physiological Alignment')
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    # PREDICTED DISTRIBUTION
+    c = generate_report.set_title(c, f'Predicted Distribution')
+    # TODO: Draw both in the table, and add a total score. Plot the total score for each model.
+    c = generate_report.draw_model_comparison_predicted_distribution_table(c, dfs, 700 - 20 * len(dfs))
+    c = generate_report.plot_predicted_dristribution_across_prediction_horizons(c, dfs, y_placement=400 - 20 * len(dfs))
     c = generate_report.set_bottom_text(c)
     c.showPage()
 

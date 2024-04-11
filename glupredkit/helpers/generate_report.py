@@ -91,39 +91,157 @@ def draw_model_accuracy_table(c, df):
     return c
 
 
-def draw_model_comparison_accuracy_table(c, dfs):
+def draw_model_comparison_accuracy_table(c, dfs, metric, y_placement):
     data = [
-        ['Rank', 'Model', f'Average RMSE [{unit_config_manager.get_unit()}]']
+        ['Rank', 'Model', f'Average {metric} [{unit_config_manager.get_unit()}]']
     ]
 
     models = []
-    rmse_list = []
+    result_list = []
     for df in dfs:
         prediction_horizons = range(5, get_ph(df) + 1, 5)
         models += [df['Model Name'][0]]
-        rmse_values = []
+        result_values = []
         for ph in prediction_horizons:
-            rmse_values += [df[f'rmse_{ph}'][0]]
-        rmse_list += [np.mean(rmse_values)]
+            result_values += [df[f'{metric}_{ph}'][0]]
+        result_list += [np.mean(result_values)]
 
     # Sort for ranking
-    pairs = zip(rmse_list, models)
+    pairs = zip(result_list, models)
 
     # Sort the pairs based on the RMSE values (in ascending order)
     sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=False)
 
     # Unpack the sorted pairs back into separate lists
-    sorted_rmse_list, sorted_models_list = zip(*sorted_pairs)
+    sorted_result_list, sorted_models_list = zip(*sorted_pairs)
 
     for i in range(len(models)):
-        rmse_str = "{:.1f}".format(sorted_rmse_list[i])
-        new_row = [f'#{i + 1}', sorted_models_list[i], rmse_str]
+        result_str = "{:.1f}".format(sorted_result_list[i])
+        new_row = [f'#{i + 1}', sorted_models_list[i], result_str]
         data += [new_row]
 
-    c = draw_table(c, data, 700 - 20*len(dfs))
+    c = draw_table(c, data, y_placement)
 
     return c
 
+
+def draw_model_comparison_error_grid_table(c, dfs, y_placement):
+    data = [
+        ['Rank', 'Model', f'Average Error Grid Score']
+    ]
+
+    models = []
+    result_list = []
+    for df in dfs:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        models += [df['Model Name'][0]]
+        result_values = []
+        for ph in prediction_horizons:
+            result_values += [df[f'parkes_error_grid_exp_{ph}'][0]]
+        result_list += [np.mean(result_values) * 100]
+
+    # Sort for ranking
+    pairs = zip(result_list, models)
+
+    # Sort the pairs based on the error grid values (in descending order)
+    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=True)
+
+    # Unpack the sorted pairs back into separate lists
+    sorted_result_list, sorted_models_list = zip(*sorted_pairs)
+
+    for i in range(len(models)):
+        result_str = "{:.1f}%".format(sorted_result_list[i])
+        new_row = [f'#{i + 1}', sorted_models_list[i], result_str]
+        data += [new_row]
+
+    c = draw_table(c, data, y_placement)
+
+    return c
+
+
+def draw_model_comparison_glycemia_detection_table(c, dfs, y_placement):
+    data = [
+        ['Rank', 'Model', f'MCC Hypo', 'MCC Hyper', 'Total MCC']
+    ]
+
+    models = []
+    hypo_result_list = []
+    hyper_result_list = []
+    total_result_list = []
+    for df in dfs:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        models += [df['Model Name'][0]]
+        hypo_result_values = []
+        hyper_result_values = []
+        total_result_values = []
+        for ph in prediction_horizons:
+            hypo_result_values += [df[f'mcc_hypo_{ph}'][0]]
+            hyper_result_values += [df[f'mcc_hyper_{ph}'][0]]
+            total_result_values += [(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0])/2]
+        hypo_result_list += [np.mean(hypo_result_values)]
+        hyper_result_list += [np.mean(hyper_result_values)]
+        total_result_list += [np.mean(total_result_values)]
+
+    # Sort for ranking
+    pairs = zip(hypo_result_list, hyper_result_list, total_result_list, models)
+
+    # Sort the pairs based on the MCC values (in descending order)
+    sorted_pairs = sorted(pairs, key=lambda x: x[2], reverse=True)
+
+    # Unpack the sorted pairs back into separate lists
+    sorted_hypo_list, sorted_hyper_list, sorted_total_list, sorted_models_list = zip(*sorted_pairs)
+
+    for i in range(len(models)):
+        hypo_result_str = "{:.1f}".format(sorted_hypo_list[i])
+        hyper_result_str = "{:.1f}".format(sorted_hyper_list[i])
+        total_result_str = "{:.1f}".format(sorted_total_list[i])
+        new_row = [f'#{i + 1}', sorted_models_list[i], hypo_result_str, hyper_result_str, total_result_str]
+        data += [new_row]
+
+    c = draw_table(c, data, y_placement)
+
+    return c
+
+
+def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
+    data = [
+        ['Rank', 'Model', 'Standard Deviation Predicted versus Measured']
+    ]
+
+    models = []
+    result_list = []
+    deviation_from_target_list = []
+    for df in dfs:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        models += [df['Model Name'][0]]
+        std_result_values = []
+        for ph in prediction_horizons:
+            y_test = df[f'target_{ph}'][0]
+            y_pred = df[f'y_pred_{ph}'][0]
+            y_test = ast.literal_eval(y_test)
+            y_pred = ast.literal_eval(y_pred)
+            result = np.std(y_pred) / np.std(y_test) * 100
+            std_result_values += [result]
+        result_list += [np.mean(std_result_values)]
+        deviation_from_target_list += [np.abs(np.mean(std_result_values) - 100)]
+
+    # Sort for ranking
+    pairs = zip(deviation_from_target_list, result_list, models)
+
+    # Sort the pairs based on the MCC values (in descending order)
+    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=False)
+
+    # Unpack the sorted pairs back into separate lists
+    _, sorted_result_list, sorted_models_list = zip(*sorted_pairs)
+
+    for i in range(len(models)):
+        total_result_str = "{:.0f}%".format(sorted_result_list[i])
+        new_row = [f'#{i + 1}', sorted_models_list[i], total_result_str]
+        data += [new_row]
+
+    c = draw_table(c, data, y_placement)
+
+    return c
 
 def draw_error_grid_table(c, df):
     table_data = [
@@ -304,6 +422,89 @@ def plot_rmse_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     plt.title('Model Accuracy in RMSE')
     plt.xlabel('Prediction Horizons (minutes)')
     plt.ylabel(f'RMSE [{unit_config_manager.get_unit()}]')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, y_placement)
+    return c
+
+
+def plot_error_grid_across_prediction_horizons(c, dfs, height=2, y_placement=300):
+    fig = plt.figure(figsize=(5.5, height))
+
+    for df in dfs:
+        model_name = df['Model Name'][0]
+        x_values = list(range(5, get_ph(df) + 1, 5))
+        y_values = []
+        for ph in x_values:
+            y_values += [float(df[f'parkes_error_grid_exp_{ph}'][0]*100)]
+
+        plt.plot(x_values, y_values, marker='o', label=model_name)
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title('Model Accuracy in Pakes Error Grid Analysis')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.ylabel(f'Pakes Error Grid Analysis [%]')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, y_placement)
+    return c
+
+
+def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
+    fig = plt.figure(figsize=(5.5, height))
+
+    for df in dfs:
+        model_name = df['Model Name'][0]
+        x_values = list(range(5, get_ph(df) + 1, 5))
+        y_values = []
+        for ph in x_values:
+            y_values += [float((df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0])/2)]
+        plt.plot(x_values, y_values, marker='o', label=model_name)
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title('Glycemia Detection - MCC')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.ylabel(f'Average MCC')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, y_placement)
+    return c
+
+
+def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_placement=300):
+    fig = plt.figure(figsize=(5.5, height))
+
+    for df in dfs:
+        model_name = df['Model Name'][0]
+        x_values = list(range(5, get_ph(df) + 1, 5))
+        y_values = []
+        for ph in x_values:
+            y_test = df[f'target_{ph}'][0]
+            y_pred = df[f'y_pred_{ph}'][0]
+            y_test = ast.literal_eval(y_test)
+            y_pred = ast.literal_eval(y_pred)
+            y_values += [np.std(y_pred) / np.std(y_test) * 100]
+        plt.plot(x_values, y_values, marker='o', label=model_name)
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title('Standard Deviation')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.ylabel(f'Standard Deviation of Predicted versus Measured [%]')
     plt.legend()
 
     # Save the plot as an image
