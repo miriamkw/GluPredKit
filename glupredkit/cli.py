@@ -589,7 +589,8 @@ def generate_comparison_pdf(results_files):
 
     # FRONT PAGE
     c = generate_report.set_title(c, f'Model Comparison Report')
-    # TODO: Add front page summary of all parts
+    # TODO: Add front page summary of all parts and all the configurations
+    c = generate_report.draw_overall_ranking_table(c, dfs, y_placement=700 - 20*len(dfs))
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
@@ -608,7 +609,7 @@ def generate_comparison_pdf(results_files):
     c.showPage()
 
     # GLYCEMIA DETECTION
-    c = generate_report.set_title(c, f'Model Accuracy')
+    c = generate_report.set_title(c, f'Glycemia Detection')
     # TODO: Draw both in the table, and add a total score. Plot the total score for each model.
     c = generate_report.draw_model_comparison_glycemia_detection_table(c, dfs, 700 - 20 * len(dfs))
     c = generate_report.plot_mcc_across_prediction_horizons(c, dfs, y_placement=400 - 20 * len(dfs))

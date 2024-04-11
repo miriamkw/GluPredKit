@@ -177,7 +177,7 @@ def draw_model_comparison_glycemia_detection_table(c, dfs, y_placement):
         for ph in prediction_horizons:
             hypo_result_values += [df[f'mcc_hypo_{ph}'][0]]
             hyper_result_values += [df[f'mcc_hyper_{ph}'][0]]
-            total_result_values += [(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0])/2]
+            total_result_values += [(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0]) / 2]
         hypo_result_list += [np.mean(hypo_result_values)]
         hyper_result_list += [np.mean(hyper_result_values)]
         total_result_list += [np.mean(total_result_values)]
@@ -242,6 +242,71 @@ def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
     c = draw_table(c, data, y_placement)
 
     return c
+
+
+def draw_overall_ranking_table(c, dfs, y_placement):
+    data = [
+        ['Rank', 'Model', 'RMSE', 'ME', 'SEG', 'MCC', 'STD']
+    ]
+    # TODO: Sort ranking based on total rank entries
+    models = []
+    rmse_list = []
+    me_list = []
+    seg_list = []
+    mcc_list = []
+    std_list = []
+    for df in dfs:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        models += [df['Model Name'][0]]
+        rmse_list += [np.mean([df[f'rmse_{ph}'][0] for ph in prediction_horizons])]
+        me_list += [np.mean([df[f'me_{ph}'][0] for ph in prediction_horizons])]
+        seg_list += [np.mean([df[f'parkes_error_grid_exp_{ph}'][0] for ph in prediction_horizons])]
+        mcc_list += [np.mean([(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0]) / 2 for ph in prediction_horizons])]
+
+        y_test_std = [np.std(ast.literal_eval(df[f'target_{ph}'][0])) for ph in prediction_horizons]
+        y_pred_std = [np.std(ast.literal_eval(df[f'y_pred_{ph}'][0])) for ph in prediction_horizons]
+        relative_std = np.abs(np.mean(y_pred_std) / np.mean(y_test_std) * 100 - 100)
+        std_list += [relative_std]
+
+    print("models", models)
+    print("stc", std_list)
+
+    results_df = pd.DataFrame({'Models': models,
+                               'RMSE': rmse_list,
+                               'ME': me_list,
+                               'SEG': seg_list,
+                               'MCC': mcc_list,
+                               'STD': std_list,
+                               })
+    results_df['RMSE'] = results_df['RMSE'].rank(method='min')
+    results_df['ME'] = results_df['ME'].abs().rank(method='min')
+    results_df['SEG'] = results_df['SEG'].rank(method='min', ascending=False)
+    results_df['MCC'] = results_df['MCC'].rank(method='min', ascending=False)
+    results_df['STD'] = results_df['STD'].rank(method='min')
+    results_df['total'] = (results_df['RMSE'] + results_df['ME'] + results_df['SEG'] + results_df['MCC']
+                           + results_df['STD'])
+    results_df = results_df.sort_values(by='total', ascending=True)
+
+    models = results_df['Models'].tolist()
+    rmse_list = results_df['RMSE'].tolist()
+    me_list = results_df['ME'].tolist()
+    seg_list = results_df['SEG'].tolist()
+    mcc_list = results_df['MCC'].tolist()
+    std_list = results_df['STD'].tolist()
+
+    for i in range(len(models)):
+        rmse_str = "#{:.0f}".format(rmse_list[i])
+        me_str = "#{:.0f}".format(me_list[i])
+        seg_str = "#{:.0f}".format(seg_list[i])
+        mcc_str = "#{:.0f}".format(mcc_list[i])
+        std_str = "#{:.0f}".format(std_list[i])
+        new_row = [f'#{i + 1}', models[i], rmse_str, me_str, seg_str, mcc_str, std_str]
+        data += [new_row]
+
+    c = draw_table(c, data, y_placement)
+
+    return c
+
 
 def draw_error_grid_table(c, df):
     table_data = [
@@ -441,7 +506,7 @@ def plot_error_grid_across_prediction_horizons(c, dfs, height=2, y_placement=300
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
-            y_values += [float(df[f'parkes_error_grid_exp_{ph}'][0]*100)]
+            y_values += [float(df[f'parkes_error_grid_exp_{ph}'][0] * 100)]
 
         plt.plot(x_values, y_values, marker='o', label=model_name)
 
@@ -468,7 +533,7 @@ def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
-            y_values += [float((df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0])/2)]
+            y_values += [float((df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0]) / 2)]
         plt.plot(x_values, y_values, marker='o', label=model_name)
 
     # Setting the title and labels with placeholders for the metric unit
@@ -514,7 +579,6 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
     return c
-
 
 
 def draw_scatter_plot(c, df, ph, x_placement, y_placement):
