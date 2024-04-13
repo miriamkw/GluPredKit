@@ -10,7 +10,7 @@ from filterpy.monte_carlo import systematic_resample
 
 from filterpy.kalman import unscented_transform
 from scipy.stats import norm
-from copy import copy
+import copy
 from pandas import DataFrame, Timedelta, TimedeltaIndex
 import numpy as np
 import pickle
@@ -32,7 +32,7 @@ class Model(BaseModel):
         # Fit parameters of ReplayBG object
         modality = 'identification'  # set modality as 'identification'
         bw = 80  # Placeholder body weight
-        scenario = 'single-meal'
+        scenario = 'multi-meal'
         cgm_model = 'CGM'
         n_steps = 1000  # set the number of steps that will be used for identification (for multi-meal it should be at least 100k)
 
@@ -77,15 +77,26 @@ class Model(BaseModel):
         mp = self.rbg.model.model_parameters
         # From ReplayBG (the code there is commented out):
         mp.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
+        mp.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
 
-        print("bw:", mp.bw)
-        print("beta", mp.beta)
-        print("tau:", mp.tau)
-        print("u2ss:", mp.u2ss)
-        print("ka1:", mp.ka1)
-        print("kd:", mp.kd)
+        print("bw:", mp.bw)  # Body weight
+        print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
+        print("beta_L", mp.beta_L)
+        print("beta_D", mp.beta_D)
+        print("tau:", mp.tau)  # General time delay
+        print("u2ss:", mp.u2ss)  # Basal insulin rate
+        print("ka1:", mp.ka1)  # Absorption Rates
         print("ka2:", mp.ka2)
-        print("Xpb:", mp.Xpb)
+        print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
+        print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
+        print("kabs_B", mp.kabs_B)
+        print("kabs_L", mp.kabs_L)
+        print("Xpb:", mp.Xpb)  # Initial insulin action?
+        print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
+        print("SI_B", mp.SI_B)
+        print("SI_L", mp.SI_L)
+        print("Gb:", mp.Gb)  # Baseline glucose level
+        print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
 
         # TODO: Only for testing, remove when finished
         subset_x_test = x_test[:10]
@@ -94,6 +105,8 @@ class Model(BaseModel):
         prediction_result = self.get_phy_prediction(mp, subset_x_test, 30)
 
         print("predictions: ", prediction_result)
+        print("final shape: ", prediction_result.shape)
+        # TODO: We need ten predictions
 
         return
 
@@ -164,6 +177,10 @@ class Model(BaseModel):
         state_bound[:, 0] = np.array(x0) - 0.03 * np.array(x0)  # Lower bound
         state_bound[:, 1] = np.array(x0) + 0.03 * np.array(x0)  # Upper bound
 
+        print("Initial states (x0):", x0)
+        if np.any(np.isnan(x0)):
+            raise ValueError("Initial particle states contain NaN values.")
+
         # Initialize the particle filter
         pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0, np.diag(sigma0))
 
@@ -173,12 +190,17 @@ class Model(BaseModel):
                                                                                       sigma_v, model_parameters,
                                                                                       prediction_horizon)
 
-        predicted_CGM = IG_hat[:-int(prediction_horizon / Ts)]
+        end_index = -int(prediction_horizon / Ts)
+        # predicted_CGM = IG_hat[:-int(prediction_horizon / Ts)]
+        # predicted_ig = IG_hat[:end_index, -1]
+        predicted_ig = IG_hat[:, -1]
 
-        ighat = DataFrame(data=predicted_CGM, index=time_data[int(prediction_horizon / Ts):], columns=['glucose'])
+        print("Predicted cgm", predicted_ig)
+        print("shape", predicted_ig.shape)
 
-        prediction_results = {'dataTest': data, 'dataHat': ighat}
-        return prediction_results
+        # TODO: here we should return the desired output format directly
+
+        return predicted_ig
 
     def insulin_setup_pf(self, data, model, model_parameters):
         """
@@ -297,12 +319,18 @@ class Model(BaseModel):
         cov_corrected = np.zeros((len(x0), len(x0)))
 
         for k in range(len(time)):
-            # Prediction step
-            state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour * 3600 + time[k].minute * 60,
-                                              sigma_u, model_parameters)
+            # Convert time to seconds since midnight if it's a datetime object
+            seconds_since_midnight = time[k].hour * 3600 + time[k].minute * 60 + time[k].second
 
-            index_measure = k if (k - 1) % (5 / model_parameters.TS) == 0 else None
-            CGM_measure = noisy_measure[index_measure] if index_measure is not None else np.nan
+            # Prediction step
+            state_pred, cov_pred = pf.predict(meal[k], total_ins[k], seconds_since_midnight, sigma_u, model_parameters)
+
+            # Measurement checking based on index
+            if (k % int(5 / model_parameters.TS)) == 0:
+                index_measure = int(k / (5 / model_parameters.TS))
+                CGM_measure = noisy_measure[index_measure]
+            else:
+                CGM_measure = np.nan
 
             # Correction step
             if not np.isnan(CGM_measure):
@@ -311,26 +339,27 @@ class Model(BaseModel):
                 state_corrected = state_pred
                 cov_corrected = cov_pred
 
-            if index_measure is not None:
-                lastBestGuess[:, index_measure] = state_corrected
+            # Saving the last best guess and covariance
+            if (k % int(5 / model_parameters.TS)) == 0:
+                lastBestGuess[:, index_measure] = state_corrected[:len(x0)]
                 lastBestCov[:, index_measure] = np.diag(cov_corrected)
 
             # k-step ahead prediction
-            if (k + prediction_horizon < len(time)) and (index_measure is not None):
-                pf_pred = copy(pf)
-                mP_pred = copy(model_parameters)
+            if (k + prediction_horizon <= len(time)) and ((k % int(5 / model_parameters.TS)) == 0):
+                pf_pred = copy.deepcopy(pf)
+                mP_pred = copy.deepcopy(model_parameters)
 
                 for p in range(prediction_horizon):
+                    # Assume time[k + p] is handled similarly for time conversion
+                    future_time = time[k + p].hour * 3600 + time[k + p].minute * 60 + time[k + p].second
                     step_ahead_prediction, cov_ahead_prediction = pf_pred.predict(meal[k + p], total_ins[k + p],
-                                                                                  time[k + p].hour * 3600 +
-                                                                                  time[k + p].minute * 60, sigma_u,
-                                                                                  mP_pred)
-                    G_hat[index_measure, p] = step_ahead_prediction[7]  # Glucose prediction
-                    IG_hat[index_measure, p] = step_ahead_prediction[8]  # Interstitial glucose prediction
+                                                                                  future_time, sigma_u, mP_pred)
+                    G_hat[index_measure, p] = step_ahead_prediction[7]  # Assuming glucose is the 8th state
+                    IG_hat[index_measure, p] = step_ahead_prediction[8]  # Assuming interstitial glucose is the 9th state
 
                     pred_variance = np.diag(cov_ahead_prediction)
-                    VarG_hat[index_measure, p] = pred_variance[7]  # Variance of glucose prediction
-                    VarIG_hat[index_measure, p] = pred_variance[8]  # Variance of interstitial glucose prediction
+                    VarG_hat[index_measure, p] = pred_variance[7]  # Variance for glucose
+                    VarIG_hat[index_measure, p] = pred_variance[8]  # Variance for interstitial glucose
 
         return lastBestGuess, lastBestCov, G_hat, IG_hat, VarG_hat, VarIG_hat
 
@@ -378,11 +407,12 @@ def gi_particle_filter_state_function(particles, CHO, INS, time, sigma_u, mP):
     # Time-propagate each particle using Euler integration
     dt = mP.TS  # Sample time
     for kk in range(numberOfParticles):
-        state_change = gi_state_function_continuous(particles[kk, :], CHO, INS, time, mP) * dt
-        particles[kk, :] += state_change
+        particles[kk, :] = particles[kk, :] + gi_state_function_continuous(particles[kk, :], CHO, INS, time, mP) * dt
 
     # Add Gaussian noise with specified variance processNoise
-    process_noise = np.diag(sigma_u * np.ones(numberOfStates))  # Create diagonal matrix from sigma_u
+    # processNoise = sigma_u'.*eye(numberOfStates);
+    # process_noise = np.diag(sigma_u * np.ones(numberOfStates))  # Create diagonal matrix from sigma_u
+    process_noise = np.diag(sigma_u)
     noise = np.dot(process_noise, np.random.randn(numberOfStates, numberOfParticles)).T  # Transpose to fit particles
     particles += noise
 
@@ -393,22 +423,35 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     dxdt = np.zeros_like(x)
     Qsto1, Qsto2, Qgut, Isc1, Isc2, Ip, X, G, IG = x
 
+
     # Calculate state derivatives
-    SI = mP.SI
+    if time < 4 or time >= 17:
+        SI = mP.SI_D
+        kabs = mP.kabs_D
+    elif 4 <= time < 11:
+        SI = mP.SI_B
+        kabs = mP.kabs_B
+    else:
+        SI = mP.SI_L
+        kabs = mP.kabs_L
+
     risk = compute_hypoglycemic_risk(x[7], mP)  # Assuming G is x[7]
     rhoRisk = 1 + risk
-
-    Ra = mP.f * mP.kabs * Qgut
-
+    Ra = mP.f * kabs * Qgut
     dxdt[0] = -mP.kgri * Qsto1 + CHO
     dxdt[1] = mP.kgri * Qsto1 - mP.kempt * Qsto2
-    dxdt[2] = mP.kempt * Qsto2 - mP.kabs * Qgut
+    dxdt[2] = mP.kempt * Qsto2 - kabs * Qgut
     dxdt[3] = -mP.kd * Isc1 + INS
     dxdt[4] = mP.kd * Isc1 - mP.ka2 * Isc2
     dxdt[5] = mP.ka2 * Isc2 - mP.ke * Ip
     dxdt[6] = -mP.p2 * (X - (SI / mP.VI) * (Ip - mP.Ipb))
     dxdt[7] = -((mP.SG + rhoRisk * X) * G) + mP.SG * mP.Gb + Ra / mP.VG
     dxdt[8] = -(1 / mP.alpha) * (IG - G)
+
+    #print('')
+    #print("Input glucose state:", G)
+    #print("Output glucose state:", dxdt[7])
+
     return dxdt
 
 
