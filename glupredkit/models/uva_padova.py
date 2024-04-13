@@ -6,6 +6,7 @@ from py_replay_bg.data import ReplayBGData
 from filterpy.monte_carlo import systematic_resample
 from filterpy.kalman import UnscentedKalmanFilter
 from filterpy.common import Q_discrete_white_noise
+import warnings
 from filterpy.monte_carlo import systematic_resample
 
 from filterpy.kalman import unscented_transform
@@ -76,7 +77,7 @@ class Model(BaseModel):
         """
         test_data = pd.read_csv('multi-meal_example.csv')
         test_data['t'] = pd.to_datetime(test_data['t'])
-        subset_x_test = test_data[:10]
+        subset_x_test = test_data[:50]
         mP = MockModelParameters()
 
         # TODO: Iterate for each id in the data
@@ -164,14 +165,36 @@ class Model(BaseModel):
                                                                                       sigma_v, model_parameters,
                                                                                       prediction_horizon)
 
-        # end_index = -int(prediction_horizon / Ts)
+        def calculate_rmse(predicted, actual):
+            # Ensure both arrays are numpy arrays
+            predicted = np.array(predicted)
+            actual = np.array(actual)
+
+            # Calculate the differences and ignore NaNs in either array
+            differences = np.nan_to_num(predicted - actual, nan=0.0)
+            mask = ~np.isnan(predicted) & ~np.isnan(actual)  # Mask where neither is NaN
+            squared_differences = differences[mask] ** 2  # Only use non-NaN differences
+
+            # Compute mean of squared differences and take the square root
+            mean_squared_difference = np.mean(squared_differences)
+            rmse = np.sqrt(mean_squared_difference)
+            return rmse
+
+        end_index = -int(prediction_horizon / Ts)
         # predicted_CGM = IG_hat[:-int(prediction_horizon / Ts)]
         # predicted_CGM = IG_hat[:end_index, -1]
-        predicted_CGM = IG_hat[:, -1]
+        predicted_CGM = IG_hat[:end_index, -1]
 
-        print("IG_hat", IG_hat)
-        print("Predicted cgm", predicted_CGM)
+        print("Predicted cgm")
+        for val in predicted_CGM:
+            print(f'{val:.2f}')
         print("shape", predicted_CGM.shape)
+
+        actual_values = data.glucose[-end_index:]
+
+        # Calculate RMSE
+        rmse_value = calculate_rmse(predicted_CGM, actual_values)
+        print(f"RMSE (ignoring NaNs): {rmse_value:.2f}")
 
         # TODO: here we should return the desired output format directly
 
@@ -298,15 +321,6 @@ class Model(BaseModel):
             # Prediction step
             state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour, sigma_u, model_parameters)
 
-            # TODO: The state number 7 (of 9) is always zero in matlab while here its a small number instead
-            print(f'K: {k+1} ----- state_pred ')
-            for num in state_pred:
-                print(f'{num:.4f}')  # Format each number to 6 decimal places
-            print(' ')
-
-            # print(f'lastBestCov[:, index_measure]', lastBestCov[:, index_measure])
-            # TODO: Cov corrected looks wrong, look at the diagonal
-
             # Measurement checking based on index
             if (k % int(5 / model_parameters.TS)) == 0:
                 index_measure = int(k / (5 / model_parameters.TS))
@@ -316,7 +330,6 @@ class Model(BaseModel):
 
             # Correction step
             if not np.isnan(CGM_measure):
-                # state_corrected, cov_corrected = pf.correct(CGM_measure, sigma_v)
                 state_corrected, cov_corrected = pf.correct(CGM_measure, sigma_v)
             else:
                 state_corrected = state_pred
@@ -333,17 +346,10 @@ class Model(BaseModel):
                 pf_pred = copy.deepcopy(pf)
                 mP_pred = copy.deepcopy(model_parameters)
 
-                # TODO: Its here the first nan values starts!
                 for p in range(prediction_horizon):
                     # Assume time[k + p] is handled similarly for time conversion
                     step_ahead_prediction, cov_ahead_prediction = pf_pred.predict(meal[k + p], total_ins[k + p],
                                                                                   time[k + p].hour, sigma_u, mP_pred)
-                    print(f'K STEP AHEAD: {k + 1} p: {p} ----- state_pred ')
-                    print(f'inputs: {meal[k + p]} {total_ins[k + p]} future time: {time[k + p].hour}')
-                    for num in step_ahead_prediction:
-                        print(f'{num:.4f}')  # Format each number to 6 decimal places
-                    print(' ')
-
 
                     G_hat[index_measure, p] = step_ahead_prediction[7]  # Assuming glucose is the 8th state
                     IG_hat[index_measure, p] = step_ahead_prediction[8]  # Assuming interstitial glucose is the 9th state
@@ -412,13 +418,14 @@ class Model(BaseModel):
 
 
 
-def gi_measurement_likelihood_function(particles, measurement, sigma_v):
+def gi_measurement_likelihood_function(predicted_measurement, measurement, sigma_v):
     # The measurement is the ninth state. Extract all measurement hypotheses from particles
     # predicted_measurements = particles[:, 8]
-    predicted_measurements = particles[8]
+
+    #predicted_measurements = particles[8]
 
     # Calculate the likelihood of each predicted measurement
-    likelihood = norm.pdf(predicted_measurements, measurement, sigma_v)
+    likelihood = norm.pdf(predicted_measurement, measurement, sigma_v)
 
     return likelihood
 
@@ -447,9 +454,6 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     Ipb = (mP.ka1 / mP.ke) * (mP.u2ss) / (mP.ka1 + mP.kd) + (mP.ka2 / mP.ke) * (mP.kd / mP.ka2) * (mP.u2ss) / (
                 mP.ka1 + mP.kd)
 
-    # print("G: ", G)
-    # print("x[7]: ", x[7])
-
     # Calculate state derivatives
     if time < 4 or time >= 17:
         SI = mP.SI_D
@@ -462,8 +466,6 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
         kabs = mP.kabs_L
 
     risk = compute_hypoglycemic_risk(x[7], mP)  # Assuming G is x[7]
-    # print("risk", risk)
-    # TODO: I think its because its a negative number!
 
     rhoRisk = 1 + risk
     Ra = mP.f * kabs * Qgut
@@ -477,10 +479,6 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     dxdt[7] = -((mP.SG + rhoRisk * X) * G) + mP.SG * mP.Gb + Ra / mP.VG
     dxdt[8] = -(1 / mP.alpha) * (IG - G)
 
-    #print('')
-    #print("Input glucose state:", G)
-    #print("Output glucose state:", dxdt[7])
-
     return dxdt
 
 
@@ -489,10 +487,14 @@ def compute_hypoglycemic_risk(G, mP):
 
     # Setting the risk model threshold
     Gth = 60
-    # TODO: first of all, the G input value should never be negative
-    # TODO: second, it returns nan if so
-    # if G < 0:
-    #     raise ValueError("The blood glucose is negative when it must be positive.")
+
+    # TODO: Figure out the nan value problem
+    """
+    if G < 0:
+        raise ValueError("The blood glucose is negative when it must be positive.")
+    if np.isnan(G):
+        raise ValueError("The blood glucose is a nan value when it must be positive.")
+    """
 
     # Compute the risk
     Gb = mP.Gb
@@ -505,7 +507,6 @@ def compute_hypoglycemic_risk(G, mP):
     return risk
 
 
-
 class ParticleFilter:
     def __init__(self, state_transition_fn, measurement_fn, num_particles, x0, sigma0):
         self.num_particles = num_particles
@@ -516,34 +517,20 @@ class ParticleFilter:
 
         # Initialize particles uniformly within the bounds
         self.particles = np.random.uniform(low=lower_bound, high=upper_bound, size=(num_particles, len(x0)))
-        self.weights = np.ones(num_particles) / num_particles
-        self.state_transition_fn = state_transition_fn
-        self.measurement_fn = measurement_fn
+        self.weights = np.ones(num_particles) / num_particles * 1000
+        self.state_transition_fn = state_transition_fn  # gi_particle_filter_state_function
+        self.measurement_fn = measurement_fn  # gi_measurement_likelihood_function
 
     def predict(self, carbs, insulin, time, sigma_u, model_parameters):
         """Predict the next state of the particles."""
 
         self.particles = self.state_transition_fn(self.particles, carbs, insulin, time, sigma_u, model_parameters)
 
-        # TODO: Calculating mean accepting the nan values?
         # Calculate the mean of the particles
         mean_state = np.mean(self.particles, axis=0)
 
         # Calculate the covariance matrix of the particles
         cov_state = np.cov(self.particles, rowvar=False)  # rowvar=False to treat rows as variables
-
-        return mean_state, cov_state
-
-    def update(self, measurement, sigma_v):
-        """Update the particle weights based on measurement likelihood."""
-        # distances = np.linalg.norm(self.particles - measurement, axis=1)
-        self.weights *= self.measurement_fn(self.particles, measurement, sigma_v)
-        self.weights += 1.e-300      # avoid divide by zero
-        self.weights /= np.sum(self.weights)
-
-        # Calculate the new state estimate and covariance
-        mean_state = np.mean(self.particles, axis=0)
-        cov_state = np.cov(self.particles, rowvar=False, aweights=self.weights)
 
         return mean_state, cov_state
 
@@ -558,9 +545,10 @@ class ParticleFilter:
         Returns:
             tuple: Corrected state estimate and its covariance.
         """
+
         # Update weights based on measurement likelihood
         for i in range(self.num_particles):
-            expected_measurement = self.measurement_fn(self.particles[i], measurement, sigma_v)
+            expected_measurement = self.measurement_fn(self.particles[i][8], measurement, sigma_v)
             residual = measurement - expected_measurement
             self.weights[i] *= self.gaussian_probability(residual, 0, sigma_v)
 
@@ -575,7 +563,7 @@ class ParticleFilter:
 
         # Calculate the new state estimate and covariance
         mean_state = np.mean(self.particles, axis=0)
-        cov_state = np.cov(self.particles, rowvar=False, aweights=self.weights)
+        cov_state = np.cov(self.particles, rowvar=False)
 
         return mean_state, cov_state
 
@@ -590,6 +578,7 @@ class ParticleFilter:
         cumulative_sum = np.cumsum(self.weights)
         cumulative_sum[-1] = 1.0  # ensure sum is exactly one
         return np.searchsorted(cumulative_sum, np.random.random(self.num_particles))
+
 
 
 class MockModelParameters:
