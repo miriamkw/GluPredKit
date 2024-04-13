@@ -64,32 +64,43 @@ class Plot(BasePlot):
         ph = models_data[0]['prediction_horizon']
         ph_step = ph // 5
         model_name = models_data[0]['name'].split(' ')[0]
+        # print("model name data: ", model_name)
+        effect_time_steps = [3, 6, 12, 18] # activities lasting (15 min - 90 min)
+        effect_minutes = [step * 5 for step in effect_time_steps]
         
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(18, 14))
 
-        act_idx, act_idx_total, act_true, act_pred, act_true_total = get_after_activity_data(y_true, y_pred, ph_step)
-        activity_traj = act_idx # save it before flattening the data
-        # Calculate normalized RMSE per activity period
-        activity_rmse = []
-        for j in range(len(act_true)):
-            rmse = np.sqrt(mean_squared_error(act_true[j], act_pred[j]))
-            y_mean = np.mean(act_true[j]) 
-            activity_rmse.append(rmse / y_mean) # normalized rmse
+        for i in range(len(effect_time_steps)):
+            act_idx, act_idx_total, act_true, act_pred, act_true_total = get_after_activity_data(y_true, y_pred, effect_time_steps[i], ph_step)
+            print("act_idx: ", act_idx)
+            # print("act_idx_total: ", act_idx_total)
+            # print("act_true: ", act_true)
+            # print("act_pred: ", act_pred)
+            # print("act_true_total: ", act_true_total)
+            activity_traj = act_idx # save it before flattening the data
+            # Calculate normalized RMSE per activity period
+            activity_rmse = []
+            for j in range(len(act_true)):
+                rmse = np.sqrt(mean_squared_error(act_true[j], act_pred[j]))
+                y_mean = np.mean(act_true[j])
+                activity_rmse.append(rmse / y_mean)
 
-        # Flatten the data into 1D arrays
-        act_idx = [item for sublist in act_idx for item in sublist]
-        act_true = [item for sublist in act_true for item in sublist]
-        act_pred = [item for sublist in act_pred for item in sublist]
-        act_idx_total = [item for sublist in act_idx_total for item in sublist]
-        act_true_total = [item for sublist in act_true_total for item in sublist]
+            # Flatten the data into 1D arrays
+            act_idx = [item for sublist in act_idx for item in sublist]
+            act_true = [item for sublist in act_true for item in sublist]
+            act_pred = [item for sublist in act_pred for item in sublist]
+            act_idx_total = [item for sublist in act_idx_total for item in sublist]
+            act_true_total = [item for sublist in act_true_total for item in sublist]
 
-        plt.plot(act_idx_total, act_true_total, color='k', alpha=0.9, label='Actual BG')
-        # Add predicted trajectories during the PA
-        add_predicted_trajectories(plt, activity_traj, y_true, y_pred, ph, model_name)        
-        plt.title('nRMSE during PA (overall RMSE: %.2f)' % overall_rmse)
+            # row = 1 if i // 2 < 1 else 2
+            plt.subplot(2, 2, (i + 1))
+            plt.plot(act_idx_total, act_true_total, color='k', alpha=0.9, label='Actual BG')
+            # Add predicted trajectories during the PA
+            add_predicted_trajectories(plt, activity_traj, y_true, y_pred, ph, model_name)        
+            plt.title('RMSE after PA {} min (overall RMSE: %.2f)'.format(str(effect_minutes[i])) % overall_rmse)
 
-        # Customizing x-axis and vertical lines in the plot
-        label_and_divide_plot(plt, act_idx_total, activity_rmse)
+            # Customizing x-axis and vertical lines in the plot
+            label_and_divide_plot(plt, act_idx_total, activity_rmse)
    
         plt.tight_layout()
 
@@ -147,7 +158,7 @@ def add_predicted_trajectories(plt, activity_trajectory_index, actual, predicted
 
 def label_and_divide_plot(plt, act_period_total, act_rmse):
     ax = plt.gca() 
-    ax.set_ylim(20, 300)
+    ax.set_ylim(20, 350)
     pos = counter = prev_pos = 0
     prev_datetime = pd.to_datetime(act_period_total[0]) 
     x_labels = [act_period_total[0]] 
@@ -159,7 +170,7 @@ def label_and_divide_plot(plt, act_period_total, act_rmse):
             
         if time_diff > 5:
             x_labels.append(date_time)
-            plt.text(prev_pos, 280, '{}'.format(round(temp_rmse,2)), verticalalignment='top')
+            plt.text(prev_pos, 310, '{}'.format(round(temp_rmse,2)), verticalalignment='top')
             ax.axvline(x=pos, color='gray', linestyle='--', linewidth=1)
             ax.axhspan(70, 180, color='yellow', alpha=0.3) # healthy range
             counter += 1
@@ -210,17 +221,19 @@ def get_activity_logs(y_true, y_pred, effect_time_step, ph_step):
 '''
 
 # after effect version
-def get_after_activity_data(y_true, y_pred, ph_step):
+def get_after_activity_data(y_true, y_pred, effect_time_step, ph_step):
     activity_period, activity_period_total, activity_true, activity_pred, activity_true_total = [], [], [], [], []
     prev_total_indices = None
     # Iterate through activity logs
     for log in activity_logs:
-        start_time = pd.to_datetime(log['start_time'])
+        original_start_time = pd.to_datetime(log['start_time'])
         duration = log['duration']
-        end_time = start_time + pd.Timedelta(minutes=(duration* 5))
+        after_time = original_start_time + pd.Timedelta(minutes=(duration* 5))
+        after_effect_time = after_time + pd.Timedelta(minutes=(effect_time_step) * 5)
 
         # find indices within the activity period
-        period_indices = (y_true.index >= start_time) & (y_true.index <= end_time)
+        period_indices = (y_true.index >= after_time) & (y_true.index <= after_effect_time)
+        period_indices = np.roll(period_indices, effect_time_step)
         total_indices = np.zeros(len(period_indices + ph_step), dtype=bool)
 
         for idx in range(len(period_indices)):
