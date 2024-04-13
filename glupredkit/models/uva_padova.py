@@ -41,28 +41,18 @@ class Model(BaseModel):
 
         # TODO: For each subject
 
-        # TODO: Can we turn off saving and plotting results?
-        # print(subset_df.info())
-        # subset_df.to_csv('test_data.csv')
-
         self.rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario, save_name='', save_folder='',
                             n_steps=n_steps, cgm_model=cgm_model, plot_mode=False, analyze_results=True)
         # Run identification
         self.rbg.run(data=subset_df, bw=bw)
-        """
-
-        # rbg_data = ReplayBGData(data=subset_df, rbg=rbg)
-        # self.draws = rbg.mcmc.identify(data=x_train, rbg_data=rbg_data, rbg=rbg)
-
-        # TODO: Get draws from the stored file
-        with open(os.path.join(self.rbg.environment.replay_bg_path, 'results', 'draws',
-                               'draws_' + self.rbg.environment.save_name + '.pkl'), 'rb') as file:
-            identification_results = pickle.load(file)
-        draws = identification_results['draws']
-        """
 
         # Delete the stored draws after run
         shutil.rmtree('results')
+
+        # Initialize some default model parameters that for some reason are commented out in ReplayBG
+        self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
+        mp = self.rbg.model.model_parameters
+        self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
 
         return self
 
@@ -73,39 +63,26 @@ class Model(BaseModel):
         - Beta: The delay of the carbohydrate effect
         - u2ss: Basal rate in mU/(kg*min) = 0,2 / U / hr if bw = 80.
         """
+        # TODO: Use x- test instead. Commented out for testing
+        """
         x_test = self.process_input_data(x_test)
         mp = self.rbg.model.model_parameters
         # From ReplayBG (the code there is commented out):
-        mp.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
-        mp.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
-
-        print("bw:", mp.bw)  # Body weight
-        print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
-        print("beta_L", mp.beta_L)
-        print("beta_D", mp.beta_D)
-        print("tau:", mp.tau)  # General time delay
-        print("u2ss:", mp.u2ss)  # Basal insulin rate
-        print("ka1:", mp.ka1)  # Absorption Rates
-        print("ka2:", mp.ka2)
-        print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
-        print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
-        print("kabs_B", mp.kabs_B)
-        print("kabs_L", mp.kabs_L)
-        print("Xpb:", mp.Xpb)  # Initial insulin action?
-        print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
-        print("SI_B", mp.SI_B)
-        print("SI_L", mp.SI_L)
-        print("Gb:", mp.Gb)  # Baseline glucose level
-        print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
-
+        self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
+        self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
         # TODO: Only for testing, remove when finished
         subset_x_test = x_test[:10]
+        """
+        test_data = pd.read_csv('multi-meal_example.csv')
+        test_data['t'] = pd.to_datetime(test_data['t'])
+        subset_x_test = test_data[:10]
+        mP = MockModelParameters()
 
         # TODO: Iterate for each id in the data
-        prediction_result = self.get_phy_prediction(mp, subset_x_test, 30)
+        prediction_result = self.get_phy_prediction(mP, subset_x_test, 30)
 
-        print("predictions: ", prediction_result)
-        print("final shape: ", prediction_result.shape)
+        # print("predictions: ", prediction_result)
+        # print("final shape: ", prediction_result.shape)
         # TODO: We need ten predictions
 
         return
@@ -177,10 +154,6 @@ class Model(BaseModel):
         state_bound[:, 0] = np.array(x0) - 0.03 * np.array(x0)  # Lower bound
         state_bound[:, 1] = np.array(x0) + 0.03 * np.array(x0)  # Upper bound
 
-        print("Initial states (x0):", x0)
-        if np.any(np.isnan(x0)):
-            raise ValueError("Initial particle states contain NaN values.")
-
         # Initialize the particle filter
         pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0, np.diag(sigma0))
 
@@ -190,17 +163,18 @@ class Model(BaseModel):
                                                                                       sigma_v, model_parameters,
                                                                                       prediction_horizon)
 
-        end_index = -int(prediction_horizon / Ts)
+        # end_index = -int(prediction_horizon / Ts)
         # predicted_CGM = IG_hat[:-int(prediction_horizon / Ts)]
-        # predicted_ig = IG_hat[:end_index, -1]
-        predicted_ig = IG_hat[:, -1]
+        # predicted_CGM = IG_hat[:end_index, -1]
+        predicted_CGM = IG_hat[:, -1]
 
-        print("Predicted cgm", predicted_ig)
-        print("shape", predicted_ig.shape)
+        print("IG_hat", IG_hat)
+        print("Predicted cgm", predicted_CGM)
+        print("shape", predicted_CGM.shape)
 
         # TODO: here we should return the desired output format directly
 
-        return predicted_ig
+        return predicted_CGM
 
     def insulin_setup_pf(self, data, model, model_parameters):
         """
@@ -222,9 +196,8 @@ class Model(BaseModel):
 
         # Set the basal and bolus vectors
         for time in range(len(np.arange(0, model['TID'], model['YTS']))):
-            start_index = int((1 + time - 1) * (model['YTS'] / model['TS']))
-            end_index = int(time * (model['YTS'] / model['TS']) + 1)
-
+            start_index = int(1 + time * (model['YTS'] / model['TS']) - 1)
+            end_index = int((time + 1) * (model['YTS'] / model['TS']))
             bolus[start_index:end_index] = data['bolus'].iloc[time] * 1000 / model_parameters.bw  # mU/(kg*min)
             basal[start_index:end_index] = data['basal'].iloc[time] * 1000 / model_parameters.bw  # mU/(kg*min)
 
@@ -260,9 +233,9 @@ class Model(BaseModel):
 
         # Set the meal vector
         for time in range(len(np.arange(0, model['TID'], model['YTS']))):
-            start_index = int((1 + time - 1) * (model['YTS'] / model['TS']))
-            end_index = int(time * (model['YTS'] / model['TS']) + 1)
-            meal[start_index:end_index] = data['cho'].iloc[time] * 1000 / model_parameters.bw  # mg/(kg*min)
+            start_index = int(1 + time * (model['YTS'] / model['TS']) - 1)
+            end_index = int((time + 1) * (model['YTS'] / model['TS']))
+            meal[start_index:end_index] = data['cho'][time] * 1000 / model_parameters.bw
 
         # Add delay of main meal absorption
         meal_delay = int(round(model_parameters.beta / model['TS']))
@@ -319,11 +292,10 @@ class Model(BaseModel):
         cov_corrected = np.zeros((len(x0), len(x0)))
 
         for k in range(len(time)):
-            # Convert time to seconds since midnight if it's a datetime object
-            seconds_since_midnight = time[k].hour * 3600 + time[k].minute * 60 + time[k].second
+            print(f'Progress {k} of {len(time)}')
 
             # Prediction step
-            state_pred, cov_pred = pf.predict(meal[k], total_ins[k], seconds_since_midnight, sigma_u, model_parameters)
+            state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour, sigma_u, model_parameters)
 
             # Measurement checking based on index
             if (k % int(5 / model_parameters.TS)) == 0:
@@ -338,6 +310,14 @@ class Model(BaseModel):
             else:
                 state_corrected = state_pred
                 cov_corrected = cov_pred
+
+            if k == 0:
+                print(f'CGM_measure', CGM_measure)
+                print(f'sigma_v', sigma_v)
+                print(f'state_corrected', state_corrected)
+                print(f'cov_corrected', cov_corrected)
+                print(f'inputs meal {meal[k]}, ins {total_ins[k]}, h {time[k].hour}')
+
 
             # Saving the last best guess and covariance
             if (k % int(5 / model_parameters.TS)) == 0:
@@ -389,14 +369,48 @@ class Model(BaseModel):
         df = df.dropna()
         return df
 
+    def print_model_parameters(self):
+        mp = self.rbg.model.model_parameters
+        print("bw:", mp.bw)  # Body weight
+        print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
+        print("beta_L", mp.beta_L)
+        print("beta_D", mp.beta_D)
+        print("tau:", mp.tau)  # General time delay
+        print("u2ss:", mp.u2ss)  # Basal insulin rate
+        print("ka1:", mp.ka1)  # Absorption Rates
+        print("ka2:", mp.ka2)
+        print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
+        print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
+        print("kabs_B", mp.kabs_B)
+        print("kabs_L", mp.kabs_L)
+        print("Xpb:", mp.Xpb)  # Initial insulin action?
+        print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
+        print("SI_B", mp.SI_B)
+        print("SI_L", mp.SI_L)
+        print("Gb:", mp.Gb)  # Baseline glucose level
+        print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
+        print("ke:", mp.ke)  # Elimination rate constant, how quickly a substance is removed from the bloodstream
+        print("kgri:", mp.kgri)  # The rate of gastric emptying
+        print("kempt:", mp.kempt)  # The rate of gastric emptying
+        print("f:", mp.f)  # Absorption fraction or bioavailability
+        print("p2:", mp.p2)  # Insulin sensitivity parameter
+        print("VI:", mp.VI)  # Volume of insulin distribution
+        print("SG:", mp.SG)  # Glucose sensitivity factor
+        print("VG:", mp.VG)  # Volume of glucose distribution
+        print("alpha:", mp.alpha)  # Rate constant or conversion factor
 
-def gi_measurement_likelihood_function(particle, measurement, sigma_v):
+
+
+def gi_measurement_likelihood_function(particles, measurement, sigma_v):
     # The measurement is the ninth state. Extract all measurement hypotheses from particles
-    #predictedMeasurement = particles[8, :]
-    predicted_measurement = particle[0]
+    predicted_measurements = particles[8]
+
+    #print("predicted_measurements", predicted_measurements)
 
     # Calculate the likelihood of each predicted measurement
-    likelihood = norm.pdf(predicted_measurement, measurement, sigma_v)
+    likelihood = norm.pdf(predicted_measurements, measurement, sigma_v)
+
+    # print("likelihood", likelihood)
 
     return likelihood
 
@@ -423,6 +437,9 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     dxdt = np.zeros_like(x)
     Qsto1, Qsto2, Qgut, Isc1, Isc2, Ip, X, G, IG = x
 
+    # Compute the basal plasmatic insulin
+    Ipb = (mP.ka1 / mP.ke) * (mP.u2ss) / (mP.ka1 + mP.kd) + (mP.ka2 / mP.ke) * (mP.kd / mP.ka2) * (mP.u2ss) / (
+                mP.ka1 + mP.kd)
 
     # Calculate state derivatives
     if time < 4 or time >= 17:
@@ -444,7 +461,7 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     dxdt[3] = -mP.kd * Isc1 + INS
     dxdt[4] = mP.kd * Isc1 - mP.ka2 * Isc2
     dxdt[5] = mP.ka2 * Isc2 - mP.ke * Ip
-    dxdt[6] = -mP.p2 * (X - (SI / mP.VI) * (Ip - mP.Ipb))
+    dxdt[6] = -mP.p2 * (X - (SI / mP.VI) * (Ip - Ipb))
     dxdt[7] = -((mP.SG + rhoRisk * X) * G) + mP.SG * mP.Gb + Ra / mP.VG
     dxdt[8] = -(1 / mP.alpha) * (IG - G)
 
@@ -470,6 +487,7 @@ def compute_hypoglycemic_risk(G, mP):
     risk = abs(risk)
 
     return risk
+
 
 
 class ParticleFilter:
@@ -511,6 +529,7 @@ class ParticleFilter:
         Returns:
             tuple: Corrected state estimate and its covariance.
         """
+        """
         # Update weights based on measurement likelihood
         for i in range(len(self.particles)):
             self.weights[i] *= self.measurement_fn(self.particles[i], measurement, sigma_v)
@@ -527,22 +546,78 @@ class ParticleFilter:
         # Calculate corrected state estimate and covariance
         corrected_state = np.mean(self.particles, axis=0)
         corrected_cov = np.cov(self.particles, rowvar=False)
-
+    
         return corrected_state, corrected_cov
-
-    def resample(self):
         """
-        Resample particles based on the weights.
 
-        Returns:
-            array: Indices of particles after resampling.
-        """
+        # Update weights based on measurement likelihood
+        for i in range(self.num_particles):
+            expected_measurement = self.measurement_fn(self.particles[i], measurement, sigma_v)
+            residual = measurement - expected_measurement
+            self.weights[i] *= self.gaussian_probability(residual, 0, sigma_v)
+
+        # Normalize weights
+        self.weights += 1.e-300  # avoid division by zero
+        self.weights /= np.sum(self.weights)
+
+        # Resample particles to avoid degeneracy
+        indexes = self.resample_particles()
+        self.particles = self.particles[indexes]
+        self.weights = np.ones(self.num_particles) / self.num_particles  # Reset weights after resampling
+
+        # Calculate the new state estimate and covariance
+        mean_state = np.mean(self.particles, axis=0)
+        cov_state = np.cov(self.particles, rowvar=False)
+
+        return mean_state, cov_state
+
+    def gaussian_probability(self, x, mean, std_dev):
+        """Calculate the probability of x for 1-dim Gaussian with mean and std dev."""
+        coefficient = 1.0 / (std_dev * np.sqrt(2 * np.pi))
+        exponent = np.exp(-0.5 * ((x - mean) / std_dev) ** 2)
+        return coefficient * exponent
+
+    def resample_particles(self):
+        """Resample particles proportionally to their weight."""
         cumulative_sum = np.cumsum(self.weights)
-        cumulative_sum[-1] = 1.0  # ensure sum is exactly 1.0
-        indices = np.searchsorted(cumulative_sum, np.random.random(len(self.weights)))
-        return indices
+        cumulative_sum[-1] = 1.0  # ensure sum is exactly one
+        return np.searchsorted(cumulative_sum, np.random.random(self.num_particles))
+
 
     def estimate(self):
         """Estimate the current state as the mean of the particles."""
         return np.average(self.particles, weights=self.weights, axis=0)
+
+
+
+class MockModelParameters:
+    def __init__(self):
+        self.bw = 100
+        self.beta_B = 1.9210921467522486
+        self.beta_L = 7.227110102827593
+        self.beta_D = 22.740130507858265
+        self.beta = (self.beta_B + self.beta_L + self.beta_D) / 3
+        self.tau = 8
+        self.u2ss = 0.1291666666666666
+        self.ka1 = 0.0034
+        self.ka2 = 0.0004536788602030393
+        self.kd = 0.09433329008933948
+        self.kabs_D = 0.02161163589225169
+        self.kabs_B = 0.020427660145477033
+        self.kabs_L = 0.0012429702583311433
+        self.Xpb = 0.0
+        self.SI_D = 0.0007412325384855292
+        self.SI_B = 0.0007072567151272324
+        self.SI_L = 0.0007701611742637199
+        self.Gb = 140.98122622460085
+        self.r2 = 0.8124
+        self.ke = 0.127
+        self.kgri = 0.28500571715267026
+        self.kempt = 0.28500571715267026
+        self.f = 0.9
+        self.p2 = 0.012
+        self.VI = 0.126
+        self.SG = 0.018425998653797095
+        self.VG = 1.45
+        self.alpha = 7
 
