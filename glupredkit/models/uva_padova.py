@@ -49,13 +49,9 @@ class Model(BaseModel):
         x_test = self.process_input_data(x_test)
         mp = self.rbg.model.model_parameters
         # From ReplayBG (the code there is commented out):
+        # TODO: This is redundant and can be removed
         self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
         self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
-
-
-        example_data = pd.read_csv('multi-meal_example.csv')
-        example_data['t'] = pd.to_datetime(example_data['t'])
-        example_data_subset_x_test = example_data[:10]
 
         # TODO: Use real model parameters
         mP = MockModelParameters()

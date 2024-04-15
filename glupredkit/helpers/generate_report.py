@@ -421,6 +421,72 @@ def draw_physiological_alignment_table(c, df, feature, y_placement):
     return c
 
 
+def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placement):
+    if feature == 'carbs':
+        sign = 'Positive Sign'
+    else:
+        sign = 'Negative Sign'
+
+    # TODO: Add evaluation of magnitude
+    if feature == 'carbs':
+        table_data = [
+            [sign, f'Persistence', 'Carb ratio (CR)', 'Expected CR [g/U]', f'Total']
+        ]
+        expected_ratio = 500 / df['daily_avg_insulin'][0]
+    else:
+        table_data = [
+            [sign, f'Persistence', 'Insulin sensitivity factor (ISF)',
+             f'Expected ISF [{unit_config_manager.get_unit()}/U]', f'Total']
+        ]
+        expected_ratio = 1800 / df['daily_avg_insulin'][0]
+
+    col_prefix = f'partial_dependency_{feature}_'
+    columns = [column for column in df.columns if column.startswith(col_prefix)]
+
+    quantities = []
+    pd_numbers = []
+    for column in columns:
+        y_pred = df[column][0]
+        y_pred = ast.literal_eval(y_pred)
+        quantities += [float(column.split('_')[-1])]
+        pd_numbers += [y_pred]
+
+    total_values = 0
+    correct_sign_values = 0
+    persistant_values = 0
+
+    estimated_ISF = 1800 / df['daily_avg_insulin'][0]
+    calculated_ratios = []
+    for index, row in enumerate(pd_numbers):
+        prev_value = row[0]
+        for i in range(1, len(row)):
+            if not np.isnan(row[i]):
+                total_values += 1
+                if feature == 'carbs':
+                    if row[i] > 0:
+                        correct_sign_values += 1
+                    if row[i] > prev_value:
+                        persistant_values += 1
+                    calculated_CR = quantities[index] * get_fraction_absorbed((i + 1)*5, 60, 180) * estimated_ISF / row[i]
+                    calculated_ratios += [calculated_CR]
+                else:
+                    if row[i] < 0:
+                        correct_sign_values += 1
+                    if row[i] < prev_value:
+                        persistant_values += 1
+                    calculated_ISF = row[i] / (quantities[index] * get_fraction_absorbed((i + 1)*5, 75, 300))
+                    calculated_ratios += [-calculated_ISF]
+                prev_value = row[i]
+
+    percentage_below_zero = (correct_sign_values / total_values) * 100
+    percentage_persistant_values = (persistant_values / total_values) * 100
+    total = (percentage_below_zero + percentage_persistant_values) / 2
+    table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
+                    "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
+    c = draw_table(c, table_data, y_placement)
+    return c
+
+
 def draw_table(c, data, y_placement):
     table = Table(data)
     table.setStyle(TableStyle([
@@ -551,6 +617,37 @@ def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     return c
 
 
+def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y_placement=300):
+    fig = plt.figure(figsize=(5.5, height))
+    col_prefix = f'partial_dependency_{col}_'
+    columns = [column for column in df.columns if column.startswith(col_prefix)]
+
+    x_values = list(range(5, get_ph(df) + 1, 5))
+
+    for column in columns:
+        quantity = column.split('_')[-1]
+        if col == 'carbs':
+            label = f'{quantity}g of carbohydrates'
+        else:
+            label = f'{quantity}U of insulin'
+        y_pred = df[column][0]
+        y_pred = ast.literal_eval(y_pred)
+        plt.plot(x_values, y_pred, marker='o', label=label)
+
+    # Setting the title and labels with placeholders for the metric unit
+    plt.title(f'Partial Dependency Plot for {col}')
+    plt.xlabel('Prediction Horizons (minutes)')
+    plt.ylabel(f'Change in predicted blood glucose [{unit_config_manager.get_unit()}]')
+    plt.legend()
+
+    # Save the plot as an image
+    buffer = BytesIO()
+    fig.savefig(buffer, format='svg')
+    buffer.seek(0)  # Move the file pointer to the beginning
+    drawing = svg2rlg(buffer)
+    renderPDF.draw(drawing, c, 70, y_placement)
+    return c
+
 def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     fig = plt.figure(figsize=(5.5, height))
 
@@ -587,6 +684,7 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     y_test = df[f'target_{ph}'][0]
     y_pred = df[f'y_pred_{ph}'][0]
     y_test = ast.literal_eval(y_test)
+    y_pred = y_pred.replace("nan", "None")
     y_pred = ast.literal_eval(y_pred)
 
     plt.scatter(y_test, y_pred, alpha=0.5)
@@ -626,9 +724,11 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
         y_test = df[f'target_{ph}'][0]
         y_pred = df[f'y_pred_{ph}'][0]
         y_test = ast.literal_eval(y_test)
+        y_pred = y_pred.replace("nan", "None")
         y_pred = ast.literal_eval(y_pred)
-        y_pred_std += [np.std(y_pred)]
-        y_test_std += [np.std(y_test)]
+        y_pred = [np.nan if x is None else x for x in y_pred]
+        y_pred_std += [np.nanstd(y_pred)]
+        y_test_std += [np.nanstd(y_test)]
 
     plt.plot(x_values, y_pred_std, marker='o', label=f'Predicted Values')
     plt.plot(x_values, y_test_std, marker='o', label=f'Measured Values')
@@ -737,6 +837,47 @@ def plot_partial_dependency_heatmap(c, df, feature, x_placement, y_placement, ti
     renderPDF.draw(drawing, c, x_placement, y_placement)
 
     return c
+
+
+def get_fraction_absorbed(t, peak, total_activity_time):
+    """
+    Calculate the area under the curve (AUC) for the absorption of a substance from time 0 to t,
+    with a given peak and total activity duration.
+
+    Parameters:
+    - t (float): The current time up to which the AUC is calculated. Must be between 0 and total_activity_time.
+    - peak (float): The time at which the peak absorption occurs.
+    - total_activity_time (float): The total time over which the substance is active.
+
+    Returns:
+    - float: The fraction of the AUC from time 0 to t.
+    """
+    total_auc = total_activity_time / 2
+
+    if t < 0:
+        return 0  # No absorption outside the activity time range.
+
+    if t <= peak:
+        # AUC of a triangle from 0 to t (linear increase)
+        height = (1 / peak) * t
+        auc = 0.5 * t * height / total_auc
+    else:
+        # Full AUC from 0 to peak
+        full_peak_auc = 0.5 * 1 * peak
+        full_post_peak_auc = 0.5 * 1 * (total_activity_time - peak)
+
+
+        if t < total_activity_time:
+            # AUC from peak to t (linear decrease)
+            # Base = t - peak, Height starts at 100 and goes to ((total_activity_time - t) / (total_activity_time - peak)) * 100
+            height = ((total_activity_time - t) / (total_activity_time - peak))
+            post_peak_auc = full_post_peak_auc - (0.5 * height * (total_activity_time - t))
+            auc = (full_peak_auc + post_peak_auc) / total_auc
+        else:
+            # Full AUC from peak to total_activity_time
+            auc = 1
+
+    return auc
 
 
 def get_ph(df):

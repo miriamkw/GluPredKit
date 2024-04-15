@@ -238,8 +238,12 @@ def test_model(model_file):
 
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in test_data if col.startswith('target')]
-    x_test = processed_data.drop(target_cols, axis=1)
-    y_test = processed_data[target_cols]
+
+    # TODO: Remove. Only for testing
+    n_subset = 100
+
+    x_test = processed_data.drop(target_cols, axis=1)[:n_subset]
+    y_test = processed_data[target_cols][:n_subset]
     y_pred = model_instance.predict(x_test)
 
     hypo_threshold = 70
@@ -259,6 +263,10 @@ def test_model(model_file):
     configs = model_config_manager.load_config()
     for config in configs:
         results_df[config] = [configs[config]]
+
+    # Add daily average insulin
+    test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
+    results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
     metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
                'parkes_error_grid_exp']
@@ -282,6 +290,43 @@ def test_model(model_file):
         avg_score = np.mean(results_df[metric_cols].iloc[0])
         results_df[f'{metric}_avg'] = [avg_score]
 
+    subset_size = x_test.shape[0]
+
+    if (model_name == 'loop') | (model_name == 'uva_padova'):
+        # TODO: Increase for real tests
+        subset_size = 10
+    subset_df_x = x_test.sample(n=subset_size, random_state=42)
+
+    insulin_doses = [1, 5, 10]
+    carb_intakes = [10, 50, 100]
+
+    x_test_copy = subset_df_x.copy()
+    x_test_copy['bolus'] = 0
+    y_pred_bolus_0 = [sum(x) / len(x) for x in zip(*model_instance.predict(x_test_copy))]
+
+    for insulin_dose in insulin_doses:
+        x_test_copy = subset_df_x.copy()
+        x_test_copy['bolus'] = insulin_dose
+        y_pred = model_instance.predict(x_test_copy)
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+        results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
+
+    x_test_copy = subset_df_x.copy()
+    x_test_copy['carbs'] = 0
+    y_pred_carbs_0 = [sum(x) / len(x) for x in zip(*model_instance.predict(x_test_copy))]
+
+    for carb_intake in carb_intakes:
+        x_test_copy = subset_df_x.copy()
+        x_test_copy['carbs'] = carb_intake
+        y_pred = model_instance.predict(x_test_copy)
+        # Calculate the average of elements at each index position
+        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+        results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+
+    """
     insulin_dose = 1
     carb_intake = 50
     bolus_columns = [col for col in x_test.columns if col.startswith('bolus')]
@@ -289,8 +334,10 @@ def test_model(model_file):
 
     # TODO: Add a conditional check for the model, that decides how big the subset should be. 100 should be enough
     subset_size = x_test.shape[0]
-    if model_name == 'loop':
-        subset_size = 100
+
+    if model_name == 'loop' | model_name == 'uva_padova':
+        # TODO: Increase for real tests
+        subset_size = 10
     subset_df_x = x_test.sample(n=subset_size, random_state=42)
 
     partial_dependency_dict = {}
@@ -314,7 +361,7 @@ def test_model(model_file):
         partial_dependency_dict[col] = averages
 
     results_df['partial_dependencies'] = [partial_dependency_dict]
-
+    """
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
 
@@ -539,6 +586,20 @@ def generate_evaluation_pdf(results_file):
     # PHYSIOLOGICAL ALIGNMENT PAGE
     c = generate_report.set_title(c, f'Physiological Alignment')
     c = generate_report.set_subtitle(c, f'Physiological Alignment for insulin', 720)
+    c = generate_report.draw_physiological_alignment_single_dimension_table(c, df, 'bolus', 670)
+    c = generate_report.plot_partial_dependencies_across_prediction_horizons(c, df, 'bolus', y_placement=440)
+
+    c = generate_report.set_subtitle(c, f'Physiological Alignment for carbohydrates', 360)
+    c = generate_report.draw_physiological_alignment_single_dimension_table(c, df, 'carbs', 310)
+    c = generate_report.plot_partial_dependencies_across_prediction_horizons(c, df, 'carbs', y_placement=100)
+
+    c = generate_report.set_bottom_text(c)
+    c.showPage()
+
+    """
+    # PHYSIOLOGICAL ALIGNMENT PAGE
+    c = generate_report.set_title(c, f'Physiological Alignment')
+    c = generate_report.set_subtitle(c, f'Physiological Alignment for insulin', 720)
     c = generate_report.draw_physiological_alignment_table(c, df, 'bolus', 670)
     c = generate_report.plot_partial_dependency_heatmap(c, df, 'bolus', 100, 440,
                                                         f'Average impact on prediction for 1U of insulin')
@@ -548,6 +609,7 @@ def generate_evaluation_pdf(results_file):
                                                         f'Average impact on prediction for 50g of carbohydrates')
     c = generate_report.set_bottom_text(c)
     c.showPage()
+    """
 
     # PREDICTION DISTRIBUTION PAGE
     c = generate_report.set_title(c, f'Distribution of Predictions')
