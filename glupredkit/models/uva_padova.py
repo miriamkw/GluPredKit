@@ -1,23 +1,9 @@
 from glupredkit.models.base_model import BaseModel
 from py_replay_bg.py_replay_bg import ReplayBG
-from py_replay_bg.identification.mcmc import MCMC
-from py_replay_bg.model.t1d_model import T1DModel
-from py_replay_bg.data import ReplayBGData
-from filterpy.monte_carlo import systematic_resample
-from filterpy.kalman import UnscentedKalmanFilter
-from filterpy.common import Q_discrete_white_noise
-import warnings
-from filterpy.monte_carlo import systematic_resample
-
-from filterpy.kalman import unscented_transform
 from scipy.stats import norm
 import copy
-import sys
-from pandas import DataFrame, Timedelta, TimedeltaIndex
 import numpy as np
-import pickle
 import pandas as pd
-import os
 import shutil
 
 
@@ -27,6 +13,7 @@ class Model(BaseModel):
 
         # TODO: Should be an empty list, one for each subject id
         self.rbg = None
+        self.use_what_if = False  # TODO: implement this
 
     def fit(self, x_train, y_train):
         x_train = self.process_input_data(x_train)
@@ -59,33 +46,25 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
-        """
-        Model parameters:
-        - bw: Body weight
-        - Beta: The delay of the carbohydrate effect
-        - u2ss: Basal rate in mU/(kg*min) = 0,2 / U / hr if bw = 80.
-        """
-        # TODO: Use x- test instead. Commented out for testing
-        """
         x_test = self.process_input_data(x_test)
         mp = self.rbg.model.model_parameters
         # From ReplayBG (the code there is commented out):
         self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
         self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
-        # TODO: Only for testing, remove when finished
-        subset_x_test = x_test[:10]
-        """
-        test_data = pd.read_csv('multi-meal_example.csv')
-        test_data['t'] = pd.to_datetime(test_data['t'])
-        subset_x_test = test_data[:100]
+
+
+        example_data = pd.read_csv('multi-meal_example.csv')
+        example_data['t'] = pd.to_datetime(example_data['t'])
+        example_data_subset_x_test = example_data[:10]
+
+        # TODO: Use real model parameters
         mP = MockModelParameters()
 
         # TODO: Iterate for each id in the data
-        prediction_result = self.get_phy_prediction(mP, test_data, 30)
+        prediction_result = self.get_phy_prediction(mP, x_test, self.prediction_horizon)
 
-        # print("predictions: ", prediction_result)
-        # print("final shape: ", prediction_result.shape)
-        # TODO: We need ten predictions
+        print("predictions: ", prediction_result)
+        print("final shape: ", len(prediction_result))
 
         return prediction_result
 
@@ -139,9 +118,9 @@ class Model(BaseModel):
             0,  # Qgut(0)
             model_parameters.u2ss / (model_parameters.ka1 + model_parameters.kd),  # Isc1(0)
             (model_parameters.kd / model_parameters.ka2) * model_parameters.u2ss / (
-                        model_parameters.ka1 + model_parameters.kd),  # Isc2(0)
+                    model_parameters.ka1 + model_parameters.kd),  # Isc2(0)
             (model_parameters.ka1 / model_parameters.ke) * model_parameters.u2ss / (
-                        model_parameters.ka1 + model_parameters.kd) +
+                    model_parameters.ka1 + model_parameters.kd) +
             (model_parameters.ka2 / model_parameters.ke) * (model_parameters.kd / model_parameters.ka2) *
             model_parameters.u2ss / (model_parameters.ka1 + model_parameters.kd),  # Ip(0)
             model_parameters.Xpb,  # X(0)
@@ -161,45 +140,29 @@ class Model(BaseModel):
                                np.diag(sigma0))
 
         last_best_guess, last_best_cov, G_hat, IG_hat, VarG_hat, VarIG_hat = self.apply_pf(pf_v0, time_data,
-                                                                                      data['glucose'], meal,
-                                                                                      total_ins, x0, sigma_u0,
-                                                                                      sigma_v, model_parameters,
-                                                                                      prediction_horizon)
+                                                                                           data['glucose'], meal,
+                                                                                           total_ins, x0, sigma_u0,
+                                                                                           sigma_v, model_parameters,
+                                                                                           prediction_horizon)
 
-        def calculate_rmse(predicted, actual):
-            # Ensure both arrays are numpy arrays
-            predicted = np.array(predicted)
-            actual = np.array(actual)
+        # Get all the predicted values in 5-minute intervals
+        predicted_trajectories = IG_hat[:, Ts - 1::Ts]
 
-            # Calculate the differences and ignore NaNs in either array
-            differences = np.nan_to_num(predicted - actual, nan=0.0)
-            mask = ~np.isnan(predicted) & ~np.isnan(actual)  # Mask where neither is NaN
-            squared_differences = differences[mask] ** 2  # Only use non-NaN differences
+        # Convert all zeros in a sublist to np.nan if ALL are zeros
+        predicted_trajectories = [
+            [np.nan if num == 0 else num for num in sublist] if all(num == 0 for num in sublist) else sublist
+            for sublist in predicted_trajectories
+        ]
 
-            # Compute mean of squared differences and take the square root
-            mean_squared_difference = np.mean(squared_differences)
-            rmse = np.sqrt(mean_squared_difference)
-            return rmse
-
-        end_index = -int(prediction_horizon / Ts)
-        # predicted_CGM = IG_hat[:-int(prediction_horizon / Ts)]
-        # predicted_CGM = IG_hat[:end_index, -1]
-        predicted_CGM = IG_hat[:end_index, -1]
-
-        print("Predicted cgm")
-        for val in predicted_CGM:
-            print(f'{val:.2f}')
-        print("shape", predicted_CGM.shape)
-
-        actual_values = data.glucose[-end_index:]
-
-        # Calculate RMSE
-        rmse_value = calculate_rmse(predicted_CGM, actual_values)
-        print(f"RMSE (ignoring NaNs): {rmse_value:.2f}")
+        # TODO: Use what-if events to add samples in the end to get all predictions
+        # TODO: Make an opportunity to choose between what-if and agnostic predictions
+        # What-if predictions can be achieved by inputing the next cho and insulin state directly in the state
+        # transition function. The predictions here are step wise / recursive, and given the (estimate) of the
+        # previous state. Hence, we could just use the true state instead.
 
         # TODO: here we should return the desired output format directly
 
-        return predicted_CGM
+        return predicted_trajectories
 
     def insulin_setup_pf(self, data, model, model_parameters):
         """
@@ -272,7 +235,7 @@ class Model(BaseModel):
         return meal, meal_delayed
 
     def apply_pf(self, pf, time, noisy_measure, meal, total_ins, x0, sigma_u0, sigma_v, model_parameters,
-                                                                                      prediction_horizon):
+                 prediction_horizon):
         """
         Applies a particle filter to perform real-time filtering.
 
@@ -314,9 +277,11 @@ class Model(BaseModel):
         state_corrected = np.zeros(len(x0))
         cov_corrected = np.zeros((len(x0), len(x0)))
 
+        print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
+
         for k in range(len(time)):
-            if k % 100 == 0:
-                print(f'Progress {k} of {len(time)}')
+            if k % 50 == 0:
+                print_progress_bar(k + 1, len(time), prefix='Progress:', suffix='Complete', length=50)
 
             # Prediction step
             state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour, sigma_u, model_parameters)
@@ -340,19 +305,17 @@ class Model(BaseModel):
                 lastBestGuess[:, index_measure] = state_corrected[:len(x0)]
                 lastBestCov[:, index_measure] = np.diag(cov_corrected)
 
-
             # k-step ahead prediction
             if (k + prediction_horizon <= len(time)) and ((k % int(5 / model_parameters.TS)) == 0):
                 pf_pred = copy.deepcopy(pf)
                 mP_pred = copy.deepcopy(model_parameters)
 
                 for p in range(prediction_horizon):
-                    # Assume time[k + p] is handled similarly for time conversion
                     step_ahead_prediction, cov_ahead_prediction = pf_pred.predict(meal[k + p], total_ins[k + p],
                                                                                   time[k + p].hour, sigma_u, mP_pred)
 
-                    G_hat[index_measure, p] = step_ahead_prediction[7]  # Assuming glucose is the 8th state
-                    IG_hat[index_measure, p] = step_ahead_prediction[8]  # Assuming interstitial glucose is the 9th state
+                    G_hat[index_measure, p] = step_ahead_prediction[7]  # Glucose
+                    IG_hat[index_measure, p] = step_ahead_prediction[8]  # Interstitial glucose
 
                     pred_variance = np.diag(cov_ahead_prediction)
                     VarG_hat[index_measure, p] = pred_variance[7]  # Variance for glucose
@@ -374,8 +337,8 @@ class Model(BaseModel):
         x_df['CR'] = np.nan
         x_df['CF'] = np.nan
         x_df['basal'] = x_df['basal'] / 60  # Basal needs to be in U and not U/hr
-        x_df['cho_label'] = ''
-        x_df['bolus_label'] = ''
+        x_df['cho_label'] = np.nan
+        x_df['bolus_label'] = np.nan
         x_df['exercise'] = 0
         x_df['t'] = x_df.index
         x_df.reset_index(inplace=True)
@@ -447,7 +410,7 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
 
     # Compute the basal plasmatic insulin
     Ipb = (mP.ka1 / mP.ke) * (mP.u2ss) / (mP.ka1 + mP.kd) + (mP.ka2 / mP.ke) * (mP.kd / mP.ka2) * (mP.u2ss) / (
-                mP.ka1 + mP.kd)
+            mP.ka1 + mP.kd)
 
     # Calculate state derivatives
     if time < 4 or time >= 17:
@@ -464,10 +427,10 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
 
     rhoRisk = 1 + risk
     Ra = mP.f * kabs * Qgut
-    dxdt[0] = -mP.kgri * Qsto1 + CHO
+    dxdt[0] = -mP.kgri * Qsto1 + CHO  # TODO: Here we could just set the next CHO value for what-if evnaluation
     dxdt[1] = mP.kgri * Qsto1 - mP.kempt * Qsto2
     dxdt[2] = mP.kempt * Qsto2 - kabs * Qgut
-    dxdt[3] = -mP.kd * Isc1 + INS
+    dxdt[3] = -mP.kd * Isc1 + INS  # TODO: Here we could just set the next INS value for what-if evnaluation
     dxdt[4] = mP.kd * Isc1 - mP.ka2 * Isc2
     dxdt[5] = mP.ka2 * Isc2 - mP.ke * Ip
     dxdt[6] = -mP.p2 * (X - (SI / mP.VI) * (Ip - Ipb))
@@ -483,15 +446,17 @@ def compute_hypoglycemic_risk(G, mP):
     # Setting the risk model threshold
     Gth = 60
 
+    # For all values below the risk model threshold, the hypoglycemic risk will be the same.
+    # This redefinition of G avoid some output errors.
+    if G < Gth:
+        G = Gth - 1
+
     # Compute the risk
     Gb = mP.Gb
-    risk = (
-            10 * (np.log(G) ** mP.r2 - np.log(Gb) ** mP.r2) ** 2 * ((G < Gb) & (G >= Gth)) +
-            10 * (np.log(Gth) ** mP.r2 - np.log(Gb) ** mP.r2) ** 2 * (G < Gth)
-    )
-    risk = abs(risk)
+    risk = (10 * (np.log(G) ** mP.r2 - np.log(Gb) ** mP.r2) ** 2 * ((G < Gb) & (G >= Gth)) +
+            10 * (np.log(Gth) ** mP.r2 - np.log(Gb) ** mP.r2) ** 2 * (G < Gth))
 
-    return risk
+    return abs(risk)
 
 
 class ParticleFilter:
@@ -591,3 +556,25 @@ class MockModelParameters:
         self.alpha = 7
         self.TS = None
 
+
+def print_progress_bar(iteration, total, prefix='Progress:', suffix='Complete', decimals=1, length=50, fill='█',
+                       print_end="\r"):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        print_end   - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
