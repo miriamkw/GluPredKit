@@ -77,17 +77,17 @@ class Model(BaseModel):
         """
         test_data = pd.read_csv('multi-meal_example.csv')
         test_data['t'] = pd.to_datetime(test_data['t'])
-        subset_x_test = test_data[:50]
+        subset_x_test = test_data[:100]
         mP = MockModelParameters()
 
         # TODO: Iterate for each id in the data
-        prediction_result = self.get_phy_prediction(mP, subset_x_test, 30)
+        prediction_result = self.get_phy_prediction(mP, test_data, 30)
 
         # print("predictions: ", prediction_result)
         # print("final shape: ", prediction_result.shape)
         # TODO: We need ten predictions
 
-        return
+        return prediction_result
 
     def get_phy_prediction(self, model_parameters, data, prediction_horizon):
         """
@@ -157,11 +157,12 @@ class Model(BaseModel):
         state_bound[:, 1] = np.array(x0) + 0.03 * np.array(x0)  # Upper bound
 
         # Initialize the particle filter
-        pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0, np.diag(sigma0))
+        pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0,
+                               np.diag(sigma0))
 
         last_best_guess, last_best_cov, G_hat, IG_hat, VarG_hat, VarIG_hat = self.apply_pf(pf_v0, time_data,
                                                                                       data['glucose'], meal,
-                                                                                      total_ins, x0, sigma0, sigma_u0,
+                                                                                      total_ins, x0, sigma_u0,
                                                                                       sigma_v, model_parameters,
                                                                                       prediction_horizon)
 
@@ -270,7 +271,7 @@ class Model(BaseModel):
 
         return meal, meal_delayed
 
-    def apply_pf(self, pf, time, noisy_measure, meal, total_ins, x0, sigma0, sigma_u0, sigma_v, model_parameters,
+    def apply_pf(self, pf, time, noisy_measure, meal, total_ins, x0, sigma_u0, sigma_v, model_parameters,
                                                                                       prediction_horizon):
         """
         Applies a particle filter to perform real-time filtering.
@@ -297,8 +298,6 @@ class Model(BaseModel):
             - VarG_hat: matrix containing the predicted variance of glucose
             - VarIG_hat: matrix containing the predicted variance of interstitial glucose
         """
-
-        sigma0 = sigma0
         sigma_u = np.sqrt(sigma_u0)
         sigma_v = np.sqrt(sigma_v)
 
@@ -316,13 +315,14 @@ class Model(BaseModel):
         cov_corrected = np.zeros((len(x0), len(x0)))
 
         for k in range(len(time)):
-            #print(f'Progress {k} of {len(time)}')
+            if k % 100 == 0:
+                print(f'Progress {k} of {len(time)}')
 
             # Prediction step
             state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour, sigma_u, model_parameters)
 
             # Measurement checking based on index
-            if (k % int(5 / model_parameters.TS)) == 0:
+            if k % int(5 / model_parameters.TS) == 0:
                 index_measure = int(k / (5 / model_parameters.TS))
                 CGM_measure = noisy_measure[index_measure]
             else:
@@ -417,13 +417,8 @@ class Model(BaseModel):
         print("alpha:", mp.alpha)  # Rate constant or conversion factor
 
 
-
 def gi_measurement_likelihood_function(predicted_measurement, measurement, sigma_v):
     # The measurement is the ninth state. Extract all measurement hypotheses from particles
-    # predicted_measurements = particles[:, 8]
-
-    #predicted_measurements = particles[8]
-
     # Calculate the likelihood of each predicted measurement
     likelihood = norm.pdf(predicted_measurement, measurement, sigma_v)
 
@@ -488,14 +483,6 @@ def compute_hypoglycemic_risk(G, mP):
     # Setting the risk model threshold
     Gth = 60
 
-    # TODO: Figure out the nan value problem
-    """
-    if G < 0:
-        raise ValueError("The blood glucose is negative when it must be positive.")
-    if np.isnan(G):
-        raise ValueError("The blood glucose is a nan value when it must be positive.")
-    """
-
     # Compute the risk
     Gb = mP.Gb
     risk = (
@@ -545,12 +532,10 @@ class ParticleFilter:
         Returns:
             tuple: Corrected state estimate and its covariance.
         """
-
         # Update weights based on measurement likelihood
         for i in range(self.num_particles):
             expected_measurement = self.measurement_fn(self.particles[i][8], measurement, sigma_v)
-            residual = measurement - expected_measurement
-            self.weights[i] *= self.gaussian_probability(residual, 0, sigma_v)
+            self.weights[i] *= expected_measurement
 
         # Normalize weights
         self.weights += 1.e-300  # avoid division by zero
@@ -567,18 +552,11 @@ class ParticleFilter:
 
         return mean_state, cov_state
 
-    def gaussian_probability(self, x, mean, std_dev):
-        """Calculate the probability of x for 1-dim Gaussian with mean and std dev."""
-        coefficient = 1.0 / (std_dev * np.sqrt(2 * np.pi))
-        exponent = np.exp(-0.5 * ((x - mean) / std_dev) ** 2)
-        return coefficient * exponent
-
     def resample_particles(self):
         """Resample particles proportionally to their weight."""
         cumulative_sum = np.cumsum(self.weights)
         cumulative_sum[-1] = 1.0  # ensure sum is exactly one
         return np.searchsorted(cumulative_sum, np.random.random(self.num_particles))
-
 
 
 class MockModelParameters:
@@ -611,4 +589,5 @@ class MockModelParameters:
         self.SG = 0.018425998653797095
         self.VG = 1.45
         self.alpha = 7
+        self.TS = None
 
