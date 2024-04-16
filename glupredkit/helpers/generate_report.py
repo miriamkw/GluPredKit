@@ -219,6 +219,7 @@ def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
             y_test = df[f'target_{ph}'][0]
             y_pred = df[f'y_pred_{ph}'][0]
             y_test = ast.literal_eval(y_test)
+            y_pred = y_pred.replace("nan", "None")
             y_pred = ast.literal_eval(y_pred)
             result = np.std(y_pred) / np.std(y_test) * 100
             std_result_values += [result]
@@ -447,6 +448,7 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
     pd_numbers = []
     for column in columns:
         y_pred = df[column][0]
+        y_pred = y_pred.replace("nan", "None")
         y_pred = ast.literal_eval(y_pred)
         quantities += [float(column.split('_')[-1])]
         pd_numbers += [y_pred]
@@ -459,6 +461,7 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
     calculated_ratios = []
     for index, row in enumerate(pd_numbers):
         prev_value = row[0]
+
         for i in range(1, len(row)):
             if not np.isnan(row[i]):
                 total_values += 1
@@ -467,14 +470,15 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
                         correct_sign_values += 1
                     if row[i] > prev_value:
                         persistant_values += 1
-                    calculated_CR = quantities[index] * get_fraction_absorbed((i + 1)*5, 60, 180) * estimated_ISF / row[i]
+                    calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60, 180) * estimated_ISF / \
+                                    row[i]
                     calculated_ratios += [calculated_CR]
                 else:
                     if row[i] < 0:
                         correct_sign_values += 1
                     if row[i] < prev_value:
                         persistant_values += 1
-                    calculated_ISF = row[i] / (quantities[index] * get_fraction_absorbed((i + 1)*5, 75, 300))
+                    calculated_ISF = row[i] / (quantities[index] * get_fraction_absorbed((i + 1) * 5, 75, 300))
                     calculated_ratios += [-calculated_ISF]
                 prev_value = row[i]
 
@@ -647,6 +651,7 @@ def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
     return c
+
 
 def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     fig = plt.figure(figsize=(5.5, height))
@@ -865,7 +870,6 @@ def get_fraction_absorbed(t, peak, total_activity_time):
         # Full AUC from 0 to peak
         full_peak_auc = 0.5 * 1 * peak
         full_post_peak_auc = 0.5 * 1 * (total_activity_time - peak)
-
 
         if t < total_activity_time:
             # AUC from peak to t (linear decrease)

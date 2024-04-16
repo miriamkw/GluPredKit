@@ -240,7 +240,7 @@ def test_model(model_file):
     target_cols = [col for col in test_data if col.startswith('target')]
 
     # TODO: Remove. Only for testing
-    n_subset = 100
+    n_subset = 50
 
     x_test = processed_data.drop(target_cols, axis=1)[:n_subset]
     y_test = processed_data[target_cols][:n_subset]
@@ -270,6 +270,7 @@ def test_model(model_file):
 
     metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
                'parkes_error_grid_exp']
+
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]
@@ -294,39 +295,44 @@ def test_model(model_file):
 
     if (model_name == 'loop') | (model_name == 'uva_padova'):
         # TODO: Increase for real tests
-        subset_size = 10
-    subset_df_x = x_test.sample(n=subset_size, random_state=42)
+        subset_size = 50
+    # subset_df_x = x_test.sample(n=subset_size, random_state=42)
+    subset_df_x = x_test[-subset_size:]
 
     insulin_doses = [1, 5, 10]
     carb_intakes = [10, 50, 100]
 
     x_test_copy = subset_df_x.copy()
     x_test_copy['bolus'] = 0
-    y_pred_bolus_0 = [sum(x) / len(x) for x in zip(*model_instance.predict(x_test_copy))]
+
+    y_pred_bolus_0 = model_instance.predict(x_test_copy)
+    y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
 
     for insulin_dose in insulin_doses:
         x_test_copy = subset_df_x.copy()
         x_test_copy['bolus'] = insulin_dose
         y_pred = model_instance.predict(x_test_copy)
+
         # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
+        averages = [np.nanmean(x) for x in zip(*y_pred)]
         averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
         results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
 
     x_test_copy = subset_df_x.copy()
     x_test_copy['carbs'] = 0
-    y_pred_carbs_0 = [sum(x) / len(x) for x in zip(*model_instance.predict(x_test_copy))]
+    y_pred_carbs_0 = [np.nanmean(x) for x in zip(*model_instance.predict(x_test_copy))]
 
     for carb_intake in carb_intakes:
         x_test_copy = subset_df_x.copy()
         x_test_copy['carbs'] = carb_intake
         y_pred = model_instance.predict(x_test_copy)
         # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+        averages = [np.nanmean(x) for x in zip(*y_pred)]
+        averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
         results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     """
+    # OLD VERSION OF PHYSIOLOGICAL ALIGNMENT
     insulin_dose = 1
     carb_intake = 50
     bolus_columns = [col for col in x_test.columns if col.startswith('bolus')]

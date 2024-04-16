@@ -11,9 +11,8 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
 
-        # TODO: Should be an empty list, one for each subject id
-        self.rbg = None
-        self.use_what_if = False  # TODO: implement this
+        self.models = []
+        self.subject_ids = []
 
     def fit(self, x_train, y_train):
         x_train = self.process_input_data(x_train)
@@ -24,43 +23,43 @@ class Model(BaseModel):
         scenario = 'multi-meal'
         cgm_model = 'CGM'
         n_steps = 1000  # set the number of steps that will be used for identification (for multi-meal it should be at least 100k)
+        training_samples_per_subject = 12 * 24 * 90
 
-        # TODO: Remove this?
-        subset_df = x_train[:12 * 24]
+        self.subject_ids = x_train['id'].unique()
 
-        # TODO: For each subject
+        for subject_id in self.subject_ids:
+            x_train_filtered = x_train[x_train['id'] == subject_id].copy()
+            subset_df = x_train_filtered[-training_samples_per_subject:].reset_index()
 
-        self.rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario, save_name='', save_folder='',
-                            n_steps=n_steps, cgm_model=cgm_model, plot_mode=False, analyze_results=True)
-        # Run identification
-        self.rbg.run(data=subset_df, bw=bw)
+            rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario,
+                           save_name='', save_folder='', n_steps=n_steps,
+                           cgm_model=cgm_model,
+                           seed=1,
+                           plot_mode=False,
+                           verbose=True,  # Turn of when training in server
+                           analyze_results=False)
+            # Run identification
+            rbg.run(data=subset_df, bw=bw)
 
-        # Delete the stored draws after run
+            # Initialize some default model parameters that for some reason are commented out in ReplayBG
+            rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
+            mp = rbg.model.model_parameters
+            rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
+            self.models += [rbg]
+
+        # Delete the automatically stored draws after run
         shutil.rmtree('results')
-
-        # Initialize some default model parameters that for some reason are commented out in ReplayBG
-        self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
-        mp = self.rbg.model.model_parameters
-        self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
 
         return self
 
     def predict(self, x_test):
         x_test = self.process_input_data(x_test)
-        mp = self.rbg.model.model_parameters
-        # From ReplayBG (the code there is commented out):
-        # TODO: This is redundant and can be removed
-        self.rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
-        self.rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
 
-        # TODO: Use real model parameters
-        mP = MockModelParameters()
-
-        # TODO: Iterate for each id in the data
-        prediction_result = self.get_phy_prediction(mP, x_test, self.prediction_horizon)
-
-        print("predictions: ", prediction_result)
-        print("final shape: ", len(prediction_result))
+        prediction_result = []
+        for index, subject_id in enumerate(self.subject_ids):
+            x_test_filtered = x_test[x_test['id'] == subject_id].copy().reset_index()
+            model_parameters = self.models[index].model.model_parameters
+            prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon)
 
         return prediction_result
 
@@ -87,15 +86,9 @@ class Model(BaseModel):
         sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
 
         # set physiological model environment
-        model = {
-            'TS': 1,  # physiological model sampling time [minute]
-            'YTS': 5,  # raw data sampling time [minute]
-            'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1,  # [min] from 1 to TID identify
-            # the model parameters [min]
-        }
+        model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
         model['TIDSTEPS'] = int(model['TID'] / model['TS'])  # integration steps
-        # model['TIDYSTEPS'] = model['TID'] / model['YTS']  # total identification simulation time [sample steps]
-        model['TIDYSTEPS'] = data.shape[0]  # total identification simulation time [sample steps]
+        model['TIDYSTEPS'] = int(model['TID'] / model['YTS'])  # total identification simulation time [sample steps]
         model_parameters.TS = model['TS']
 
         # prepare input data
@@ -155,8 +148,6 @@ class Model(BaseModel):
         # What-if predictions can be achieved by inputing the next cho and insulin state directly in the state
         # transition function. The predictions here are step wise / recursive, and given the (estimate) of the
         # previous state. Hence, we could just use the true state instead.
-
-        # TODO: here we should return the desired output format directly
 
         return predicted_trajectories
 
@@ -307,6 +298,8 @@ class Model(BaseModel):
                 mP_pred = copy.deepcopy(model_parameters)
 
                 for p in range(prediction_horizon):
+                    # This function assumes that future meals and insulin injections are known
+                    # Alternatively, we could use estimates of what these future values probably will be
                     step_ahead_prediction, cov_ahead_prediction = pf_pred.predict(meal[k + p], total_ins[k + p],
                                                                                   time[k + p].hour, sigma_u, mP_pred)
 
@@ -423,10 +416,10 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
 
     rhoRisk = 1 + risk
     Ra = mP.f * kabs * Qgut
-    dxdt[0] = -mP.kgri * Qsto1 + CHO  # TODO: Here we could just set the next CHO value for what-if evnaluation
+    dxdt[0] = -mP.kgri * Qsto1 + CHO
     dxdt[1] = mP.kgri * Qsto1 - mP.kempt * Qsto2
     dxdt[2] = mP.kempt * Qsto2 - kabs * Qgut
-    dxdt[3] = -mP.kd * Isc1 + INS  # TODO: Here we could just set the next INS value for what-if evnaluation
+    dxdt[3] = -mP.kd * Isc1 + INS
     dxdt[4] = mP.kd * Isc1 - mP.ka2 * Isc2
     dxdt[5] = mP.ka2 * Isc2 - mP.ke * Ip
     dxdt[6] = -mP.p2 * (X - (SI / mP.VI) * (Ip - Ipb))
