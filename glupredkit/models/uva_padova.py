@@ -336,37 +336,41 @@ class Model(BaseModel):
 
     def process_data(self, df, model_config_manager, real_time):
         df = df.dropna()
+
+        # TODO: Add what if features here, so that we can avoid the predicted nan values
+
         return df
 
     def print_model_parameters(self):
-        mp = self.rbg.model.model_parameters
-        print("bw:", mp.bw)  # Body weight
-        print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
-        print("beta_L", mp.beta_L)
-        print("beta_D", mp.beta_D)
-        print("tau:", mp.tau)  # General time delay
-        print("u2ss:", mp.u2ss)  # Basal insulin rate
-        print("ka1:", mp.ka1)  # Absorption Rates
-        print("ka2:", mp.ka2)
-        print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
-        print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
-        print("kabs_B", mp.kabs_B)
-        print("kabs_L", mp.kabs_L)
-        print("Xpb:", mp.Xpb)  # Initial insulin action?
-        print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
-        print("SI_B", mp.SI_B)
-        print("SI_L", mp.SI_L)
-        print("Gb:", mp.Gb)  # Baseline glucose level
-        print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
-        print("ke:", mp.ke)  # Elimination rate constant, how quickly a substance is removed from the bloodstream
-        print("kgri:", mp.kgri)  # The rate of gastric emptying
-        print("kempt:", mp.kempt)  # The rate of gastric emptying
-        print("f:", mp.f)  # Absorption fraction or bioavailability
-        print("p2:", mp.p2)  # Insulin sensitivity parameter
-        print("VI:", mp.VI)  # Volume of insulin distribution
-        print("SG:", mp.SG)  # Glucose sensitivity factor
-        print("VG:", mp.VG)  # Volume of glucose distribution
-        print("alpha:", mp.alpha)  # Rate constant or conversion factor
+        for i in range(len(self.models)):
+            mp = self.models[i].model_parameters
+            print("bw:", mp.bw)  # Body weight
+            print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
+            print("beta_L", mp.beta_L)
+            print("beta_D", mp.beta_D)
+            print("tau:", mp.tau)  # General time delay
+            print("u2ss:", mp.u2ss)  # Basal insulin rate
+            print("ka1:", mp.ka1)  # Absorption Rates
+            print("ka2:", mp.ka2)
+            print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
+            print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
+            print("kabs_B", mp.kabs_B)
+            print("kabs_L", mp.kabs_L)
+            print("Xpb:", mp.Xpb)  # Initial insulin action?
+            print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
+            print("SI_B", mp.SI_B)
+            print("SI_L", mp.SI_L)
+            print("Gb:", mp.Gb)  # Baseline glucose level
+            print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
+            print("ke:", mp.ke)  # Elimination rate constant, how quickly a substance is removed from the bloodstream
+            print("kgri:", mp.kgri)  # The rate of gastric emptying
+            print("kempt:", mp.kempt)  # The rate of gastric emptying
+            print("f:", mp.f)  # Absorption fraction or bioavailability
+            print("p2:", mp.p2)  # Insulin sensitivity parameter
+            print("VI:", mp.VI)  # Volume of insulin distribution
+            print("SG:", mp.SG)  # Glucose sensitivity factor
+            print("VG:", mp.VG)  # Volume of glucose distribution
+            print("alpha:", mp.alpha)  # Rate constant or conversion factor
 
 
 def gi_measurement_likelihood_function(predicted_measurement, measurement, sigma_v):
