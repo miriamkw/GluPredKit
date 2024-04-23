@@ -37,7 +37,7 @@ class Model(BaseModel):
                            seed=1,
                            plot_mode=False,
                            verbose=True,  # Turn of when training in server
-                           analyze_results=False)
+                           analyze_results=False,)
             # Run identification
             rbg.run(data=subset_df, bw=bw)
 

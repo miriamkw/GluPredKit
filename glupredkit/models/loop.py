@@ -26,8 +26,8 @@ class Model(BaseModel):
             x_train_filtered = x_train[x_train['id'] == subject_id]
             y_train_filtered = y_train[x_train['id'] == subject_id]
 
-            subset_df_x = x_train_filtered.sample(n=100, random_state=42)
-            subset_df_y = y_train_filtered.sample(n=100, random_state=42)
+            subset_df_x = x_train_filtered.sample(n=1000, random_state=42)
+            subset_df_y = y_train_filtered.sample(n=1000, random_state=42)
 
             std_target = np.std(subset_df_y[target_col])
             daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
@@ -127,6 +127,11 @@ class Model(BaseModel):
 
             if i % 50 == 0 and i != 0:  # Check if i is a multiple of 50 and not 0
                 print(f"Prediction number {i} of {n_predictions}")
+
+            if type(output_dict) == list:
+                print(output_dict)
+                print("current data", current_data)
+                print("input", input_dict)
 
             if len(output_dict.get("predicted_glucose_values")) < prediction_index:
                 print("Not enough predictions. Skipping iteration...")

@@ -3,19 +3,11 @@ import click
 import dill
 import os
 import importlib
-import ast
 import pandas as pd
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
-import matplotlib.pyplot as plt
-from io import BytesIO
 from reportlab.pdfgen import canvas
-from reportlab.graphics import renderPDF
-from svglib.svglib import svg2rlg
 import numpy as np
-import shap
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser

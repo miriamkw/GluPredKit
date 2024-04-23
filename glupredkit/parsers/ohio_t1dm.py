@@ -44,16 +44,19 @@ class Parser(BaseParser):
             dataframes[tag_name] = pd.DataFrame(events)
 
         # Resampling all datatypes into the same time-grid
+        df = dataframes['glucose_level'].copy()
+        """
         if dataframes['finger_stick'].empty:
             df = dataframes['glucose_level'].copy()
         else:
             df = pd.concat([dataframes['finger_stick'].copy(), dataframes['glucose_level'].copy()],
                            ignore_index=False)
+        """
         df['ts'] = pd.to_datetime(df['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)
         df.set_index('date', inplace=True)
-        df = df.resample('5T', label='left').last()
+        df = df.resample('5min', label='left').last()
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
@@ -63,7 +66,7 @@ class Parser(BaseParser):
             df_carbs.rename(columns={'ts': 'date'}, inplace=True)
             df_carbs = df_carbs[['date', 'carbs']]
             df_carbs.set_index('date', inplace=True)
-            df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
+            df_carbs = df_carbs.resample('5min', label='right').sum().fillna(value=0)
             df = pd.merge(df, df_carbs, on="date", how='outer')
             df['carbs'] = df['carbs'].fillna(value=0.0)
         else:
@@ -76,7 +79,7 @@ class Parser(BaseParser):
         df_bolus.rename(columns={'ts_begin': 'date', 'dose': 'bolus'}, inplace=True)
         df_bolus = df_bolus[['date', 'bolus']]
         df_bolus.set_index('date', inplace=True)
-        df_bolus = df_bolus.resample('5T', label='right').sum().fillna(value=0)
+        df_bolus = df_bolus.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_bolus, on="date", how='outer')
         df['bolus'] = df['bolus'].fillna(value=0.0)
 
@@ -87,7 +90,7 @@ class Parser(BaseParser):
         df_basal.rename(columns={'ts': 'date', 'value': 'basal'}, inplace=True)
         df_basal = df_basal[['date', 'basal']]
         df_basal.set_index('date', inplace=True)
-        df_basal = df_basal.resample('5T', label='right').last().ffill()
+        df_basal = df_basal.resample('5min', label='right').last().ffill()
 
         # Temp basal rates
         df_temp_basal = dataframes['temp_basal'].copy()
@@ -158,7 +161,7 @@ def merge_data_type_into_dataframe(df, data, type_name, value_name):
         df_data_type['value'] = pd.to_numeric(df_data_type['value'], errors='coerce')
         df_data_type.rename(columns={'ts': 'date', 'value': value_name}, inplace=True)
         df_data_type.set_index('date', inplace=True)
-        df_data_type = df_data_type.resample('5T', label='right').mean()
+        df_data_type = df_data_type.resample('5min', label='right').mean()
         return pd.merge(df, df_data_type, on="date", how='outer')
     else:
         return df
