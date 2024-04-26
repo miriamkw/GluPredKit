@@ -40,16 +40,16 @@ df_basal.set_index('date', inplace=True)
 
 # Resampling all datatypes into the same time-grid
 df = df_glucose.copy()
-df = df.resample('5T', label='right').mean()
+df = df.resample('5min', label='right').mean()
 
-df_carbs = df_carbs.resample('5T', label='right').sum()
+df_carbs = df_carbs.resample('5min', label='right').sum()
 df = pd.merge(df, df_carbs, on="date", how='outer')
 df['carbs'] = df['carbs']
 
-df_bolus = df_bolus.resample('5T', label='right').sum()
+df_bolus = df_bolus.resample('5min', label='right').sum()
 df = pd.merge(df, df_bolus, on="date", how='outer')
 
-df_basal = df_basal.resample('5T', label='right').sum()
+df_basal = df_basal.resample('5min', label='right').sum()
 df_basal['basal'] = df_basal['basal']
 df = pd.merge(df, df_basal, on="date", how='outer')
 df['basal'] = df['basal'].ffill(limit=12 * 24 * 2)
@@ -59,6 +59,8 @@ df['basal'] = df['basal'].fillna(value=0.0)
 basal = data['basal'][0]['value']
 carb_ratio = data['carbRatio'][0]['value']
 insulin_sensitivity = data['sensitivity'][0]['value']
+
+print(f'Therapy settings basal: {basal} carb: {carb_ratio} isf: {insulin_sensitivity}')
 
 # Make prediction and print
 loop_model = Model(prediction_horizon=180)
@@ -108,9 +110,11 @@ print(input_dict["time_to_calculate_at"])
 
 output_dict = update(input_dict)
 prediction_result = output_dict.get("predicted_glucose_values")
+prediction_dates = output_dict.get("predicted_glucose_dates")
 
-print(prediction_result)
-print(f'len predictions: {len(prediction_result)}')
+for i in range(len(prediction_dates)):
+    print(f'Pred: {prediction_result[i]} Date: {prediction_dates[i]}')
+
 
 
 

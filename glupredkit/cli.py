@@ -46,10 +46,10 @@ def setup_directories():
 @click.option('--start-date', type=str,
               help='Start date for data retrieval. Default is two weeks ago. Format "dd-mm-yyyy"')
 @click.option('--file-path', type=str, required=False)
-@click.option('--subject-id', type=str, required=False)
 @click.option('--end-date', type=str, help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
 @click.option('--output-file-name', type=str, help='The file name for the output.')
-def parse(parser, username, password, start_date, file_path, subject_id, end_date, output_file_name):
+@click.option('--test-size', prompt='Test size (float between 0 and 1)', default=0.25)
+def parse(parser, username, password, start_date, file_path, end_date, output_file_name, test_size):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -96,12 +96,13 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
         if username is None or password is None:
             raise ValueError(f"{parser} parser requires that you provide --username and --password")
         else:
-            parsed_data = chosen_parser(start_date, end_date, username=username, password=password)
+            parsed_data = chosen_parser(start_date=start_date, end_date=end_date, username=username, password=password)
     elif parser in ['apple_health']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
-            parsed_data = chosen_parser(start_date, end_date, file_path=file_path)
+            parsed_data = chosen_parser(start_date=start_date, end_date=end_date,
+                                        file_path=file_path)
     elif parser in ['ohio_t1dm']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
@@ -126,6 +127,15 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
 
+    # Train and test split
+    # Adding a margin of 24 hours to the train and the test data to avoid memory leak
+    margin = int((12 * 24) / 2)
+    split_index = int((len(parsed_data)) * (1 - test_size))
+
+    parsed_data['is_test'] = False
+    parsed_data['is_test'].iloc[split_index:] = True
+    parsed_data['is_test'].iloc[split_index:split_index + margin] = np.nan
+
     save_data(output_file_name=output_file_name, data=parsed_data)
 
 
@@ -143,12 +153,9 @@ def parse(parser, username, password, start_date, file_path, subject_id, end_dat
               help='Comma-separated list of numerical features.', callback=helpers.validate_feature_list)
 @click.option('--cat-features', prompt='Categorical features (press enter if none)', default='',
               help='Comma-separated list of categorical features.', callback=helpers.validate_feature_list)
-@click.option('--test-size', prompt='Test size (float between 0 and 1)', callback=helpers.validate_test_size,
-              help='Test size.')
-def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features,
-                    test_size):
+def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features):
     generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
-                                 num_features, cat_features, float(test_size))
+                                 num_features, cat_features)
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")
     click.echo(f"Note that it might take a minute before the file appears in the folder.")
 

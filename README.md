@@ -1,10 +1,8 @@
 # Blood Glucose Prediction-Kit
 
-> [!NOTE]  
-> **USER TESTING:** If you want to participate in user testing of GluPredKit, and help to shape the further development, send an email to miriam.k.wolff@ntnu.no. Do not hesitate with reaching out if you have any questions.
-
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
-glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI).
+glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI), or download
+the repository via PyPi.
 
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
@@ -124,7 +122,7 @@ The following figure is an overview over all the CLI commands and how they inter
 If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
 
 ```
-glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE]
+glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
 ```
 
 - `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
@@ -135,10 +133,13 @@ glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--userna
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
 - `--output-file-name` (Optional): The filename for the output file after parsing, without file extension.
+- `--test-size` (Optional): Test size is a number between 0 and 1, that defines the fraction of the data used for testing. The default is 0.25.
+    - Note that for the Ohio T1DM dataset the test-size is automatically going to use the original separation between train and test data. 
+
 
 #### Example Tidepool Parser
 ```
-glupredkit parse --parser tidepool --username johndoe@example.com --password mypassword --start-date 01-09-2023 --end-date 30-09-2023
+glupredkit parse --parser tidepool --username johndoe@example.com --password mypassword --start-date 01-09-2023 --end-date 30-09-2023 --test-size 0.5
 ```
 #### Example Nightscout Parser
 ```
@@ -146,7 +147,7 @@ glupredkit parse --parser nightscout --username https://my_nightscout.net/ --pas
 ```
 #### Example Apple Health Parser
 ```
-glupredkit parse --apple_health --file-path data/raw/export.xml --start-date 01-01-2023
+glupredkit parse --parser apple_health --file-path data/raw/export.xml --start-date 01-01-2023 --test-size 0.3
 ```
 #### Example Ohio T1DM Parser
 - The Ohio T1DM parser is parsing the data from each individual into separate dataframes.

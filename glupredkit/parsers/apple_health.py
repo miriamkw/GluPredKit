@@ -85,37 +85,37 @@ class Parser(BaseParser):
 
         # Resampling all datatypes into the same time-grid
         df = df_glucose.copy()
-        df = df.resample('5T', label='right').mean()
+        df = df.resample('5min', label='right').mean()
 
-        df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
+        df_carbs = df_carbs.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_carbs, on="date", how='outer')
         df['carbs'] = df['carbs'].fillna(value=0.0)
 
-        df_insulin = df_insulin.resample('5T', label='right').sum().fillna(value=0)
+        df_insulin = df_insulin.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_insulin, on="date", how='outer')
         df['insulin'] = df['insulin'].fillna(value=0.0)
 
-        df_heartrate = df_heartrate.resample('5T', label='right').mean()
+        df_heartrate = df_heartrate.resample('5min', label='right').mean()
         df = pd.merge(df, df_heartrate, on="date", how='outer')
 
-        df_heartratevariability = df_heartratevariability.resample('5T', label='right').mean()
+        df_heartratevariability = df_heartratevariability.resample('5min', label='right').mean()
         df = pd.merge(df, df_heartratevariability, on="date", how='outer')
 
-        df_caloriesburned = df_caloriesburned.resample('5T', label='right').sum().fillna(value=0)
+        df_caloriesburned = df_caloriesburned.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_caloriesburned, on="date", how='outer')
         df['caloriesburned'] = df['caloriesburned'].fillna(value=0.0)
 
-        df_respiratoryrate = df_respiratoryrate.resample('5T', label='right').mean()
+        df_respiratoryrate = df_respiratoryrate.resample('5min', label='right').mean()
         df = pd.merge(df, df_respiratoryrate, on="date", how='outer')
 
-        df_vo2max = df_vo2max.resample('5T', label='right').mean()
+        df_vo2max = df_vo2max.resample('5min', label='right').mean()
         df = pd.merge(df, df_vo2max, on="date", how='outer')
 
-        df_steps = df_steps.resample('5T', label='right').sum().fillna(value=0)
+        df_steps = df_steps.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_steps, on="date", how='outer')
         df['steps'] = df['steps'].fillna(value=0.0)
 
-        df_restingheartrate = df_restingheartrate.resample('5T', label='right').mean()
+        df_restingheartrate = df_restingheartrate.resample('5min', label='right').mean()
         df = pd.merge(df, df_restingheartrate, on="date", how='outer')
 
         # Add workouts
