@@ -22,18 +22,17 @@ framework.
 2. [Usage of Command Line Interface](#usage-of-command-line-interface)
    - [Getting Started](#getting-started)
    - [Parsing Data](#parsing-data)
-   - [Preprocessing Data](#preprocessing-data)
+   - [Generate Model Training Configuration](#generate-model-training-configuration)
    - [Train a Model](#train-a-model)
    - [Evaluate Models](#evaluate-models)
    - [Setting Configurations](#setting-configurations)
 3. [Contributing with Code](#contributing-with-code)
-   - [Adding Data Source Parsers](#adding-data-source-parsers)
-   - [Adding Data Preprocessors](#adding-data-preprocessors)
-   - [Adding Machine Learning Prediction Models](#adding-machine-learning-prediction-models)
-   - [Implementing Custom Evaluation Metrics](#implementing-custom-evaluation-metrics)
-   - [Adding Evaluation Plots](#adding-evaluation-plots)
-4. [Disclaimers and Limitations](#disclaimers-and-limitations)
-5. [License](#license)
+   - [Making Contributions](#making-contributions)
+   - [Reporting Issues](#reporting-issues)
+   - [Seeking Support](#seeking-support)
+4. [Testing](#testing)
+5. [Disclaimers and Limitations](#disclaimers-and-limitations)
+6. [License](#license)
 
 
 
@@ -199,19 +198,18 @@ glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor 
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
-    - arx
-    - elastic_net
-    - gradient_boosting_trees
-    - huber
-    - lasso
+    - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
     - lstm
     - lstm_pytorch
-    - random_forest
-    - ridge
-    - svr_linear
-    - svr_rbf
+    - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
+    - random_forest: An off-the-shelf implementation of a random forest regressor.
+    - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization.
+    - svr_linear: An off-the-shelf implementation of a support vector regressor with linear kernel.
+    - svr_rbf: An off-the-shelf implementation of a support vector regressor with rbf kernel.
     - tcn
     - tcn_pytorch (https://github.com/locuslab/TCN/tree/master)
+    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
+    - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 
 #### Example
@@ -303,14 +301,20 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 
 ## Contributing with code
 
-In this section we will explain how you can contribute with new components in the modules: 
-- parsers
-- preprocessors
-- models
-- evaluation metrics 
-- plots
+Thank you for your interest in contributing to `GluPredKit`! Whether you're fixing bugs, adding new features, or improving documentation, your contributions are greatly appreciated. This section explains how to contribute to various components within the project.
 
-### Contributing With New Components
+Before contributing, make sure to perform the following steps: 
+1. **Fork and Clone**: Begin by forking the repo and cloning your fork to your local machine. This setup allows you to work freely without affecting the main project.
+2. **Set Up Your Environment**: Ensure you have the necessary development environment and dependencies installed, as described in chapter 1.
+
+### Making Contributions
+
+In this section we will explain how you can contribute with new components in the modules: 
+- Parsers
+- Preprocessors
+- Models
+- Evaluation metrics 
+- Plots
 
 Regardless of the component type you're contributing, follow these general steps:
 
@@ -369,7 +373,33 @@ Different types of plots that can illustrate blood glucose predictions together 
 Remember to adhere to our coding and documentation standards when contributing!
 
 
-### Testing
+### Reporting Issues
+
+If you encounter any bugs or issues, please report them using the following steps:
+
+- **Check Existing Issues**: Browse through the existing issues to ensure the bug has not been reported or resolved.
+- **Create a New Issue**: Include as much detail as possible to help us understand the problem. Here are some general guidelines:
+    - Describe the bug/issue:
+      - Expected behaviour
+      - Actual behaviour
+    - List the steps to reproduce the behaviours
+    - Environment details:
+      - Operating system
+      - Python version
+      - `GluPredKit` version
+      - Dependency versions
+    - Possible solution
+    - Logs, error outputs, or additional information that could be helpful in diagnosing the problem
+
+### Seeking Support
+
+If you need help with setup, understanding the codebase, or have other questions:
+
+- **Read the Docs**: Make sure to read through the documentation.
+- **Direct Contact**: If your issue is sensitive or urgent, feel free to contact the maintainers directly via the `GluPredKit` channel on discord (https://discord.gg/M2T5Kx6s) or miriamkwolff@outlook.com.
+
+
+## Testing
 To run the tests, write `python tests/test_all.py` in the terminal.
 
 
