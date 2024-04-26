@@ -1,69 +1,75 @@
-"""
-The basic preprocessor does the following:
-- Standardize numerical features
-- One hot encode categorical features
-- Add the target value
-"""
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
+import numpy as np
 
 
 class Preprocessor(BasePreprocessor):
-    def __init__(self, numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size):
-        super().__init__(numerical_features, categorical_features, prediction_horizon, num_lagged_features, test_size)
+    def __init__(self, subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                 num_lagged_features):
+        super().__init__(subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
+                         num_lagged_features)
 
     def __call__(self, df):
+        train_df, test_df = self.preprocess(df)
+        return train_df, test_df
+
+    def preprocess(self, df):
+        # Filter out subject ids if not configuration is None
+        if self.subject_ids:
+            df = df[df['id'].isin(self.subject_ids)]
+
+        train_df = df[~df['is_test']]
+        test_df = df[df['is_test']]
+
+        dataset_ids = train_df['id'].unique()
+        dataset_ids = list(filter(lambda x: not np.isnan(x), dataset_ids))
 
         # Drop columns that are not included
-        df = df[self.numerical_features + self.categorical_features]
+        train_df = train_df[self.numerical_features + self.categorical_features + ['id']]
+        test_df = test_df[self.numerical_features + self.categorical_features + ['id']]
 
-        # Add target column
-        target_index = self.prediction_horizon // 5
-        if self.prediction_horizon % 5 != 0:
-            raise ValueError("Prediction horizon must be divisible by 5.")
-        df = df.copy()
+        # Check if any numerical features have NaN values before imputation, add a column "flag"
+        test_df.loc[:, 'imputed'] = test_df.loc[:, self.numerical_features].isna().any(axis=1)
 
-        # Check if the CGM value has NaN values before imputation, add a column "flag"
-        df.loc[:, 'imputed'] = df.loc[:, ["CGM"]].isna().any(axis=1)
-        df = self.add_target(df)
+        processed_train_df = pd.DataFrame()
+        processed_test_df = pd.DataFrame()
 
-        # Interpolation using forward fill
-        df[self.numerical_features] = df[self.numerical_features].ffill()
+        for subject_id in dataset_ids:
+            subset_df_train = train_df[train_df['id'] == subject_id]
+            subset_df_test = test_df[test_df['id'] == subject_id]
 
-        # Train and test split
-        # Adding a margin of 24 hours to the train and the test data to avoid memory leak
-        margin = int((12 * 24 + self.num_lagged_features + target_index) / 2)
-        split_index = int((len(df) - margin) * (1 - self.test_size))
+            # Interpolation using a nonlinear curve, without too much curvature
+            subset_df_train = subset_df_train.sort_index()
+            subset_df_train[self.numerical_features] = (subset_df_train[self.numerical_features]
+                                                        .interpolate(method='akima'))
 
-        # Split the data into train and test sets
-        train_data = df[:split_index - margin]
-        test_data = df[split_index + margin:]
+            # Add test columns before interpolation to perceive nan values
+            subset_test_df_with_targets = self.add_targets(subset_df_test)
+
+            subset_test_df_with_targets = subset_test_df_with_targets.sort_index()
+            subset_test_df_with_targets[self.numerical_features] = (subset_test_df_with_targets[self.numerical_features]
+                                                                    .interpolate(method='akima'))
+
+            # Add target for train data after interpolation to use interpolated data for model training
+            subset_train_df_with_targets = self.add_targets(subset_df_train)
+
+            # Add the processed data to the dataframes
+            processed_train_df = pd.concat([processed_train_df, subset_train_df_with_targets], axis=0)
+            processed_test_df = pd.concat([processed_test_df, subset_test_df_with_targets], axis=0)
 
         # Transform columns
-        if self.numerical_features:
-            scaler = StandardScaler()
-
-            # Fit the scaler only on training data
-            scaler.fit(train_data.loc[:, self.numerical_features])
-
-            # Transform data
-            train_data.loc[:, self.numerical_features] = scaler.transform(train_data.loc[:, self.numerical_features])
-            test_data.loc[:, self.numerical_features] = scaler.transform(test_data.loc[:, self.numerical_features])
-
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 
             # Fit the encoder only on training data
-            encoder.fit(train_data[self.categorical_features])
+            encoder.fit(train_df[self.categorical_features])
 
             # Transform data
-            train_data = self.transform_with_encoder(train_data, encoder)
-            test_data = self.transform_with_encoder(test_data, encoder)
+            processed_train_df = self.transform_with_encoder(train_df, encoder)
+            processed_test_df = self.transform_with_encoder(test_df, encoder)
 
-        train_data = train_data.drop(columns=['imputed'])
-
-        return train_data, test_data
+        return processed_train_df, processed_test_df
 
     def transform_with_encoder(self, df, encoder):
         encoded_cols = encoder.transform(df.loc[:, self.categorical_features])
@@ -74,17 +80,19 @@ class Preprocessor(BasePreprocessor):
         df = pd.concat([df, encoded_df], axis=1)
         return df
 
-    def add_target(self, df):
-        target_index = self.prediction_horizon // 5
+    def add_targets(self, df):
+        max_target_index = self.prediction_horizon // 5
         if self.prediction_horizon % 5 != 0:
             raise ValueError("Prediction horizon must be divisible by 5.")
         df = df.copy()
-        df.loc[:, 'target'] = df['CGM'].shift(-target_index)
+
+        for i in range(1, max_target_index + 1):
+            df.loc[:, f'target_{i * 5}'] = df[f'CGM'].shift(-i)
 
         # Check if 'imputed' column exists and handle it accordingly
         if 'imputed' in df.columns:
             # Create a shifted 'imputed' column
-            shifted_imputed = df['imputed'].shift(-target_index)
+            shifted_imputed = df['imputed'].shift(-max_target_index)
 
             # Use logical OR to combine current and shifted 'imputed' status
             df['imputed'] = df['imputed'] | shifted_imputed

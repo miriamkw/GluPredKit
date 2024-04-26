@@ -1,37 +1,26 @@
-"""
-This is a preprocessor that is aiming to reproduce the steps described in the following paper:
-https://pubmed.ncbi.nlm.nih.gov/32091990/
-
-Note that, because of the inherent splitting of the Ohio data into a train and a test data folder,
-the ohio parser and preprocessor splits based on that, and not from the test_data fraction in the configuration.
-"""
-
 from .base_preprocessor import BasePreprocessor
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 import numpy as np
 
 
 class Preprocessor(BasePreprocessor):
     def __init__(self, subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
-                 num_lagged_features, test_size):
+                 num_lagged_features):
         super().__init__(subject_ids, numerical_features, categorical_features, what_if_features, prediction_horizon,
-                         num_lagged_features, test_size)
+                         num_lagged_features)
 
     def __call__(self, df):
-
         train_df, test_df = self.preprocess(df)
         return train_df, test_df
 
     def preprocess(self, df):
-        is_test_col = 'is_test'
-
         # Filter out subject ids if not configuration is None
         if self.subject_ids:
             df = df[df['id'].isin(self.subject_ids)]
 
-        train_df = df[df[is_test_col] == False]
-        test_df = df[df[is_test_col] == True]
+        train_df = df[~df['is_test']]
+        test_df = df[df['is_test']]
 
         dataset_ids = train_df['id'].unique()
         dataset_ids = list(filter(lambda x: not np.isnan(x), dataset_ids))
@@ -55,32 +44,33 @@ class Preprocessor(BasePreprocessor):
             subset_df_train[self.numerical_features] = (subset_df_train[self.numerical_features]
                                                         .interpolate(method='akima'))
 
-            subset_df_test = subset_df_test.sort_index()
-            subset_df_test[self.numerical_features] = (subset_df_test[self.numerical_features]
-                                                       .interpolate(method='akima'))
-
-            # TODO: Add target for test data before interpolation to perceive NaN values
+            # Add test columns before interpolation to perceive nan values
             subset_test_df_with_targets = self.add_targets(subset_df_test)
+
+            subset_test_df_with_targets = subset_test_df_with_targets.sort_index()
+            subset_test_df_with_targets[self.numerical_features] = (subset_test_df_with_targets[self.numerical_features]
+                                                                    .interpolate(method='akima'))
 
             # Add target for train data after interpolation to use interpolated data for model training
             subset_train_df_with_targets = self.add_targets(subset_df_train)
+
+            # Transform columns
+            if self.numerical_features:
+                scaler = StandardScaler()
+
+                # Fit the scaler only on training data
+                scaler.fit(subset_train_df_with_targets.loc[:, self.numerical_features])
+
+                # Transform data
+                subset_train_df_with_targets.loc[:, self.numerical_features] = (
+                    scaler.transform(subset_train_df_with_targets.loc[:, self.numerical_features]))
+                subset_test_df_with_targets.loc[:, self.numerical_features] = (
+                    scaler.transform(subset_test_df_with_targets.loc[:, self.numerical_features]))
 
             # Add the processed data to the dataframes
             processed_train_df = pd.concat([processed_train_df, subset_train_df_with_targets], axis=0)
             processed_test_df = pd.concat([processed_test_df, subset_test_df_with_targets], axis=0)
 
-        # Transform columns
-        if self.numerical_features:
-            """
-            scaler = MinMaxScaler(feature_range=(0, 1))
-
-            # Fit the scaler only on training data
-            scaler.fit(train_df.loc[:, self.numerical_features])
-
-            # Transform data
-            train_df.loc[:, self.numerical_features] = scaler.transform(train_df.loc[:, self.numerical_features])
-            test_df.loc[:, self.numerical_features] = scaler.transform(test_df.loc[:, self.numerical_features])
-            """
         if self.categorical_features:
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 
@@ -88,8 +78,8 @@ class Preprocessor(BasePreprocessor):
             encoder.fit(train_df[self.categorical_features])
 
             # Transform data
-            train_df = self.transform_with_encoder(train_df, encoder)
-            test_df = self.transform_with_encoder(test_df, encoder)
+            processed_train_df = self.transform_with_encoder(processed_train_df, encoder)
+            processed_test_df = self.transform_with_encoder(processed_test_df, encoder)
 
         return processed_train_df, processed_test_df
 

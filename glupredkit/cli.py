@@ -144,7 +144,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
               callback=helpers.validate_file_name)
 @click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.',
               callback=helpers.validate_file_name)
-@click.option('--preprocessor', prompt='Preprocessor (available: basic, ohio_t1dm)', help='Name of the preprocessor.')
+@click.option('--preprocessor', prompt='Preprocessor (available: basic, standardscaler)', help='Name of the preprocessor.')
 @click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
               help='Comma-separated list of prediction horizons.', callback=helpers.validate_prediction_horizons)
 @click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.',

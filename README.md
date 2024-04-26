@@ -168,8 +168,8 @@ glupredkit generate_config
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
 - `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
     - basic
-    - ohio_t1dm
-- `--prediction-horizons`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces.  
+    - standardscaler
+- `--prediction-horizon`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces.  
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. 
 - `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
@@ -184,11 +184,11 @@ glupredkit generate_config
 ```
 Alternatively, the inputs can be passed directly through the terminal command:
 ```
-glupredkit generate_config --file-name my_config --data df.csv --preprocessor basic --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour --test-size 0.25
+glupredkit generate_config --file-name my_config --data df.csv --preprocessor basic --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour --test-size 0.25
 ```
 If you have no categorical features and want to avoid the prompt, you can use double quotes:
 ```
-glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor ohio_t1dm --prediction-horizons 30,60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features '' --test-size 0.25
+glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features '' --test-size 0.25
 ```
 
 ---
@@ -303,11 +303,12 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 
 ## Contributing with code
 
-In this section we will explain how you can contribute with enhancing the implementation of parsers, preprocessors, models, evaluation metrics and plots.
-
-The following figure is a class diagram of the main components in GluPredKit.
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/UML_diagram.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/UML_diagram.png)
+In this section we will explain how you can contribute with new components in the modules: 
+- parsers
+- preprocessors
+- models
+- evaluation metrics 
+- plots
 
 ### Contributing With New Components
 
@@ -321,7 +322,7 @@ Regardless of the component type you're contributing, follow these general steps
 Here are specifics for various component types:
 
 #### Parsers
-Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into the same table. 
+Refers to the fetching of data from data sources (for example Nighscout, Tidepool or Apple Health), and to process the data into a standardized format. 
 - Directory: `glupredkit/parsers`
 - Base Class: `BaseParser`
 
@@ -329,9 +330,9 @@ All the parsers should give an output of the same format. Some essential details
 - We use pandas DataFrames as output.
 - All datatypes are resampled into 5-minute intervals. If the sample rate is more frequent, the data should be aggregated with for example sum or mean values. If less frequent, NaN values should be used. Interpolation is handled in the preprocessor.
 - The index-column of the dataframe should be the datetime of the sample.
-- Blood glucose values should have the column name "CGM".
-- Carbohydrate intake values should have the column name "carbs".
-- Insulin infusion values should have the column name "insulin". 
+- Blood glucose values must have the column name "CGM", and in the unit mg/dL.
+- Carbohydrate intake values must have the column name "carbs".
+- Insulin infusion values must have the column name "insulin". 
 - Additional columns and column names are optional.
 
 #### Preprocessors
@@ -347,6 +348,10 @@ For example, time-lagged features might be stored in different ways as in separa
 Refers to using preprocessed data to train a blood glucose prediction model.
 - Directory: `glupredkit/models`
 - Base Class: `BaseModel`
+
+Some essential details are:
+- The model training must handle predicting trajectories up to the defined prediction horizon. 
+- The predict method must output a list of lists of predicted trajectories with 5-minute interval outputs. If the model only predicts one value, the model must implement for example linear interpolation to return the predicted trajectories.
 
 The method `process_data` in `base_model.py` handles addition of time-lagged features, removal of NaN values and other 
 library- or model-specific configurations for the model data input format. 
@@ -370,9 +375,6 @@ To run the tests, write `python tests/test_all.py` in the terminal.
 
 ## Disclaimers and limitations
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
-* Bolus doses that are fetched from Tidepool API does not include the end date of the dose delivery.
-* Metrics assumes mg/dL for the input.
-* Note that the difference between how basal rates are registered. Bolus doses are however consistent across. Hopefully it is negligible.
 
 
 ## License
