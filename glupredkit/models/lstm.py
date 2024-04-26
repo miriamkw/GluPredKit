@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import ast
 from datetime import datetime
-from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input
+from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input, Masking, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 from sklearn.model_selection import TimeSeriesSplit
 from .base_model import BaseModel
@@ -18,6 +18,8 @@ class Model(BaseModel):
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
         self.model_path = f"data/.keras_models/lstm_ph-{prediction_horizon}_{safe_timestamp}.h5"
+        self.input_shape = None
+        self.num_outputs = None
 
     def fit(self, x_train, y_train):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
@@ -25,6 +27,10 @@ class Model(BaseModel):
 
         sequences = np.array(sequences)
         targets = np.array(targets)
+
+        # Determine the number of outputs
+        self.input_shape = (sequences.shape[1], sequences.shape[2])
+        self.num_outputs = targets.shape[1]  # Assuming targets is 2D: [samples, outputs]
 
         # Model architecture
         input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
@@ -72,8 +78,9 @@ class Model(BaseModel):
 
         model = tf.keras.models.load_model(self.model_path, custom_objects={"Adam": tf.keras.optimizers.legacy.Adam})
         predictions = model.predict(sequences)
+        predictions = predictions.tolist()
 
-        return [val[0] for val in predictions]
+        return predictions
 
     def best_params(self):
         # Return the best parameters found by GridSearchCV
@@ -81,3 +88,4 @@ class Model(BaseModel):
 
     def process_data(self, df, model_config_manager, real_time):
         return process_data(df, model_config_manager, real_time)
+

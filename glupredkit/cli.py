@@ -163,13 +163,11 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 @click.command()
 @click.argument('model', type=click.Choice(['arx',
                                             'lstm',
-                                            'lstm_pytorch',
                                             'random_forest',
                                             'ridge',
                                             'svr_linear',
                                             'svr_rbf',
                                             'tcn',
-                                            'tcn_pytorch',
                                             'loop',
                                             'zero_order',
                                             'naive_linear_regressor',
