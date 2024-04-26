@@ -265,8 +265,10 @@ def test_model(model_file):
     test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
     results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-    metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
-               'parkes_error_grid_exp']
+    # metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
+    #            'parkes_error_grid_exp']
+    metrics = helpers.list_files_in_directory('glupredkit/metrics/')
+    metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
@@ -328,43 +330,6 @@ def test_model(model_file):
         averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
         results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
-    """
-    # OLD VERSION OF PHYSIOLOGICAL ALIGNMENT
-    insulin_dose = 1
-    carb_intake = 50
-    bolus_columns = [col for col in x_test.columns if col.startswith('bolus')]
-    carbs_columns = [col for col in x_test.columns if col.startswith('carbs')]
-
-    # TODO: Add a conditional check for the model, that decides how big the subset should be. 100 should be enough
-    subset_size = x_test.shape[0]
-
-    if model_name == 'loop' | model_name == 'uva_padova':
-        # TODO: Increase for real tests
-        subset_size = 10
-    subset_df_x = x_test.sample(n=subset_size, random_state=42)
-
-    partial_dependency_dict = {}
-    for col in bolus_columns:
-        x_test_copy = subset_df_x.copy()
-        x_test_copy[col] = insulin_dose
-        y_pred = model_instance.predict(x_test_copy)
-        # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        averages = [x - averages[0] for x in averages]
-        partial_dependency_dict[col] = averages
-
-    for col in carbs_columns:
-        x_test_copy = subset_df_x.copy()
-        x_test_copy[col] = carb_intake
-        y_pred = model_instance.predict(x_test_copy)
-
-        # Calculate the average of elements at each index position
-        averages = [sum(x) / len(x) for x in zip(*y_pred)]
-        averages = [x - averages[0] for x in averages]
-        partial_dependency_dict[col] = averages
-
-    results_df['partial_dependencies'] = [partial_dependency_dict]
-    """
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
 

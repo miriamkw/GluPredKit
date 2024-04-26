@@ -218,28 +218,33 @@ glupredkit train_model ridge my_config
 ```
 ---
 
-### Calculate Metrics
-**Description**: Evaluate one or more trained models by computing metrics (for example RMSE). The results will be stored in `results/reports`.
+### Test a Model
+**Description**: Test a model using a trained model. An excel report will be stored with all the calculated metrics and relevant
+data about the model and its configuration.
+
+All the implemented metrics are the following: 
+- **clarke_error_grid**: Zones in Clarke error grid
+- **glycemia_detection**: Confusion matrix for glycemia detection
+- **grmse**: Glucose-specific root mean squared error (https://pubmed.ncbi.nlm.nih.gov/22275716/)
+- **mae**: Mean absolute error
+- **mare**: Mean absolute relative difference
+- **mcc_hyper**: Matthews correlation coefficient for hyperglycemia detection
+- **mcc_hypo**: Matthews correlation coefficient for hypoglycemia detection
+- **me**: Mean error
+- **mre**: Mean relative error
+- **parkes_error_grid**: Zones in Parkes error grid
+- **parkes_error_grid_exp**: Zones in Parkes error grid calculated into a single metric with exponential cost function
+- **pcc**: Pearson correlation coefficient
+- **rmse**: Root mean squared error
 
 ```
-glupredkit calculate_metrics [--models MODEL_FILE_NAMES] [--metrics METRICS]
+glupredkit test_model MODEL_FILE 
 ```
-
-- `--models` (Optional): List of trained model filenames from `data/trained_models/` (with .pkl), separated by comma. Default is all the models.
-- `--metrics` (Optional): List of metrics from `glupredkit/metrics/` to be computed, separated by comma. Default is RMSE. The available metrics are:
-    - **Root mean squared error:** rmse
-    - **Glucose-specific root mean squared error:** grmse (https://pubmed.ncbi.nlm.nih.gov/22275716/)
-    - **Mean absolute error:** mae
-    - **Mean error:** me
-    - **Mean relative error:** mre
-    - **Mean absolute relative difference:** mare
-    - **Pearsons correlation coefficient:** pcc
-    - **Zones in Clarke error grid:** clarke_error_grid
-    - **Zones in Parkes error grid:** parkes_error_grid
+- `model-file`: Name of the model file (with .pkl) to be tested. The file name must exist in `data/trained_models/`. 
 
 #### Example
 ```
-glupredkit calculate_metrics --models ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --metrics rmse,mae
+glupredkit test_model ridge__my_config__180.pkl
 ```
 ---
 
