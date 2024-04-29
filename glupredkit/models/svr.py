@@ -13,15 +13,16 @@ class Model(BaseModel):
 
     def fit(self, x_train, y_train):
         # Define the base regressor
-        base_regressor = SVR(tol=1, kernel='linear')
+        base_regressor = SVR(tol=1, kernel='rbf')
 
         # Wrap the base regressor with MultiOutputRegressor
         multi_output_regressor = MultiOutputRegressor(base_regressor)
 
         # Define the parameter grid
         param_grid = {
-            'regressor__C': [30],
-            'regressor__epsilon': [0.015]
+            'estimator__C': [100],
+            'estimator__epsilon': [0.03],
+            'estimator__gamma': [0.008],
         }
 
         # Define GridSearchCV

@@ -3,7 +3,7 @@ import numpy as np
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 
-def prepare_sequences(df_X, df_y, window_size, what_if_columns, prediction_horizon, real_time, step_size=2):
+def prepare_sequences(df_X, df_y, window_size, what_if_columns, prediction_horizon, real_time, step_size=1):
     X, y, dates = [], [], []
     target_columns = df_y.columns
     exclude_list = list(target_columns) + ["imputed", "iob", "cob", "carbs"]
@@ -16,9 +16,6 @@ def prepare_sequences(df_X, df_y, window_size, what_if_columns, prediction_horiz
         label = df_y.iloc[i + window_size - 1]
 
         if df_X.iloc[i:i + window_size + n_what_if].isnull().any().any():
-            continue  # Skip this sequence if there are NaN values in the input data
-
-        if (df_X[['cob']].iloc[i + window_size:i + window_size + n_what_if] > 0).any().any():
             continue  # Skip this sequence if there are NaN values in the input data
 
         if 'imputed' in df_X.columns:
@@ -60,22 +57,24 @@ def prepare_sequences(df_X, df_y, window_size, what_if_columns, prediction_horiz
 def create_dataframe(sequences, targets, dates):
     # Convert sequences to lists
     sequences_as_strings = [str(list(map(list, seq))) for seq in sequences]
+    targets_as_strings = [','.join(map(str, target)) for target in targets]
 
     dataset_df = pd.DataFrame({
         'date': dates,
-        'sequence': sequences_as_strings,  # sequences_as_lists,
-        'target': targets
+        'sequence': sequences_as_strings,  # sequences_as_lists
+        'target': targets_as_strings
     })
     return dataset_df.set_index('date')
 
 
 def process_data(df, model_config_manager: ModelConfigurationManager, real_time=False):
-
-    df_X, df_y = df.drop("target", axis=1), df["target"]
+    target_columns = [col for col in df.columns if col.startswith('target')]
+    df_X, df_y = df.drop(target_columns, axis=1), df[target_columns]
 
     # Add sliding windows of features
-    sequences, targets, dates = prepare_sequences(df_X, df_y,
-                                                  window_size=model_config_manager.get_num_lagged_features(),
+    sequences, targets, dates = prepare_sequences(df_X, df_y, window_size=model_config_manager.get_num_lagged_features(),
+                                                  what_if_columns=model_config_manager.get_what_if_features(),
+                                                  prediction_horizon=model_config_manager.get_prediction_horizon(),
                                                   real_time=real_time)
 
     # Store as a dataframe with two columns: targets and sequences

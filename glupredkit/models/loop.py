@@ -17,7 +17,7 @@ class Model(BaseModel):
         self.insulin_sensitivity_factor = []
         self.carb_ratio = []
 
-    def fit(self, x_train, y_train):
+    def fit(self, x_train, y_train, n_cross_val_samples=1000):
         self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
         target_col = 'target_' + str(self.prediction_horizon)
@@ -26,10 +26,9 @@ class Model(BaseModel):
             x_train_filtered = x_train[x_train['id'] == subject_id]
             y_train_filtered = y_train[x_train['id'] == subject_id]
 
-            subset_df_x = x_train_filtered.sample(n=1000, random_state=42)
-            subset_df_y = y_train_filtered.sample(n=1000, random_state=42)
+            subset_df_x = x_train_filtered.sample(n=n_cross_val_samples, random_state=42)
+            subset_df_y = y_train_filtered.sample(n=n_cross_val_samples, random_state=42)
 
-            std_target = np.std(subset_df_y[target_col])
             daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
 
             # Calculate total daily insulin
@@ -129,9 +128,9 @@ class Model(BaseModel):
                 print(f"Prediction number {i} of {n_predictions}")
 
             if type(output_dict) == list:
-                print(output_dict)
-                print("current data", current_data)
-                print("input", input_dict)
+                # This happens because a negative value is used as CGM measurement
+                # TODO: Fetch a new prediction with CGM as 0 instead?
+                continue
 
             if len(output_dict.get("predicted_glucose_values")) < prediction_index:
                 print("Not enough predictions. Skipping iteration...")

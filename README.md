@@ -7,12 +7,10 @@ the repository via PyPi.
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
 
+# TODO: This figure should be refined, maybe a table with all the modules and implemented components or something instead.
+
 <!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png) -->
 ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png)
-
-#### GluPredKit YouTube-Tutorial
-
-[![GluPredKit YouTube-Tutorial](https://img.youtube.com/vi/GMu_Om1gTsk/0.jpg)](https://www.youtube.com/watch?v=GMu_Om1gTsk)
 
 
 ## Table of Contents
@@ -80,6 +78,10 @@ Make sure that the virtual environment `bgp-evaluation` is activated before you 
 
 The command-line tool is designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
 
+The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png)
+
 ### Getting started
 1) First, follow the instructions above in "Setup and Installation". 
 2) Then, navigate to a desired folder in your command line. 
@@ -98,6 +100,8 @@ You should now have the following file structure in your desired folder:
    │
    ├── trained_models/
    │
+   ├── tested_models/
+   │
    ├── figures/
    │
    └── reports/
@@ -110,10 +114,6 @@ Note that the prefix for all the commands will be either `glupredkit` for regula
 The `glupredkit` prefix will also work while developing, but changes made to the code will only be directly reflected when
 using the `python -m glupredkit.cli` prefix.
 In the examples below we will use `glupredkit`.
-
-The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png)
 
 
 ### Parsing Data
@@ -199,22 +199,31 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
     - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
-    - lstm
-    - lstm_pytorch
+    - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
     - random_forest: An off-the-shelf implementation of a random forest regressor.
     - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization.
-    - svr_linear: An off-the-shelf implementation of a support vector regressor with linear kernel.
-    - svr_rbf: An off-the-shelf implementation of a support vector regressor with rbf kernel.
-    - tcn
-    - tcn_pytorch (https://github.com/locuslab/TCN/tree/master)
+    - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
+    - tcn: (https://github.com/locuslab/TCN/tree/master)
     - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
+- `--epochs` (optional): The number of ephocs used for training deep learning models (LSTM and TCN).
+- `--n-cross-val-samples` (optional): Number of samples to use in tuning therapy settings for the Loop model
+- `--n-steps` (optional): The number of steps that will be used for identification in the UvA/Padova model. It should be at least 100k.
 
-#### Example
+#### Examples
 ```
 glupredkit train_model ridge my_config
+```
+```
+glupredkit train_model lstm my_config --epochs 10
+```
+```
+glupredkit train_model loop my_config --n-cross-val-samples 100
+```
+```
+glupredkit train_model uva_padova my_config --n-steps 1000
 ```
 ---
 
@@ -267,7 +276,7 @@ glupredkit draw_plots
 
 #### Example
 ```
-glupredkit draw_plots --models ridge_ph-60.pkl,arx_ph-60,svr_linear_ph-60.pkl --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --models ridge_ph-60.pkl,arx_ph-60,svr_ph-60.pkl --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
 
 ### Real-Time Prediction Plots
@@ -405,7 +414,9 @@ If you need help with setup, understanding the codebase, or have other questions
 
 
 ## Testing
-To run the tests, write `python tests/test_all.py` in the terminal.
+(OLD!) To run the tests, write `python tests/test_all.py` in the terminal.
+
+To run the tests, write `pytest` in the terminal.
 
 
 ## Disclaimers and limitations

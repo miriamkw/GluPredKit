@@ -78,8 +78,7 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
                                                            config_manager.get_num_features(),
                                                            config_manager.get_cat_features(),
                                                            config_manager.get_what_if_features(),
-                                                           prediction_horizon, config_manager.get_num_lagged_features(),
-                                                           config_manager.get_test_size())
+                                                           prediction_horizon, config_manager.get_num_lagged_features())
     # Load the input CSV file into a DataFrame
     data = read_data_from_csv("data/raw/", input_file_name)
 

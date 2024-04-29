@@ -28,7 +28,7 @@ def setup_directories():
     print("Creating directories...")
 
     folder_path = 'data'
-    folder_names = ['raw', 'configurations', 'trained_models', 'figures', 'reports']
+    folder_names = ['raw', 'configurations', 'trained_models', 'tested_models', 'figures', 'reports']
 
     for folder_name in folder_names:
         path = os.path.join(cwd, folder_path, folder_name)
@@ -48,7 +48,7 @@ def setup_directories():
 @click.option('--file-path', type=str, required=False)
 @click.option('--end-date', type=str, help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
 @click.option('--output-file-name', type=str, help='The file name for the output.')
-@click.option('--test-size', prompt='Test size (float between 0 and 1)', default=0.25)
+@click.option('--test-size', type=float, default=0.25)
 def parse(parser, username, password, start_date, file_path, end_date, output_file_name, test_size):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
@@ -134,7 +134,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
     parsed_data['is_test'] = False
     parsed_data['is_test'].iloc[split_index:] = True
-    parsed_data['is_test'].iloc[split_index:split_index + margin] = np.nan
+    parsed_data = parsed_data.drop(parsed_data.index[split_index - margin:split_index + margin])
 
     save_data(output_file_name=output_file_name, data=parsed_data)
 
@@ -161,20 +161,22 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 
 @click.command()
-@click.argument('model', type=click.Choice(['arx',
+@click.argument('model', type=click.Choice([
+                                            'loop',
                                             'lstm',
+                                            'naive_linear_regressor',
                                             'random_forest',
                                             'ridge',
-                                            'svr_linear',
-                                            'svr_rbf',
+                                            'svr',
                                             'tcn',
-                                            'loop',
-                                            'zero_order',
-                                            'naive_linear_regressor',
-                                            'uva_padova'
+                                            'uva_padova',
+                                            'zero_order'
                                             ]))
 @click.argument('config-file-name', type=str)
-def train_model(model, config_file_name):
+@click.option('--epochs', type=int, required=False)
+@click.option('--n-cross-val-samples', type=int, required=False)
+@click.option('--n-steps', type=int, required=False)
+def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -203,7 +205,16 @@ def train_model(model, config_file_name):
     click.echo(f"Training model...")
 
     # Initialize and train the model
-    model_instance = chosen_model.fit(x_train, y_train)
+    # Ensure that the optional params match the parser
+    if model in ['lstm', 'tcn'] and epochs:
+        model_instance = chosen_model.fit(x_train, y_train, epochs)
+    elif model in ['loop'] and n_cross_val_samples:
+        model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
+    elif model in ['uva_padova'] and n_steps:
+        model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
+    else:
+        model_instance = chosen_model.fit(x_train, y_train)
+
     click.echo(f"Model {model} with prediction horizon {prediction_horizon} minutes trained successfully!")
 
     # Assuming model_instance is your class instance

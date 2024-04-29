@@ -21,9 +21,9 @@ class Model(BaseModel):
         self.input_shape = None
         self.num_outputs = None
 
-    def fit(self, x_train, y_train):
+    def fit(self, x_train, y_train, epochs=20):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
-        targets = y_train.tolist()
+        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
 
         sequences = np.array(sequences)
         targets = np.array(targets)
@@ -65,7 +65,7 @@ class Model(BaseModel):
         train_Y = np.concatenate(train_Y, axis=0)
 
         # Fit the model with early stopping and reduce LR on plateau
-        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
+        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=epochs, batch_size=1,
                   callbacks=[early_stopping, reduce_lr])
 
         model.save(self.model_path)

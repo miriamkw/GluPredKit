@@ -7,7 +7,7 @@ import numpy as np
 import os
 from datetime import datetime
 import ast
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
 from glupredkit.helpers.tf_keras import process_data
 
 
@@ -15,6 +15,10 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
         self.num_inputs = None
+        self.num_outputs = None
+        self.n_channels = None
+        self.kernel_size = 5
+        self.dropout = 0.25
 
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
@@ -26,88 +30,55 @@ class Model(BaseModel):
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
 
-    def fit(self, x_train, y_train):
+    def fit(self, x_train, y_train, epochs=20):
         # Convert the 'sequence' column from strings to NumPy arrays
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
+        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
+
         sequences = np.array(sequences)
+        targets = np.array(targets)
 
-        # Convert targets to NumPy array
-        targets = np.array(y_train.tolist())
-
-        # Define the split index for training and validation sets
-        split_idx = int(len(sequences) * 0.8)  # 80% for training, 20% for validation
-
-        # Split sequences and targets into training and validation sets
-        train_sequences, val_sequences = sequences[:split_idx], sequences[split_idx:]
-        train_targets, val_targets = targets[:split_idx], targets[split_idx:]
-
-        # Convert training data to PyTorch tensors and create DataLoader
-        train_sequences_tensor = torch.from_numpy(train_sequences).float().transpose(1, 2)
-        train_targets_tensor = torch.from_numpy(train_targets).float()
-        train_loader = DataLoader(TensorDataset(train_sequences_tensor, train_targets_tensor), batch_size=1,
-                                  shuffle=True)
-
-        # Convert validation data to PyTorch tensors and create DataLoader
-        val_sequences_tensor = torch.from_numpy(val_sequences).float().transpose(1, 2)
-        val_targets_tensor = torch.from_numpy(val_targets).float()
-        val_loader = DataLoader(TensorDataset(val_sequences_tensor, val_targets_tensor), batch_size=1,
-                                shuffle=False)
+        dataset = TimeSeriesDataset(sequences, targets)
+        dataloader = DataLoader(dataset, batch_size=10, shuffle=True)
 
         # Define the model
         self.num_inputs = sequences.shape[2]  # Number of features
-        model = self.get_model(num_of_inputs=self.num_inputs)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
-        criterion = nn.MSELoss()
-        # Initialize ReduceLROnPlateau scheduler
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, verbose=True)
+        self.num_outputs = targets.shape[1]
+        self.n_channels = [150] * 4
+        model = TCN(input_size=self.num_inputs, output_size=self.num_outputs, num_channels=self.n_channels,
+                    kernel_size=self.kernel_size, dropout=self.dropout)
+        model.double()  # Ensure the model matches the double precision of the targets
 
-        num_epochs = 20
-        best_val_loss = float('inf')
-        print(f'Starting first of {num_epochs} epochs...')
+        # Define loss function and optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
+
+        print(f'Starting first of {epochs} epochs...')
 
         # Training loop
-        for epoch in range(num_epochs):
+        for epoch in range(epochs):
             #  Training Phase
             model.train()
-            for inputs, targets in train_loader:
+            total_loss = 0
+
+            for inputs, targets in dataloader:
+                inputs = inputs.double()  # Convert inputs to float32
+                targets = targets.double()  # Convert targets to float32
+
                 optimizer.zero_grad()
                 outputs = model(inputs)
 
-                # Reshape the outputs and targets to be consistent
-                outputs = outputs.view(-1)  # Ensures outputs is a 1D tensor
-                targets = targets.view(-1)  # Ensures targets is a 1D tensor
                 loss = criterion(outputs, targets)
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1)
                 optimizer.step()
-
-            #  Validation Phase
-            model.eval()
-            val_losses = []
-            with torch.no_grad():
-                for inputs, targets in val_loader:
-                    outputs = model(inputs)
-                    outputs = outputs.view(-1)
-                    targets = targets.view(-1)
-                    val_loss = criterion(outputs, targets)
-                    val_losses.append(val_loss.item())
-
-            avg_val_loss = sum(val_losses) / len(val_losses)
-
-            # Update scheduler
-            if epoch >= 10:  # Start reducing LR after 10 epochs
-                scheduler.step(avg_val_loss)
-
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                torch.save(model.state_dict(), self.model_path)
-
-            print(f'Epoch [{epoch + 1}/{num_epochs}] finished')
-
+                total_loss += loss.item()
+            print(f'Epoch {epoch + 1}, Loss: {total_loss / len(dataloader)}')
+        torch.save(model.state_dict(), self.model_path)
         return self
 
     def predict(self, x_test):
-        model = self.get_model(self.num_inputs)
+        model = TCN(input_size=self.num_inputs, output_size=self.num_outputs, num_channels=self.n_channels,
+                    kernel_size=self.kernel_size, dropout=self.dropout)
         model.load_state_dict(torch.load(self.model_path))
         model.eval()
 
@@ -126,14 +97,19 @@ class Model(BaseModel):
         # Implement preprocessing specific to your TCN and dataset
         return process_data(df, model_config_manager, real_time)
 
-    def get_model(self, num_of_inputs):
-        # Defining settings like in the benchmark paper
-        num_channels = [50] * 10  # 10 layers with the same number of filters
-        kernel_size = 4
-        dropout = 0.5
-        return TemporalConvNet(num_inputs=num_of_inputs, num_channels=num_channels, kernel_size=kernel_size,
-                               dropout=dropout)
 
+class TimeSeriesDataset(Dataset):
+    def __init__(self, sequences, targets):
+        self.sequences = sequences
+        self.targets = targets
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence = torch.tensor(self.sequences[idx], dtype=torch.float32)
+        target = torch.tensor(self.targets[idx], dtype=torch.float32)
+        return sequence, target
 
 """
 The rest of this file contains code adapted from Shaojie Bai, J. Zico Kolter and Vladlen Koltun's Sequence Modeling 
@@ -162,6 +138,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
+
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size):
@@ -218,11 +195,24 @@ class TemporalConvNet(nn.Module):
                                      padding=(kernel_size-1) * dilation_size, dropout=dropout)]
 
         self.network = nn.Sequential(*layers)
-        self.linear = nn.Linear(num_channels[-1], 1)
 
     def forward(self, x):
-        x = self.network(x)
-        x = x[:, :, -1]  # Use the output of the last time step
-        x = self.linear(x)  # Apply the linear layer
-        return x.squeeze()  # Remove extra dimensions for single value prediction
+        return self.network(x)
+
+
+class TCN(nn.Module):
+    def __init__(self, input_size, output_size, num_channels, kernel_size, dropout):
+        super(TCN, self).__init__()
+        self.tcn = TemporalConvNet(input_size, num_channels, kernel_size, dropout=dropout)
+        self.linear = nn.Linear(num_channels[-1], output_size)
+        self.sig = nn.Sigmoid()
+
+    def forward(self, x):
+        # x needs to have dimension (N, C, L) in order to be passed into CNN
+        output = self.tcn(x.transpose(1, 2)).transpose(1, 2)
+        # output = self.linear(output).double()
+        last_step_output = output[:, -1, :]
+        output = self.linear(last_step_output).double()
+        return self.sig(output)
+
 

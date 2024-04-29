@@ -45,13 +45,7 @@ class Parser(BaseParser):
 
         # Resampling all datatypes into the same time-grid
         df = dataframes['glucose_level'].copy()
-        """
-        if dataframes['finger_stick'].empty:
-            df = dataframes['glucose_level'].copy()
-        else:
-            df = pd.concat([dataframes['finger_stick'].copy(), dataframes['glucose_level'].copy()],
-                           ignore_index=False)
-        """
+
         df['ts'] = pd.to_datetime(df['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)

@@ -14,3 +14,4 @@ python-nightscout
 error-grids
 torch
 py_replay_bg
+pytest

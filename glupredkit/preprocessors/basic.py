@@ -42,14 +42,14 @@ class Preprocessor(BasePreprocessor):
             # Interpolation using a nonlinear curve, without too much curvature
             subset_df_train = subset_df_train.sort_index()
             subset_df_train[self.numerical_features] = (subset_df_train[self.numerical_features]
-                                                        .interpolate(method='akima'))
+                                                        .interpolate(method='linear'))
 
             # Add test columns before interpolation to perceive nan values
             subset_test_df_with_targets = self.add_targets(subset_df_test)
 
             subset_test_df_with_targets = subset_test_df_with_targets.sort_index()
             subset_test_df_with_targets[self.numerical_features] = (subset_test_df_with_targets[self.numerical_features]
-                                                                    .interpolate(method='akima'))
+                                                                    .interpolate(method='linear'))
 
             # Add target for train data after interpolation to use interpolated data for model training
             subset_train_df_with_targets = self.add_targets(subset_df_train)

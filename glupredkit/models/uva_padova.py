@@ -14,7 +14,7 @@ class Model(BaseModel):
         self.models = []
         self.subject_ids = []
 
-    def fit(self, x_train, y_train):
+    def fit(self, x_train, y_train, n_steps=100000):
         x_train = self.process_input_data(x_train)
 
         # Fit parameters of ReplayBG object
