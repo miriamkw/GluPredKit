@@ -247,11 +247,8 @@ def test_model(model_file):
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in test_data if col.startswith('target')]
 
-    # TODO: Remove. Only for testing
-    n_subset = 50
-
-    x_test = processed_data.drop(target_cols, axis=1)[:n_subset]
-    y_test = processed_data[target_cols][:n_subset]
+    x_test = processed_data.drop(target_cols, axis=1)
+    y_test = processed_data[target_cols]
     y_pred = model_instance.predict(x_test)
 
     hypo_threshold = 70
@@ -281,6 +278,7 @@ def test_model(model_file):
     metrics = helpers.list_files_in_directory('glupredkit/metrics/')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
+    # TODO: could we get all the results at the same time instead?
     for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
         curr_y_test = y_test[target_cols[i]].tolist()
         curr_y_pred = [val[i] for val in y_pred]

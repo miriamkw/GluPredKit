@@ -11,7 +11,7 @@ class Metric(BaseMetric):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        me = np.mean(y_pred - y_true)
+        me = np.nanmean(y_pred - y_true)
 
         if unit_config_manager.use_mgdl:
             return me

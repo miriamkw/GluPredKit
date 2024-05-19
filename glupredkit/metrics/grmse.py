@@ -15,7 +15,7 @@ class Metric(BaseMetric):
 
         pen = [penalty(true_val, pred_val) for true_val, pred_val in zip(y_true, y_pred)]
         se = np.square(y_true - y_pred)
-        gMSE = np.mean(se * pen)
+        gMSE = np.nanmean(se * pen)
         gRMSE = np.sqrt(gMSE)
 
         if unit_config_manager.use_mgdl:
@@ -68,8 +68,7 @@ def penalty(g, g_hat):
     sigma_gamma_H = sigmoid_hat(g_hat, g, gamma_H)
 
     # Final penalty calculation
-    pen = (1 + alpha_L * sigma_T_L * sigma_gamma_L
-               + alpha_H * sigma_T_H * sigma_gamma_H)
+    pen = (1 + alpha_L * sigma_T_L * sigma_gamma_L + alpha_H * sigma_T_H * sigma_gamma_H)
     return pen
 
 

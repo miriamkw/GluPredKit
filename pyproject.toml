@@ -20,3 +20,17 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/miriamkw/GluPredKit"
 "Bug Tracker" = "https://github.com/miriamkw/GluPredKit/issues"
+
+[tool.pytest.ini_options]
+# Specify options for pytest
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]
+python_files = [
+    "test_*.py",
+    "*_test.py"
+]
+python_classes = "Test*"
+python_functions = "test_*"
