@@ -14,6 +14,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         n_predictions = self.prediction_horizon // 5
         cgm_values = x_test['CGM'].tolist()
 

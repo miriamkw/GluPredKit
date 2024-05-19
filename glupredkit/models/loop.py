@@ -73,6 +73,7 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
         """
         Return:
         y_pred -- A list of lists of the predicted trajectories.

@@ -53,6 +53,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         x_test = self.process_input_data(x_test)
 
         prediction_result = []

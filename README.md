@@ -368,6 +368,7 @@ Refers to using preprocessed data to train a blood glucose prediction model.
 - Base Class: `BaseModel`
 
 Some essential details are:
+- The model class must have the name "Model".
 - The model training must handle predicting trajectories up to the defined prediction horizon. 
 - The predict method must output a list of lists of predicted trajectories with 5-minute interval outputs. If the model only predicts one value, the model must implement for example linear interpolation to return the predicted trajectories.
 
@@ -378,6 +379,11 @@ library- or model-specific configurations for the model data input format.
 Refers to different 'scores' to describing the accuracy of the predictions of a blood glucose prediction model.    
 - Directory: `glupredkit/metrics`
 - Base Class: `BaseMetric`
+
+Some essential details are:
+- The metric class must have the name "Metric".
+- The metric must return a value regardless if there are NaN values in the input.
+- The metric must return a value regardless if there are zero or negative values in the predicted input.
 
 #### Evaluation Plots
 Different types of plots that can illustrate blood glucose predictions together with actual measured values.

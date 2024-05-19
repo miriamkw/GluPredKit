@@ -77,6 +77,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         model = TCN(input_size=self.num_inputs, output_size=self.num_outputs, num_channels=self.n_channels,
                     kernel_size=self.kernel_size, dropout=self.dropout)
         model.load_state_dict(torch.load(self.model_path))

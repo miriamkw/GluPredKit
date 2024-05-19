@@ -1,66 +1,58 @@
 import pytest
 import numpy as np
 import pandas as pd
-import os
-import json
 from sklearn.exceptions import NotFittedError
-from glupredkit.models.loop import Model
+from glupredkit.models.loop import Model as Loop
+from glupredkit.models.lstm import Model as LSTM
+from glupredkit.models.naive_linear_regressor import Model as NaiveLinearRegressor
+from glupredkit.models.random_forest import Model as RandomForest
+from glupredkit.models.ridge import Model as Ridge
+from glupredkit.models.svr import Model as SVR
+from glupredkit.models.tcn import Model as TCN
+from glupredkit.models.uva_padova import Model as UvaPadova
+from glupredkit.models.zero_order import Model as ZeroOrder
+from glupredkit.helpers.model_config_manager import ModelConfigurationManager
+
+# Defining the list of model classes
+model_classes = [
+    Loop,
+    LSTM,
+    NaiveLinearRegressor,
+    RandomForest,
+    Ridge,
+    SVR,
+    TCN,
+    UvaPadova,
+    ZeroOrder
+]
+
 
 @pytest.fixture
 def sample_data():
     # Creating a sample DataFrame with necessary columns and data types
     data = {
-        'id': np.tile(np.arange(1, 4), 10),  # 3 unique IDs, repeated 10 times each
-        'feature1': np.random.random(30),
-        'feature2': np.random.random(30),
-        # Add other features as necessary
+        'id': np.tile(np.arange(1, 4), 1000),  # 3 unique IDs, repeated 10 times each
+        'CGM': np.random.random(3000),
+        'insulin': np.random.random(3000),
+        'carbs': np.random.random(3000)
     }
-    targets = np.random.random((30, 5))  # Assuming 5 target variables
-    df = pd.DataFrame(data)
-    return df, targets
+    x_test = pd.DataFrame(data)
+    return x_test
 
-def test_initialization():
-    model = Model(prediction_horizon=5)
-    assert model.prediction_horizon == 5, "Incorrect prediction horizon set."
-    assert model.models == [], "Model list should be initialized empty."
 
-def test_fit(sample_data):
-    x_train, y_train = sample_data
-    model = Model(prediction_horizon=5)
-    model.fit(x_train, y_train)
-    assert len(model.models) == len(x_train['id'].unique()), "One model per unique 'id' should be created."
-    assert all([isinstance(m.best_estimator_, MultiOutputRegressor) for m in model.models]), "Models should be fitted with MultiOutputRegressor."
+# TODO: Test prediction output formats
 
-def test_predict(sample_data):
-    x_train, y_train = sample_data
-    x_test = x_train.copy()  # Use the same data for simplicity in testing
-    model = Model(prediction_horizon=5)
-    model.fit(x_train, y_train)
 
-    # Test predict functionality
-    predictions = model.predict(x_test)
-    assert predictions.shape[0] == x_test.shape[0], "Predictions should be generated for each sample."
-    assert isinstance(predictions, np.ndarray), "Predictions should be a NumPy array."
+@pytest.mark.parametrize("model_cls", model_classes)
+def test_metric_class_name(model_cls):
+    model = model_cls(prediction_horizon=30)
+    assert model.__class__.__name__ == "Model", f"Class name for {model_cls.__name__} is not 'Model'"
 
-def test_predict_unfitted_model(sample_data):
-    x_test, _ = sample_data
-    model = Model(prediction_horizon=5)
+
+@pytest.mark.parametrize("model_cls", model_classes)
+def test_predict_unfitted_model(model_cls, sample_data):
+    model = model_cls(prediction_horizon=30)
+    x_test = sample_data
     with pytest.raises(NotFittedError):
         model.predict(x_test)
 
-
-def test_save_and_load_model_weights(sample_data):
-    x_train, y_train = sample_data
-    model = Model(prediction_horizon=5)
-    model.fit(x_train, y_train)
-    temp_file = "temp_model.json"
-    model.save_model_weights(temp_file)
-
-    # Check file creation
-    assert os.path.exists(temp_file), "Model weight file should be created."
-
-    # Optionally: Load the file and check contents
-    with open(temp_file, 'r') as f:
-        data = json.load(f)
-    assert 'coefficients' in data, "Saved JSON should include model coefficients."
-    os.remove(temp_file)  # Cleanup

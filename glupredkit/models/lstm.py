@@ -73,6 +73,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
 

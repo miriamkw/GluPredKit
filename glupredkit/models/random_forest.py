@@ -30,6 +30,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         # Use the best estimator found by GridSearchCV to make predictions
         y_pred = self.model.best_estimator_.predict(x_test)
         return y_pred

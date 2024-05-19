@@ -36,6 +36,8 @@ class Model(BaseModel):
         return self
 
     def predict(self, x_test):
+        super().predict(x_test)
+
         y_pred = []
 
         for i in range(len(self.models)):
