@@ -165,9 +165,11 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
                                             'blstm',
                                             'loop',
                                             'lstm',
+                                            'mtl',
                                             'naive_linear_regressor',
                                             'random_forest',
                                             'ridge',
+                                            'stl',
                                             'svr',
                                             'tcn',
                                             'uva_padova',
@@ -207,7 +209,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
 
     # Initialize and train the model
     # Ensure that the optional params match the parser
-    if model in ['lstm', 'tcn'] and epochs:
+    if model in ['blstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
         model_instance = chosen_model.fit(x_train, y_train, epochs)
     elif model in ['loop'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)

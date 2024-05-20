@@ -201,9 +201,11 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
     - blstm: A bidirectional long short-term memory recurrent neural network (https://github.com/meneghet/BGLP_challenge_2020). 
     - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
+    - mtl: Multitask learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
     - random_forest: An off-the-shelf implementation of a random forest regressor.
-    - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization.
+    - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization. 
+    - stl: Single-task learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
     - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
     - tcn: (https://github.com/locuslab/TCN/tree/master)
     - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
