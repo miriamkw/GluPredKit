@@ -198,6 +198,7 @@ glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor 
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
+    - blstm: A bidirectional long short-term memory recurrent neural network (https://github.com/meneghet/BGLP_challenge_2020). 
     - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).

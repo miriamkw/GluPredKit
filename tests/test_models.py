@@ -11,7 +11,6 @@ from glupredkit.models.svr import Model as SVR
 from glupredkit.models.tcn import Model as TCN
 from glupredkit.models.uva_padova import Model as UvaPadova
 from glupredkit.models.zero_order import Model as ZeroOrder
-from glupredkit.helpers.model_config_manager import ModelConfigurationManager
 
 # Defining the list of model classes
 model_classes = [

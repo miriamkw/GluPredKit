@@ -162,6 +162,7 @@ def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagg
 
 @click.command()
 @click.argument('model', type=click.Choice([
+                                            'blstm',
                                             'loop',
                                             'lstm',
                                             'naive_linear_regressor',
