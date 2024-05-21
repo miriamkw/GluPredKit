@@ -163,31 +163,27 @@ glupredkit parse --parser ohio_t1dm --file-path data/raw/
 ```
 glupredkit generate_config 
 ```
-- `--file-name`: Give a file name to the configuration.
+- `--file-name`: Give a file name to the configuration (without file extension).
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
-- `--preprocessor`: The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
+- `--subject-ids` (optional): List of subject ids from the dataset that shall be used in model training and testing. Default is None, which will include the whole dataset.
+- `--preprocessor` (optional): The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
     - basic
     - standardscaler
+  Default is basic. 
 - `--prediction-horizon`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces.  
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--num-features`: List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. 
-- `--cat-features`: List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file.
-- `--test-size`: Test size is a number between 0 and 1, that defines the fraction of the data used for testing. 
-    - Note that for the Ohio T1DM dataset the test-size is automatically going to use the original separation between train and test data.
+- `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
+- `--cat-features` (optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
 
 #### Examples 
 
-The following command will sequentially prompt you for each of the inputs above.
+Example using only the required inputs:
 ```
-glupredkit generate_config
+glupredkit generate_config --file-name my_config_1 --data df.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
 ```
-Alternatively, the inputs can be passed directly through the terminal command:
+Example using all inputs:
 ```
-glupredkit generate_config --file-name my_config --data df.csv --preprocessor basic --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour --test-size 0.25
-```
-If you have no categorical features and want to avoid the prompt, you can use double quotes:
-```
-glupredkit generate_config --file-name my_config2 --data df2.csv --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features '' --test-size 0.25
+glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 540,544 --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 18 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs
 ```
 
 ---

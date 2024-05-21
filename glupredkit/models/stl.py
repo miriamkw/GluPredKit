@@ -53,7 +53,7 @@ class Model(BaseModel):
         model.add(Dropout(dropout_conv))
 
         # lstm layer
-        model.add(LSTM(64, return_sequences=False, name='Shared_Layer_9'))  # , input_shape = (seq_len, input_dim)))
+        model.add(LSTM(64, return_sequences=False, name='Shared_Layer_9'))
         model.add(Dropout(dropout_lstm))
 
         # fc1 layer

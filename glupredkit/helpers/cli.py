@@ -127,21 +127,28 @@ def validate_file_name(ctx, param, value):
     return file_name.partition('.')[0]
 
 
-def validate_prediction_horizons(ctx, param, value):
-    if value.startswith('[') and value.endswith(']'):
-        try:
-            # Convert string representation of a list to an actual list
-            value = ast.literal_eval(value)
-        except (ValueError, SyntaxError):
-            raise click.BadParameter("Invalid format for prediction horizons.")
-
+def validate_subject_ids(ctx, param, value):
+    if value is None or value.strip() == '':
+        return None
     try:
-        if isinstance(value, str):
-            value = value.replace(' ', '').split(',')
-        prediction_horizons = [int(val) for val in value]
-        return prediction_horizons
+        # Convert string representation of a list to an actual list
+        value = ast.literal_eval(value)
+        # Check if elements are integers, if not, raise ValueError
+        if not all(isinstance(val, int) for val in value):
+            raise ValueError
+        return value
+    except (ValueError, SyntaxError):
+        raise click.BadParameter("Invalid format for subject ids. List must be a comma-separated list of integers.")
+
+
+def validate_prediction_horizon(ctx, param, value):
+    try:
+        value = int(value)
+        if value < 0:
+            raise ValueError
     except ValueError:
-        raise click.BadParameter('Prediction horizons must be a comma-separated list of integers.')
+        raise click.BadParameter('Prediction horizon must be a positive integer.')
+    return value
 
 
 def validate_num_lagged_features(ctx, param, value):
