@@ -167,10 +167,9 @@ glupredkit generate_config
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
 - `--subject-ids` (optional): List of subject ids from the dataset that shall be used in model training and testing. Default is None, which will include the whole dataset.
 - `--preprocessor` (optional): The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
-    - basic
+    - basic (default)
     - standardscaler
-  Default is basic. 
-- `--prediction-horizon`: A comma-separated list of prediction horizons (in minutes) used in model training, without spaces.  
+- `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes).  
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
 - `--cat-features` (optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
@@ -194,20 +193,21 @@ glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 5
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
-    - blstm: A bidirectional long short-term memory recurrent neural network (https://github.com/meneghet/BGLP_challenge_2020). 
+    - double_lstm: A double long short-term memory recurrent neural network (http://smarthealth.cs.ohio.edu/nih.html). 
     - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
     - mtl: Multitask learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
     - random_forest: An off-the-shelf implementation of a random forest regressor.
     - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization. 
+    - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) (https://gitlab.com/Hoda-Nemat/data-fusion-stacking).
     - stl: Single-task learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
     - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
     - tcn: (https://github.com/locuslab/TCN/tree/master)
     - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
-- `--epochs` (optional): The number of ephocs used for training deep learning models (LSTM and TCN).
+- `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).
 - `--n-cross-val-samples` (optional): Number of samples to use in tuning therapy settings for the Loop model
 - `--n-steps` (optional): The number of steps that will be used for identification in the UvA/Padova model. It should be at least 100k.
 
@@ -248,11 +248,15 @@ All the implemented metrics are the following:
 ```
 glupredkit test_model MODEL_FILE 
 ```
-- `model-file`: Name of the model file (with .pkl) to be tested. The file name must exist in `data/trained_models/`. 
+- `model-file`: Name of the model file (with .pkl) to be tested. The file name must exist in `data/trained_models/`.
+- `--max-samples` (optional): Set an upper limit for the number of test samples to reduce the run time. Default is all the test samples in the dataset.
 
-#### Example
+#### Examples
 ```
 glupredkit test_model ridge__my_config__180.pkl
+```
+```
+glupredkit test_model ridge__my_config__180.pkl --max-samples 1000
 ```
 ---
 

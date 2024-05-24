@@ -30,9 +30,9 @@ def sigmoid(x, a, epsilon):
     if x <= a:
         return 0
     elif a < x <= a + (epsilon / 2):
-        return -0.5 * xi**4 - xi**3 + xi + 0.5
+        return -0.5 * xi ** 4 - xi ** 3 + xi + 0.5
     elif a + (epsilon / 2) < x <= a + epsilon:
-        return 0.5 * xi**4 - xi**3 + xi + 0.5
+        return 0.5 * xi ** 4 - xi ** 3 + xi + 0.5
     else:  # x > a + epsilon
         return 1
 
@@ -43,9 +43,9 @@ def sigmoid_hat(x, a, epsilon):
     if x <= a - epsilon:
         return 1
     elif a - epsilon < x <= a - (epsilon / 2):
-        return 0.5 * xi_hat**4 - xi_hat**3 + xi_hat + 0.5
+        return 0.5 * xi_hat ** 4 - xi_hat ** 3 + xi_hat + 0.5
     elif a - (epsilon / 2) < x <= a:
-        return -0.5 * xi_hat**4 - xi_hat**3 + xi_hat + 0.5
+        return -0.5 * xi_hat ** 4 - xi_hat ** 3 + xi_hat + 0.5
     else:  # a <= x
         return 0
 
@@ -72,6 +72,7 @@ def penalty(g, g_hat):
     return pen
 
 
+"""
 def plot_penalty():
     # Create a grid for g and g_hat
     g_values = np.linspace(0, 400, 400)
@@ -124,4 +125,4 @@ def plot_sigmoid_hat(a, epsilon):
     plt.ylabel('Sigmoid(x)')
     plt.legend()
     plt.show()
-
+"""

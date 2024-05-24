@@ -129,7 +129,7 @@ def validate_file_name(ctx, param, value):
 
 def validate_subject_ids(ctx, param, value):
     if value is None or value.strip() == '':
-        return None
+        return []
     try:
         # Convert string representation of a list to an actual list
         value = ast.literal_eval(value)

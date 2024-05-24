@@ -10,12 +10,10 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, *args):
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         n_predictions = self.prediction_horizon // 5
         cgm_values = x_test['CGM'].tolist()
 

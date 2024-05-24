@@ -20,9 +20,10 @@ class Model(BaseModel):
         # Using current date in the file name to remove chances of equal file names
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        safe_timestamp = safe_timestamp.replace('.', '_')
         self.model_path = f"data/.keras_models/stl_ph-{prediction_horizon}_{safe_timestamp}.h5"
 
-    def fit(self, x_train, y_train, epochs=20):
+    def _fit_model(self, x_train, y_train, epochs=20, *args):
         # TODO: Implement transfer learning on population to personalization
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
         targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
@@ -33,7 +34,7 @@ class Model(BaseModel):
         dropout_conv = 0.1
         dropout_lstm = 0.2
         dropout_fc = 0.5
-        out_dim = 1
+        out_dim = targets.shape[1]
         input_shape = (sequences.shape[1], sequences.shape[2])
 
         model = Sequential()
@@ -78,17 +79,16 @@ class Model(BaseModel):
         model.fit(train_X, train_Y, epochs=epochs, batch_size=128, shuffle=False, verbose=0, validation_split=0)
 
         model.save(self.model_path)
-
         return self
 
-    def predict(self, x_test):
+    def _predict_model(self, x_test):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
 
         model = tf.keras.models.load_model(self.model_path, custom_objects={"Adam": tf.keras.optimizers.legacy.Adam})
         predictions = model.predict(sequences)
 
-        return [val[0] for val in predictions]
+        return predictions
 
     def best_params(self):
         return None

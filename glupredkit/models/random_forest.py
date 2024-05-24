@@ -11,7 +11,7 @@ class Model(BaseModel):
 
         self.model = None
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, *args):
         # Define the base regressor
         base_regressor = RandomForestRegressor()
 
@@ -29,9 +29,7 @@ class Model(BaseModel):
         self.model.fit(x_train, y_train)
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         # Use the best estimator found by GridSearchCV to make predictions
         y_pred = self.model.best_estimator_.predict(x_test)
         return y_pred

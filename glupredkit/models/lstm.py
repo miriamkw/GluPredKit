@@ -17,11 +17,12 @@ class Model(BaseModel):
         # Using current date in the file name to remove chances of equal file names
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        safe_timestamp = safe_timestamp.replace('.', '_')
         self.model_path = f"data/.keras_models/lstm_ph-{prediction_horizon}_{safe_timestamp}.h5"
         self.input_shape = None
         self.num_outputs = None
 
-    def fit(self, x_train, y_train, epochs=20):
+    def _fit_model(self, x_train, y_train, epochs=20, *args):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
         targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
 
@@ -37,7 +38,7 @@ class Model(BaseModel):
         lstm = LSTM(50, return_sequences=True)(input_layer)
         lstm = LSTM(50, return_sequences=True)(lstm)
         lstm = LSTM(50, return_sequences=False)(lstm)
-        output_layer = Dense(1)(lstm)
+        output_layer = Dense(self.num_outputs)(lstm)
 
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
         model.compile(
@@ -69,12 +70,9 @@ class Model(BaseModel):
                   callbacks=[early_stopping, reduce_lr])
 
         model.save(self.model_path)
-
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
 

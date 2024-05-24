@@ -34,10 +34,15 @@ def generate_single_model_front_page(canvas, df):
     canvas.setFont("Helvetica-Bold", 12)
     canvas.drawString(100, 560, f'Data Description')
 
+    if df["subject_ids"][0] == '[]':
+        data_ids = "All"
+    else:
+        data_ids = df["subject_ids"][0]
+
     # Normal text
     canvas.setFont("Helvetica", 12)
     canvas.drawString(100, 540, f'Dataset: {df["data"][0]}')
-    canvas.drawString(100, 520, f'Data ids: {df["subject_ids"][0]}')
+    canvas.drawString(100, 520, f'Data ids: {data_ids}')
     canvas.drawString(100, 480, f'Training samples: {df["training_samples"][0]}')
     canvas.drawString(100, 460, f'Hypoglycemia training samples: {df["hypo_training_samples"][0]}')
     canvas.drawString(100, 440, f'Hyperglycemia training samples: {df["hyper_training_samples"][0]}')
@@ -82,9 +87,16 @@ def draw_model_accuracy_table(c, df):
         mare_str = "{:.1f}".format(float(df[f'mare_{ph}'][0]))
         new_row = [[str(ph), rmse_str, me_str, mare_str]]
         table_data += new_row
-    rmse_str = "{:.1f}".format(float(df[f'rmse_avg'][0]))
-    me_str = "{:.1f}".format(float(df[f'me_avg'][0]))
-    mare_str = "{:.1f}".format(float(df[f'mare_avg'][0]))
+
+    # Average values
+    def get_avg(metric):
+        metric_cols = [col for col in df.columns if col.startswith(metric)]
+        avg_score = np.mean(df[metric_cols].iloc[0])
+        return avg_score
+
+    rmse_str = "{:.1f}".format(get_avg('rmse'))
+    me_str = "{:.1f}".format(get_avg('me'))
+    mare_str = "{:.1f}".format(get_avg('mare'))
     new_row = [['Average', rmse_str, me_str, mare_str]]
     table_data += new_row
     c = draw_table(c, table_data, 700 - 20 * int(df['prediction_horizon'][0]) // table_interval)
@@ -423,72 +435,77 @@ def draw_physiological_alignment_table(c, df, feature, y_placement):
 
 
 def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placement):
-    if feature == 'carbs':
-        sign = 'Positive Sign'
+    if 'daily_avg_insulin' in df.columns:
+        if feature == 'carbs':
+            sign = 'Positive Sign'
+        else:
+            sign = 'Negative Sign'
+
+        # TODO: Add evaluation of magnitude
+        if feature == 'carbs':
+            table_data = [
+                [sign, f'Persistence', 'Carb ratio (CR)', 'Expected CR [g/U]', f'Total']
+            ]
+            expected_ratio = 500 / df['daily_avg_insulin'][0]
+        else:
+            table_data = [
+                [sign, f'Persistence', 'Insulin sensitivity factor (ISF)',
+                 f'Expected ISF [{unit_config_manager.get_unit()}/U]', f'Total']
+            ]
+            expected_ratio = 1800 / df['daily_avg_insulin'][0]
+
+        col_prefix = f'partial_dependency_{feature}_'
+        columns = [column for column in df.columns if column.startswith(col_prefix)]
+
+        quantities = []
+        pd_numbers = []
+        for column in columns:
+            y_pred = df[column][0]
+            y_pred = y_pred.replace("nan", "None")
+            y_pred = ast.literal_eval(y_pred)
+            quantities += [float(column.split('_')[-1])]
+            pd_numbers += [y_pred]
+
+        total_values = 0
+        correct_sign_values = 0
+        persistant_values = 0
+
+        estimated_ISF = 1800 / df['daily_avg_insulin'][0]
+        calculated_ratios = []
+        for index, row in enumerate(pd_numbers):
+            prev_value = row[0]
+
+            for i in range(1, len(row)):
+                if not np.isnan(row[i]):
+                    total_values += 1
+                    if feature == 'carbs':
+                        if row[i] > 0:
+                            correct_sign_values += 1
+                        if row[i] > prev_value:
+                            persistant_values += 1
+                        calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60, 180) * estimated_ISF / \
+                                        row[i]
+                        calculated_ratios += [calculated_CR]
+                    else:
+                        if row[i] < 0:
+                            correct_sign_values += 1
+                        if row[i] < prev_value:
+                            persistant_values += 1
+                        calculated_ISF = row[i] / (quantities[index] * get_fraction_absorbed((i + 1) * 5, 75, 300))
+                        calculated_ratios += [-calculated_ISF]
+                    prev_value = row[i]
+
+        percentage_below_zero = (correct_sign_values / total_values) * 100
+        percentage_persistant_values = (persistant_values / total_values) * 100
+        total = (percentage_below_zero + percentage_persistant_values) / 2
+        table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
+                        "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
+        c = draw_table(c, table_data, y_placement)
+        return c
     else:
-        sign = 'Negative Sign'
-
-    # TODO: Add evaluation of magnitude
-    if feature == 'carbs':
-        table_data = [
-            [sign, f'Persistence', 'Carb ratio (CR)', 'Expected CR [g/U]', f'Total']
-        ]
-        expected_ratio = 500 / df['daily_avg_insulin'][0]
-    else:
-        table_data = [
-            [sign, f'Persistence', 'Insulin sensitivity factor (ISF)',
-             f'Expected ISF [{unit_config_manager.get_unit()}/U]', f'Total']
-        ]
-        expected_ratio = 1800 / df['daily_avg_insulin'][0]
-
-    col_prefix = f'partial_dependency_{feature}_'
-    columns = [column for column in df.columns if column.startswith(col_prefix)]
-
-    quantities = []
-    pd_numbers = []
-    for column in columns:
-        y_pred = df[column][0]
-        y_pred = y_pred.replace("nan", "None")
-        y_pred = ast.literal_eval(y_pred)
-        quantities += [float(column.split('_')[-1])]
-        pd_numbers += [y_pred]
-
-    total_values = 0
-    correct_sign_values = 0
-    persistant_values = 0
-
-    estimated_ISF = 1800 / df['daily_avg_insulin'][0]
-    calculated_ratios = []
-    for index, row in enumerate(pd_numbers):
-        prev_value = row[0]
-
-        for i in range(1, len(row)):
-            if not np.isnan(row[i]):
-                total_values += 1
-                if feature == 'carbs':
-                    if row[i] > 0:
-                        correct_sign_values += 1
-                    if row[i] > prev_value:
-                        persistant_values += 1
-                    calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60, 180) * estimated_ISF / \
-                                    row[i]
-                    calculated_ratios += [calculated_CR]
-                else:
-                    if row[i] < 0:
-                        correct_sign_values += 1
-                    if row[i] < prev_value:
-                        persistant_values += 1
-                    calculated_ISF = row[i] / (quantities[index] * get_fraction_absorbed((i + 1) * 5, 75, 300))
-                    calculated_ratios += [-calculated_ISF]
-                prev_value = row[i]
-
-    percentage_below_zero = (correct_sign_values / total_values) * 100
-    percentage_persistant_values = (persistant_values / total_values) * 100
-    total = (percentage_below_zero + percentage_persistant_values) / 2
-    table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
-                    "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
-    c = draw_table(c, table_data, y_placement)
-    return c
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(100, y_placement, f'The model does not use {feature} as an input.')
+        return c
 
 
 def draw_table(c, data, y_placement):
@@ -626,31 +643,37 @@ def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y
     col_prefix = f'partial_dependency_{col}_'
     columns = [column for column in df.columns if column.startswith(col_prefix)]
 
-    x_values = list(range(5, get_ph(df) + 1, 5))
+    if not columns:
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(100, y_placement, f'The model does not use {col} as an input.')
+    else:
+        x_values = list(range(5, get_ph(df) + 1, 5))
 
-    for column in columns:
-        quantity = column.split('_')[-1]
-        if col == 'carbs':
-            label = f'{quantity}g of carbohydrates'
-        else:
-            label = f'{quantity}U of insulin'
-        y_pred = df[column][0]
-        y_pred = ast.literal_eval(y_pred)
-        plt.plot(x_values, y_pred, marker='o', label=label)
+        for column in columns:
+            quantity = column.split('_')[-1]
+            if col == 'carbs':
+                label = f'{quantity}g of carbohydrates'
+            else:
+                label = f'{quantity}U of insulin'
+            y_pred = df[column][0]
+            y_pred = ast.literal_eval(y_pred)
+            plt.plot(x_values, y_pred, marker='o', label=label)
 
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Partial Dependency Plot for {col}')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Change in predicted blood glucose [{unit_config_manager.get_unit()}]')
-    plt.legend()
+        # Setting the title and labels with placeholders for the metric unit
+        plt.title(f'Partial Dependency Plot for {col}')
+        plt.xlabel('Prediction Horizons (minutes)')
+        plt.ylabel(f'Change in predicted blood glucose [{unit_config_manager.get_unit()}]')
+        plt.legend()
 
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, y_placement)
-    return c
+        # Save the plot as an image
+        buffer = BytesIO()
+        fig.savefig(buffer, format='svg')
+
+        buffer.seek(0)  # Move the file pointer to the beginning
+        drawing = svg2rlg(buffer)
+
+        renderPDF.draw(drawing, c, 70, y_placement)
+        return c
 
 
 def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_placement=300):
@@ -688,6 +711,7 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
 
     y_test = df[f'target_{ph}'][0]
     y_pred = df[f'y_pred_{ph}'][0]
+
     y_test = ast.literal_eval(y_test)
     y_pred = y_pred.replace("nan", "None")
     y_pred = ast.literal_eval(y_pred)
