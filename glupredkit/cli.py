@@ -289,13 +289,12 @@ def test_model(model_file, max_samples):
     for config in configs:
         results_df[config] = [configs[config]]
 
-    # TODO: This is not working
-
     # Add daily average insulin if relevant
-    if ['bolus', 'basal'] in model_config_manager.get_num_features():
+    num_features = model_config_manager.get_num_features()
+    if 'bolus' in num_features and 'basal' in num_features:
         test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-    elif ['insulin'] in model_config_manager.get_num_features():
+    elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
     metrics = helpers.list_files_in_directory('glupredkit/metrics/')
@@ -345,21 +344,39 @@ def test_model(model_file, max_samples):
     carb_intakes = [10, 50, 100]
 
     insulin_col = None
-    if 'insulin' in x_test.columns:
+    if 'insulin' in num_features:
         insulin_col = 'insulin'
-    elif 'bolus' in x_test.columns:
+    elif 'bolus' in num_features:
         insulin_col = 'bolus'
 
     if insulin_col:
-        x_test_copy = subset_df_x.copy()
+        if 'sequence' in x_test.columns:
+            _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+            x_test_copy = test_data.copy()
+        else:
+            x_test_copy = subset_df_x.copy()
+
         x_test_copy[insulin_col] = 0
+
+        if 'sequence' in x_test.columns:
+            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
 
         y_pred_bolus_0 = model_instance.predict(x_test_copy)
         y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
 
         for insulin_dose in insulin_doses:
-            x_test_copy = subset_df_x.copy()
+            if 'sequence' in x_test.columns:
+                x_test_copy = test_data.copy()
+            else:
+                x_test_copy = subset_df_x.copy()
+
             x_test_copy[insulin_col] = insulin_dose
+
+            if 'sequence' in x_test.columns:
+                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
             y_pred = model_instance.predict(x_test_copy)
 
             # Calculate the average of elements at each index position
@@ -367,18 +384,38 @@ def test_model(model_file, max_samples):
             averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
             results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
 
-    x_test_copy = subset_df_x.copy()
-    x_test_copy['carbs'] = 0
-    y_pred_carbs_0 = [np.nanmean(x) for x in zip(*model_instance.predict(x_test_copy))]
+    if 'carbs' in num_features:
+        if 'sequence' in x_test.columns:
+            x_test_copy = test_data.copy()
+        else:
+            x_test_copy = subset_df_x.copy()
 
-    for carb_intake in carb_intakes:
-        x_test_copy = subset_df_x.copy()
-        x_test_copy['carbs'] = carb_intake
-        y_pred = model_instance.predict(x_test_copy)
-        # Calculate the average of elements at each index position
-        averages = [np.nanmean(x) for x in zip(*y_pred)]
-        averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
-        results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+        x_test_copy['carbs'] = 0
+
+        if 'sequence' in x_test.columns:
+            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
+        y_pred_carbs_0 = model_instance.predict(x_test_copy)
+        y_pred_carbs_0 = [np.nanmean(x) for x in zip(*y_pred_carbs_0)]
+
+        for carb_intake in carb_intakes:
+            if 'sequence' in x_test.columns:
+                x_test_copy = test_data.copy()
+            else:
+                x_test_copy = subset_df_x.copy()
+
+            x_test_copy['carbs'] = carb_intake
+
+            if 'sequence' in x_test.columns:
+                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
+            y_pred = model_instance.predict(x_test_copy)
+            # Calculate the average of elements at each index position
+            averages = [np.nanmean(x) for x in zip(*y_pred)]
+            averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
+            results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
@@ -503,12 +540,19 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
+    def round_to_nearest_5(number, divisor):
+        result = number / divisor
+        rounded_result = 5 * round(result / 5)
+        return rounded_result
+
+    prediction_horizon = generate_report.get_ph(df)
+    ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
-    c = generate_report.draw_scatter_plot(c, df, 30, 100, 360)
-    c = generate_report.draw_scatter_plot(c, df, 60, 380, 360)
-    prediction_horizon = generate_report.get_ph(df)
-    c = generate_report.draw_scatter_plot(c, df, prediction_horizon - 30, 100, 120)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
     c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
@@ -530,9 +574,9 @@ def generate_evaluation_pdf(results_file):
     # Plot confusion matrixes
     classes = ['Hypo', 'Target', 'Hyper']
 
-    c = generate_report.plot_confusion_matrix(c, df, classes, 30, 50, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, 60, 320, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon - 50, 50, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
     c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
 
     c = generate_report.set_bottom_text(c)

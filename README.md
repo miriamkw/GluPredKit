@@ -260,6 +260,36 @@ glupredkit test_model ridge__my_config__180.pkl --max-samples 1000
 ```
 ---
 
+### Generate Evaluation Reports
+**Description**: There are two alternative commands for generating pdfs of standardized evaluation reports. The first
+one evaluates one model in detail, while the second one compares several models with each other.
+
+#### Single Model Evaluation
+```
+glupredkit generate_evaluation_pdf  
+```
+
+- `--results-file`: A file name from `data/tested_models/` of the model that you want to evaluate.
+
+#### Example
+```
+glupredkit generate_evaluation_pdf --results-file ridge__my_config__180.csv
+```
+
+#### Model Comparison
+```
+glupredkit generate_comparison_pdf  
+```
+
+- `--results-files`: File names from `data/tested_models/` of the model that you want to evaluate, comma separated without space. If none, all models will be tested.
+
+#### Example
+```
+glupredkit generate_comparison_pdf --results-files ridge__my_config__180.csv,lstm__my_config__180.csv
+```
+
+---
+
 ### Draw Plots
 **Description**: This command allows users to visualize model predictions using different types of plots. It supports visualization of multiple models and can restrict the plots to certain date ranges or use artificial carbohydrate and insulin inputs for specific visualizations.
 
@@ -310,6 +340,7 @@ glupredkit set_unit --use-mgdl False
 ```
 
 ---
+
 
 That's it! You can now run the desired command with the mentioned arguments. Always refer back to this guide for the correct usage.
 

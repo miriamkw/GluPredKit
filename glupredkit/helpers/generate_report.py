@@ -459,6 +459,7 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
 
         quantities = []
         pd_numbers = []
+
         for column in columns:
             y_pred = df[column][0]
             y_pred = y_pred.replace("nan", "None")
@@ -646,6 +647,7 @@ def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y
     if not columns:
         c.setFont("Helvetica-Bold", 12)
         c.drawString(100, y_placement, f'The model does not use {col} as an input.')
+        return c
     else:
         x_values = list(range(5, get_ph(df) + 1, 5))
 
