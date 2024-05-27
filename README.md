@@ -281,7 +281,7 @@ glupredkit generate_evaluation_pdf --results-file ridge__my_config__180.csv
 glupredkit generate_comparison_pdf  
 ```
 
-- `--results-files`: File names from `data/tested_models/` of the model that you want to evaluate, comma separated without space. If none, all models will be tested.
+- `--results-files` (optional): File names from `data/tested_models/` of the model that you want to evaluate, comma separated without space. If none, all models will be tested.
 
 #### Example
 ```
