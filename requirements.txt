@@ -19,4 +19,5 @@ error-grids
 # py_replay_bg
 # Testing dependencies
 # pytest
+# pytest-ordering
 

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 project_name = "GluPredKit"
-version = "0.1.8"
+version = "0.1.9"
 author = "Miriam K. Wolff"
 author_email = "miriamkwolff@outlook.com"
 package_name = "glupredkit"  # The package name on pip install
@@ -45,7 +45,8 @@ setup(
             "py_replay_bg"
         ],
         'test': [
-            "pytest"
+            "pytest",
+            "pytest-ordering"
         ]
     },
     package_data={

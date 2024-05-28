@@ -297,7 +297,7 @@ def test_model(model_file, max_samples):
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-    metrics = helpers.list_files_in_directory('glupredkit/metrics/')
+    metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
     if target_cols == ['target']:
