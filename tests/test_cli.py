@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import shutil
 from click.testing import CliRunner
-from glupredkit.cli import setup_directories, parse, generate_config, train_model, test_model
+from glupredkit.cli import setup_directories, parse, generate_config, train_model, test_model, generate_evaluation_pdf, generate_comparison_pdf
 
 
 @pytest.fixture(scope="session")
@@ -153,15 +153,24 @@ def test_test_model(runner, temp_dir):
         result = runner.invoke(test_model, [f'{model}__{config}__60.pkl', '--max-samples', '100'])
         assert result.exit_code == 0
 
-        # Check if the model file was created
+        # Check if the model test file was created
         output_path = "data/tested_models/"
         output_file_name = f'{model}__{config}__60.csv'
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
-# TODO: For test models, check the output dataframe of each model and ensure that it looks correct
-# TODO: Concidering for example the prediction horizon and so on
 
+def test_generate_evaluation_pdf(runner, temp_dir):
+    runner = CliRunner()
 
-# TODO: What happens if there are features in the config that are not in the dataset?
-# TODO: What happens if the subject ids are not in the dataset?
-# TODO: What happens if the inputs are incorrect
+    config = 'my_config_1'
+    models = ['naive_linear_regressor', 'ridge', 'zero_order']
+
+    for model in models:
+        result = runner.invoke(generate_evaluation_pdf, ['--results-file', f'{model}__{config}__60.csv'])
+        assert result.exit_code == 0
+
+        # Check if reports were generated
+        output_path = "data/reports/"
+        output_file_name = f'{model}__{config}__60.pdf'
+        assert os.path.exists(os.path.join(output_path, output_file_name))
+

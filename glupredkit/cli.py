@@ -483,7 +483,8 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
 
 
 @click.command()
-@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".')
+@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".',
+              required=True)
 def generate_evaluation_pdf(results_file):
     """
     This command stores a standardized pdf report of the given model in data/reports/.
