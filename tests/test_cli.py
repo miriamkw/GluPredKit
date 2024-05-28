@@ -174,3 +174,11 @@ def test_generate_evaluation_pdf(runner, temp_dir):
         output_file_name = f'{model}__{config}__60.pdf'
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
+
+def test_generate_comparison_pdf(runner, temp_dir):
+    runner = CliRunner()
+
+    result = runner.invoke(generate_comparison_pdf)
+    assert result.exit_code == 0
+
+
