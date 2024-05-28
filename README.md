@@ -281,7 +281,7 @@ glupredkit generate_evaluation_pdf --results-file ridge__my_config__180.csv
 glupredkit generate_comparison_pdf  
 ```
 
-- `--results-files` (optional): File names from `data/tested_models/` of the model that you want to evaluate, comma separated without space. If none, all models will be tested.
+- `--results-files` (optional): File names from `data/tested_models/` of the models that you want to evaluate, comma separated without space. If none, all models will be tested.
 
 #### Example
 ```
@@ -296,32 +296,17 @@ glupredkit generate_comparison_pdf --results-files ridge__my_config__180.csv,lst
 ```
 glupredkit draw_plots
 ```
-- `--models`: Specify the list of trained models you'd like to visualize. Input model names separated by commas, with the ".pkl" extension. By default, all available models will be evaluated.
-- `--plots`: Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
+- `--results-files`: File names from `data/tested_models/` of the models that you want to plot, comma separated without space.
+- `--plots` (optional): Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
     - scatter_plot
     - trajectories
-    - one_prediction
-- `--is-real-time`: A boolean flag indicating whether to consider test data without matching true measurements. By default, it is set to False.
-- `--start-date`: The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
-- `--end-date`: This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
-- `--carbs`: This allows you to set an artificial carbohydrate input for one_prediction plots. This option is only valid when is-real-time is set to True.
-- `--insulin`: Similar to the carbs option, this lets you provide an artificial insulin input for one_prediction plots. Again, it's only available when is-real-time is True.
+- `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
+- `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
 
 #### Example
 ```
-glupredkit draw_plots --models ridge_ph-60.pkl,arx_ph-60,svr_ph-60.pkl --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
-
-### Real-Time Prediction Plots
-
-**Description**: To achieve real-time predictions, it is necessary to have a data-source that provides real-time data. 
-Nightscout API can be a real-time API if the insulin management system is uploading data continuously (which is, to our knowledge,
-only possible to achieve with open-source insulin management systems). The steps to draw real-time plots are the following:
-1. Train one or more models using the steps above.
-2. Parse some up-to-date data, using for example the nightscout-parser.
-3. Update the model configurations to have the data from (2) as a data source for predictions.
-4. Call the `draw_plots` command with `--plots one_prediction` and `--is-real-time True` 
-
 
 ---
 ### Setting Unit of Evaluations

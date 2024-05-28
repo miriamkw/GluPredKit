@@ -426,67 +426,34 @@ def test_model(model_file, max_samples):
 
 
 @click.command()
-@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
-                               'models will be evaluated. ', default=None)
+@click.option('--results-files', help='The name of the tested model results to evaluate, with ".csv". If '
+                                      'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
-    , default=False)
 @click.option('--start-date', type=str,
               help='Start date for the predictions. Default is the first sample in the test data. '
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--end-date', type=str,
               help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--carbs', type=int,
-              help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-@click.option('--insulin', type=float,
-              help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin):
+@click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
+                                            'without space. Required for scatter plot. ', default=None)
+def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
     """
     This command draws the given plots and store them in data/figures/.
-
-    The "real_time" parameter indicates whether all test data (including when there is no true values) should be
-    included. This parameter allows for real-time plots, but is not compatible with all the plots.
     """
     # Prepare a list of plots
     plots = helpers.split_string(plots)
 
-    if models is None:
-        models = helpers.list_files_in_directory('data/trained_models/')
+    if results_files is None:
+        results_files = helpers.list_files_in_directory('data/tested_models/')
     else:
-        models = helpers.split_string(models)
+        results_files = helpers.split_string(results_files)
 
-    click.echo(f"Calculating predictions...")
-    models_data = []
-    for model_file in models:
-        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
-                                                            int(model_file.split('__')[2].split('.')[0]))
-
-        model_config_manager = ModelConfigurationManager(config_file_name)
-        model_instance = helpers.get_trained_model(model_file)
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
-                                                     insulin=insulin, start_date=start_date, end_date=end_date)
-
-        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
-        x_test = processed_data.drop('target', axis=1)
-        y_test = processed_data['target']
-
-        y_pred = model_instance.predict(x_test)
-
-        model_data = {
-            'name': f'{model_name} {prediction_horizon}-minutes PH',
-            'y_pred': y_pred,
-            'y_true': y_test,
-            'prediction_horizon': prediction_horizon,
-            'config': config_file_name,
-            'real_time': is_real_time,
-            'carbs': carbs,
-            'insulin': insulin,
-        }
-        models_data.append(model_data)
+    dfs = []
+    for results_file in results_files:
+        df = generate_report.get_df_from_results_file(results_file)
+        dfs += [df]
 
     plot_results_path = 'data/figures/'
 
@@ -497,11 +464,22 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
-
         chosen_plot = plot_module.Plot()
-        chosen_plot(models_data)
 
-    click.echo(f"{plots} for trained_models {models} are stored in '{plot_results_path}'")
+        if plot == 'scatter_plot':
+            if prediction_horizons is None:
+                raise ValueError(f"{plot} requires that you provide --prediction-horizons")
+            prediction_horizons = helpers.split_string(prediction_horizons)
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon)
+
+        elif plot == 'trajectories':
+            chosen_plot(dfs)
+
+        else:
+            click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
+
+    click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 
 
 @click.command()

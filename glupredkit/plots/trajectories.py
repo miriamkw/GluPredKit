@@ -1,21 +1,21 @@
 from .base_plot import BasePlot
+import ast
+import random
 import numpy as np
 import matplotlib.pyplot as plt
 from glupredkit.helpers.unit_config_manager import unit_config_manager
+from datetime import datetime
 
 
 class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, models_data):
+    def __call__(self, dfs, *args):
         """
-        This plot plots predicted trajectories from the measured values. It is recommended to use around 24 hours
-        of test data for this plot to work optimally.
-
-        #TODO: Predict trajectories when the models with different prediction horizons have the same config.
+        This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
+        be plotted.
         """
-
         def on_hover(event):
             if event.inaxes == ax:
                 for hover_line in lines:
@@ -31,80 +31,39 @@ class Plot(BasePlot):
         else:
             unit = "mmol/L"
 
-        unique_model_names = set()  # Initialize an empty set to store unique names
-        unique_configs = set()
-        unique_ph = set()
-
-        real_time = False
-        for model_entry in models_data:
-            name = model_entry['name'].split(' ')[0]
-            real_time = model_entry['real_time']
-            config = model_entry['config']
-            ph = model_entry['prediction_horizon']
-            unique_model_names.add(name)  # Add the name to the set
-            unique_configs.add(config)
-            unique_ph.add(ph)
-
-        unique_model_names_list = list(unique_model_names)
-        unique_configs_list = list(unique_configs)
-        unique_ph_list = list(unique_ph)
-
-        max_ph = max(unique_ph_list)
-        max_target_index = max_ph // 5
-
-        trajectories = []  # Will be a set of trajectories for models with equal names and configs
-
-        for model_name in unique_model_names_list:
-            for config in unique_configs_list:
-                filtered_entries = [entry for entry in models_data if
-                                    entry['name'].split(' ')[0] == model_name and
-                                    entry['config'] == config]
-
-                if len(filtered_entries) != 0:
-                    prediction_horizons = [0]
-                    y_true = filtered_entries[0]['y_true'].dropna()
-                    predictions = [y_true]
-
-                    if not unit_config_manager.use_mgdl:
-                        predictions = [[unit_config_manager.convert_value(val) for val in
-                                       y_true]]
-
-                    for entry in filtered_entries:
-                        entry_prediction_horizon = entry['prediction_horizon']
-                        start_index = entry_prediction_horizon // 5
-                        prediction_horizons = prediction_horizons + [entry_prediction_horizon]
-                        entry_predictions = entry['y_pred'][start_index:]
-
-                        if unit_config_manager.use_mgdl:
-                            predictions = predictions + [entry_predictions]
-                        else:
-                            predictions = predictions + [[unit_config_manager.convert_value(val) for val in
-                                                          entry_predictions]]
-
-                    # Sort lists by prediction horizons
-                    pairs = list(zip(prediction_horizons, predictions))
-                    sorted_pairs = sorted(pairs, key=lambda x: x[0])
-                    sorted_prediction_horizons, sorted_predictions = zip(*sorted_pairs)
-
-                    # Add trajectory data for reference value
-                    trajectory_data = {
-                        'prediction_horizons': list(sorted_prediction_horizons),
-                        'predictions': list(sorted_predictions),  # A list of lists of predicted values
-                        'y_true': y_true,
-                        'model_name': model_name,
-                        'config': config,
-                    }
-                    trajectories.append(trajectory_data)
-
-        for trajectory_data in trajectories:
+        for df in dfs:
             fig, ax = plt.subplots()
 
-            model_name = trajectory_data.get('model_name')
-            y_prediction_lists = trajectory_data.get('predictions')
-            y_true = trajectory_data.get('y_true')
-            prediction_horizons = trajectory_data.get('prediction_horizons')
+            model_name = df['Model Name'][0]
+            ph = int(df['prediction_horizon'][0])
 
-            total_time = len(y_true) * 5 + max_target_index * 5
+            prediction_horizons = range(5, ph + 1, 5)
+
+            y_true = df[f'target_5'][0]
+            y_true = ast.literal_eval(y_true)
+
+            n_samples = 12*24
+
+            if len(y_true) - n_samples > len(y_true):
+                start_index = random.randint(0, len(y_true) - n_samples)
+            else:
+                start_index = 0
+
+            y_pred_lists = []
+
+            for ph in prediction_horizons:
+                y_pred = df[f'y_pred_{ph}'][0]
+                y_pred = y_pred.replace("nan", "None")
+                y_pred = ast.literal_eval(y_pred)
+                y_pred = [np.nan if val is None else val for val in y_pred]
+
+                y_pred_lists += [y_pred]
+
+            y_true = np.array(y_true)[start_index:start_index + n_samples]
+            y_pred_lists = np.array(y_pred_lists)
+            y_pred_lists = np.transpose(y_pred_lists)[1 + start_index:start_index + n_samples + 1]
+
+            total_time = len(y_true) * 5 + ph
             t = np.arange(0, total_time, 5)
 
             # Use correct unit
@@ -120,27 +79,23 @@ class Plot(BasePlot):
             ax.set_ylabel(f'Blood glucose [{unit}]')
             ax.scatter(t[:len(y_true)], y_true, label='Blood glucose measurements', color='black')
 
+            prediction_horizons = range(0, ph + 1, 5)
             lines = []
             # Add predicted trajectories
-            for i in range(len(y_true)):
-                trajectory = []
-                t_values = []
-
-                for j in range(len(prediction_horizons)):
-                    if i < len(y_prediction_lists[j]):
-                        t_values = t_values + [i*5 + prediction_horizons[j]]
-                        trajectory = trajectory + [y_prediction_lists[j][i]]
-                    else:
-                        break
-
-                line, = ax.plot(t_values, trajectory, linestyle='--')
+            for i in range(len(y_pred_lists)):
+                # Adding the true measurement to the trajectory
+                trajectory = np.insert(y_pred_lists[i], 0, y_true[i])
+                line, = ax.plot([val + i*5 for val in prediction_horizons], trajectory, linestyle='--')
                 lines.append(line)
 
             fig.canvas.mpl_connect('motion_notify_event', on_hover)
             ax.legend()
             plt.title(f'Predicted trajectories for {model_name}')
             file_path = "data/figures/"
-            # TODO: Add config name
-            file_name = f"trajectories_{trajectory_data.get('config')}_{model_name}.png"
+
+            timestamp = datetime.now().isoformat()
+            safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+            safe_timestamp = safe_timestamp.replace('.', '_')
+            file_name = f"trajectories_{model_name}_{safe_timestamp}.png"
             plt.savefig(file_path + file_name)
             plt.show()
