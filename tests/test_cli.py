@@ -19,8 +19,8 @@ def temp_dir(runner):
     with runner.isolated_filesystem(temp_dir=test_data_dir) as temp_dir:
         yield temp_dir
 
-    # TODO: Clean up the directory after the test session
-    # shutil.rmtree(test_data_dir)
+    # Clean up the directory after the test session
+    shutil.rmtree(test_data_dir)
 
 
 def sample_data():
