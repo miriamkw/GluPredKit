@@ -2,8 +2,6 @@ import pytest
 import json
 import os
 from unittest import mock
-from pathlib import Path
-from importlib.resources import files
 from glupredkit.helpers.unit_config_manager import UnitConfigManager
 
 
