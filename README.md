@@ -20,8 +20,10 @@ framework.
    - [Parsing Data](#parsing-data)
    - [Generate Model Training Configuration](#generate-model-training-configuration)
    - [Train a Model](#train-a-model)
-   - [Evaluate Models](#evaluate-models)
-   - [Setting Configurations](#setting-configurations)
+   - [Test a Model](#test-a-model)
+   - [Generate Evaluation Reports](#generate-evaluation-reports)
+   - [Draw Plots](#draw-plots)
+   - [Setting Unit of Evaluations](#setting-unit-of-evaluations)
 3. [Contributing with Code](#contributing-with-code)
    - [Making Contributions](#making-contributions)
    - [Reporting Issues](#reporting-issues)
@@ -437,7 +439,6 @@ If you need help with setup, understanding the codebase, or have other questions
 
 
 ## Testing
-(OLD!) To run the tests, write `python tests/test_all.py` in the terminal.
 
 To run the tests, write `pytest` in the terminal.
 
