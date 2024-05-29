@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import shutil
 from click.testing import CliRunner
-from glupredkit.cli import setup_directories, parse, generate_config, train_model, test_model, generate_evaluation_pdf, generate_comparison_pdf
+from glupredkit.cli import setup_directories, generate_config, train_model, test_model, generate_evaluation_pdf, generate_comparison_pdf
 
 
 @pytest.fixture(scope="session")
@@ -15,6 +15,10 @@ def runner():
 @pytest.fixture(scope="session")
 def temp_dir(runner):
     test_data_dir = os.path.join('tests', 'test_data')
+
+    # Create the test_data directory if it doesn't exist
+    if not os.path.exists(test_data_dir):
+        os.makedirs(test_data_dir)
 
     with runner.isolated_filesystem(temp_dir=test_data_dir) as temp_dir:
         yield temp_dir

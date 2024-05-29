@@ -491,9 +491,14 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
                             correct_sign_values += 1
                         if row[i] > prev_value:
                             persistant_values += 1
-                        calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60, 180) * estimated_ISF / \
-                                        row[i]
-                        calculated_ratios += [calculated_CR]
+
+                        if not row[i] == 0:
+                            calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60,
+                                                                                      180) * estimated_ISF / \
+                                            row[i]
+                            calculated_ratios += [calculated_CR]
+                        else:
+                            calculated_ratios += [np.nan]
                     else:
                         if row[i] < 0:
                             correct_sign_values += 1
@@ -563,6 +568,8 @@ def plot_across_prediction_horizons(c, df, title, columns, height=2, y_labels=No
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -590,6 +597,8 @@ def plot_rmse_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -617,6 +626,8 @@ def plot_error_grid_across_prediction_horizons(c, dfs, height=2, y_placement=300
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -643,6 +654,8 @@ def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -682,6 +695,8 @@ def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y
         drawing = svg2rlg(buffer)
 
         renderPDF.draw(drawing, c, 70, y_placement)
+
+        plt.close(fig)
         return c
 
 
@@ -713,6 +728,8 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -748,6 +765,8 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -783,6 +802,8 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -803,6 +824,7 @@ def plot_confusion_matrix(c, df, classes, ph, x_placement, y_placement, cmap=plt
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
 
+    plt.close(fig)
     return c
 
 
@@ -875,6 +897,7 @@ def plot_partial_dependency_heatmap(c, df, feature, x_placement, y_placement, ti
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
 
+    plt.close(fig)
     return c
 
 
