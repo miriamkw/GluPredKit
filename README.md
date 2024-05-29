@@ -2,15 +2,13 @@
 
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
 glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI), or download
-the repository via PyPi.
+the repository via PyPi. 
 
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
 
-# TODO: This figure should be refined, maybe a table with all the modules and implemented components or something instead.
-
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/Functionality%20Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/Functionality%20Overview.png)
 
 
 ## Table of Contents
@@ -79,8 +77,8 @@ Make sure that the virtual environment `bgp-evaluation` is activated before you 
 The command-line tool is designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
 
 The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/CLI%20Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/CLI%20Overview.png)
 
 ### Getting started
 1) First, follow the instructions above in "Setup and Installation". 
