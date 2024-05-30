@@ -440,7 +440,7 @@ If you need help with setup, understanding the codebase, or have other questions
 
 ## Testing
 
-To run the tests, write `pytest` in the terminal.
+To run the tests, write `glupredkit pytest` in the terminal.
 
 
 ## Disclaimers and limitations
