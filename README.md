@@ -440,8 +440,28 @@ If you need help with setup, understanding the codebase, or have other questions
 
 ## Testing
 
-To run the tests, write `glupredkit pytest` in the terminal.
+To run the tests:
 
+**1. Clone the Repository:**
+```
+git clone https://github.com/miriamkw/glupredkit.git
+cd glupredkit
+```
+**2. Set Up Environment:**
+```
+python -m venv glupredkit_venv
+source glupredkit_venv/bin/activate  # On Windows use `glupredkit_venv\Scripts\activate`
+pip install -r requirements.txt
+pip install .[test]
+```
+**3. Run Tests:**
+```
+pytest
+```
+
+*Note:* Tests are only included in the source distributions, not in the PyPI installations.
+
+For issues, visit our GitHub Issues page.
 
 ## Disclaimers and limitations
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.
