@@ -3,7 +3,7 @@ matplotlib
 pandas
 scikit-learn
 xgboost
-tensorflow
+Tensorflow[reproducibility]
 keras-tcn
 numpy
 aiohttp
