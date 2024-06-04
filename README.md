@@ -1,4 +1,6 @@
 # Blood Glucose Prediction-Kit
+[![test_metrics](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml)
+[![test_models](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml)
 
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
 glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI), or download
