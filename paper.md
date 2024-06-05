@@ -1,5 +1,5 @@
 ---
-title: 'GluPredKit: A Python package for blood glucose prediction and evaluation'
+title: 'GluPredKit: A Python Package for Blood Glucose Prediction and Evaluation'
 tags:
   - Python
   - Blood glucose prediction
