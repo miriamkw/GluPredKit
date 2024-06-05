@@ -40,7 +40,7 @@ def setup_directories():
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm']),
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm', 'open_aps']),
               help='Choose a parser', required=True)
 @click.option('--username', type=str, required=False)
 @click.option('--password', type=str, required=False)
@@ -104,6 +104,11 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
         else:
             parsed_data = chosen_parser(start_date=start_date, end_date=end_date,
                                         file_path=file_path)
+    elif parser in ['open_aps']:
+        if file_path is None:
+            raise ValueError(f"{parser} parser requires that you provide --file-path")
+        else:
+            parsed_data = chosen_parser(file_path=file_path)
     elif parser in ['ohio_t1dm']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
