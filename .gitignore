@@ -71,6 +71,7 @@ coverage.xml
 
 # Test Files
 tests/__pycache__/
+tests/test_data/*
 
 # Django stuff:
 *.log

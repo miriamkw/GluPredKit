@@ -22,6 +22,7 @@ class Model(BaseModel):
 
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        safe_timestamp = safe_timestamp.replace('.', '_')
         self.model_path = f"data/.pytorch_models/tcn_pytorch_ph-{prediction_horizon}_{safe_timestamp}.pth"
 
         # Extract the directory path
@@ -30,7 +31,7 @@ class Model(BaseModel):
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
 
-    def fit(self, x_train, y_train, epochs=20):
+    def _fit_model(self, x_train, y_train, epochs=20, *args):
         # Convert the 'sequence' column from strings to NumPy arrays
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
         targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
@@ -76,9 +77,7 @@ class Model(BaseModel):
         torch.save(model.state_dict(), self.model_path)
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         model = TCN(input_size=self.num_inputs, output_size=self.num_outputs, num_channels=self.n_channels,
                     kernel_size=self.kernel_size, dropout=self.dropout)
         model.load_state_dict(torch.load(self.model_path))
@@ -86,7 +85,9 @@ class Model(BaseModel):
 
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
-        inputs = torch.from_numpy(sequences).float().transpose(1, 2)
+
+        inputs = torch.from_numpy(sequences).float()
+
         with torch.no_grad():
             predictions = model(inputs)
         return predictions.numpy()

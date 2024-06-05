@@ -2,6 +2,7 @@
 import click
 import dill
 import os
+import ast
 import importlib
 import pandas as pd
 from datetime import timedelta, datetime
@@ -140,41 +141,51 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
 
 @click.command()
-@click.option('--file-name', prompt='Configuration file name', help='Name of the configuration file.',
-              callback=helpers.validate_file_name)
-@click.option('--data', prompt='Input data file name (from data/raw/)', help='Name of the data file from data/raw/.',
-              callback=helpers.validate_file_name)
-@click.option('--preprocessor', prompt='Preprocessor (available: basic, standardscaler)', help='Name of the preprocessor.')
-@click.option('--prediction-horizons', prompt='Prediction horizons in minutes (comma-separated without space)',
-              help='Comma-separated list of prediction horizons.', callback=helpers.validate_prediction_horizons)
-@click.option('--num-lagged-features', prompt='Number of lagged features', help='Number of lagged features.',
-              callback=helpers.validate_num_lagged_features)
-@click.option('--num-features', prompt='Numerical features (a subset of column names from the input data file)',
-              help='Comma-separated list of numerical features.', callback=helpers.validate_feature_list)
-@click.option('--cat-features', prompt='Categorical features (press enter if none)', default='',
-              help='Comma-separated list of categorical features.', callback=helpers.validate_feature_list)
-def generate_config(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features, cat_features):
-    generate_model_configuration(file_name, data, preprocessor, prediction_horizons, int(num_lagged_features),
-                                 num_features, cat_features)
+@click.option('--file-name', help='Name of the configuration file (without file extension).',
+              callback=helpers.validate_file_name, required=True)
+@click.option('--data', help='Name of the data file from data/raw/.',
+              callback=helpers.validate_file_name, required=True)
+@click.option('--subject-ids', help='The ids you want to include in the model training and testing. '
+                                    ' will include all of the subjects.', callback=helpers.validate_subject_ids,
+              required=False, default='')
+@click.option('--preprocessor', required=False, default='basic', type=click.Choice([
+    'basic',
+    'standardscaler'
+]))
+@click.option('--prediction-horizon', help='Integer for prediction horizon in minutes.',
+              callback=helpers.validate_prediction_horizon, required=True)
+@click.option('--num-lagged-features', help='Number of lagged features.',
+              callback=helpers.validate_num_lagged_features, required=True)
+@click.option('--num-features', help='Comma-separated list of numerical features.',
+              callback=helpers.validate_feature_list, required=True)
+@click.option('--cat-features', help='Comma-separated list of categorical features.',
+              callback=helpers.validate_feature_list, required=False, default='')
+@click.option('--what-if-features', help='Comma-separated list of categorical features.',
+              callback=helpers.validate_feature_list, required=False, default='')
+def generate_config(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features, num_features,
+                    cat_features, what_if_features):
+    generate_model_configuration(file_name, data, subject_ids, preprocessor, int(prediction_horizon),
+                                 int(num_lagged_features), num_features, cat_features, what_if_features)
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")
     click.echo(f"Note that it might take a minute before the file appears in the folder.")
 
 
 @click.command()
 @click.argument('model', type=click.Choice([
-                                            'blstm',
-                                            'loop',
-                                            'lstm',
-                                            'mtl',
-                                            'naive_linear_regressor',
-                                            'random_forest',
-                                            'ridge',
-                                            'stl',
-                                            'svr',
-                                            'tcn',
-                                            'uva_padova',
-                                            'zero_order'
-                                            ]))
+    'double_lstm',
+    'loop',
+    'lstm',
+    'mtl',
+    'naive_linear_regressor',
+    'random_forest',
+    'ridge',
+    'stacked_plsr',
+    'stl',
+    'svr',
+    'tcn',
+    'uva_padova',
+    'zero_order'
+]))
 @click.argument('config-file-name', type=str)
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
@@ -209,12 +220,12 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
 
     # Initialize and train the model
     # Ensure that the optional params match the parser
-    if model in ['blstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
+    if model in ['double_lstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
         model_instance = chosen_model.fit(x_train, y_train, epochs)
     elif model in ['loop'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
     elif model in ['uva_padova'] and n_steps:
-        model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
+        model_instance = chosen_model.fit(x_train, y_train, n_steps)
     else:
         model_instance = chosen_model.fit(x_train, y_train)
 
@@ -237,7 +248,8 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
 
 @click.command()
 @click.argument('model_file', type=str)
-def test_model(model_file):
+@click.option('--max-samples', type=int, required=False)
+def test_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
 
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
@@ -248,10 +260,14 @@ def test_model(model_file):
     training_data, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-    target_cols = [col for col in test_data if col.startswith('target')]
+    target_cols = [col for col in processed_data if col.startswith('target')]
 
-    x_test = processed_data.drop(target_cols, axis=1)
-    y_test = processed_data[target_cols]
+    if max_samples:
+        x_test = processed_data.drop(target_cols, axis=1)[-max_samples:]
+        y_test = processed_data[target_cols][-max_samples:]
+    else:
+        x_test = processed_data.drop(target_cols, axis=1)
+        y_test = processed_data[target_cols]
     y_pred = model_instance.predict(x_test)
 
     hypo_threshold = 70
@@ -265,85 +281,144 @@ def test_model(model_file):
         'hypo_training_samples': [training_data[training_data['CGM'] < hypo_threshold].shape[0]],
         'hypo_test_samples': [test_data[test_data['CGM'] < hypo_threshold].shape[0]],
         'hyper_training_samples': [training_data[training_data['CGM'] > hyper_threshold].shape[0]],
-        'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]]
+        'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]],
+        'unit': [unit_config_manager.get_unit()]
     })
 
     configs = model_config_manager.load_config()
     for config in configs:
         results_df[config] = [configs[config]]
 
-    # Add daily average insulin
-    test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
-    results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+    # Add daily average insulin if relevant
+    num_features = model_config_manager.get_num_features()
+    if 'bolus' in num_features and 'basal' in num_features:
+        test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
+        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+    elif ['insulin'] in num_features:
+        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-    # metrics = ['rmse', 'mare', 'me', 'parkes_error_grid', 'glycemia_detection', 'mcc_hypo', 'mcc_hyper',
-    #            'parkes_error_grid_exp']
-    metrics = helpers.list_files_in_directory('glupredkit/metrics/')
+    metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
-    # TODO: could we get all the results at the same time instead?
-    for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
-        curr_y_test = y_test[target_cols[i]].tolist()
-        curr_y_pred = [val[i] for val in y_pred]
-        results_df = results_df.copy()  # To silent PerformanceWarning
-        results_df[target_cols[i]] = [curr_y_test]
-        results_df[f'y_pred_{minutes}'] = [curr_y_pred]
+    if target_cols == ['target']:
+        # In this case, targets are stored into sequences for Neural Networks
+        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_test['target']]
+        targets = np.array(targets)
+        _, n_predictions = targets.shape
 
-        for metric in metrics:
-            metric_module = helpers.get_metric_module(metric)
-            chosen_metric = metric_module.Metric()
-            score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
-            results_df[f'{metric}_{minutes}'] = [score]
+        for i, minutes in enumerate(range(5, n_predictions * 5 + 1, 5)):
+            curr_y_test = targets[:, i].tolist()
+            curr_y_pred = [val[i] for val in y_pred]
+            results_df = results_df.copy()  # To silent PerformanceWarning
+            results_df[f'target_{minutes}'] = [curr_y_test]
+            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
 
-    metrics = ['rmse', 'mare', 'me']
-    # Calculate average error metrics
-    for metric in metrics:
-        metric_cols = [col for col in results_df.columns if col.startswith(metric)]
-        avg_score = np.mean(results_df[metric_cols].iloc[0])
-        results_df[f'{metric}_avg'] = [avg_score]
+            for metric in metrics:
+                metric_module = helpers.get_metric_module(metric)
+                chosen_metric = metric_module.Metric()
+                score = chosen_metric(curr_y_test, curr_y_pred)
+                results_df[f'{metric}_{minutes}'] = [score]
+
+    else:
+        for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
+            curr_y_test = y_test[target_cols[i]].tolist()
+            curr_y_pred = [val[i] for val in y_pred]
+            results_df = results_df.copy()  # To silent PerformanceWarning
+            results_df[target_cols[i]] = [curr_y_test]
+            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
+
+            for metric in metrics:
+                metric_module = helpers.get_metric_module(metric)
+                chosen_metric = metric_module.Metric()
+                score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
+                results_df[f'{metric}_{minutes}'] = [score]
 
     subset_size = x_test.shape[0]
 
+    # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
     if (model_name == 'loop') | (model_name == 'uva_padova'):
-        # TODO: Increase for real tests
-        subset_size = 50
-    # subset_df_x = x_test.sample(n=subset_size, random_state=42)
+        subset_size = 1000
     subset_df_x = x_test[-subset_size:]
 
     insulin_doses = [1, 5, 10]
     carb_intakes = [10, 50, 100]
 
-    x_test_copy = subset_df_x.copy()
-    x_test_copy['bolus'] = 0
+    insulin_col = None
+    if 'insulin' in num_features:
+        insulin_col = 'insulin'
+    elif 'bolus' in num_features:
+        insulin_col = 'bolus'
 
-    y_pred_bolus_0 = model_instance.predict(x_test_copy)
-    y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
+    if insulin_col:
+        if 'sequence' in x_test.columns:
+            _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+            x_test_copy = test_data.copy()
+        else:
+            x_test_copy = subset_df_x.copy()
 
-    for insulin_dose in insulin_doses:
-        x_test_copy = subset_df_x.copy()
-        x_test_copy['bolus'] = insulin_dose
-        y_pred = model_instance.predict(x_test_copy)
+        x_test_copy[insulin_col] = 0
 
-        # Calculate the average of elements at each index position
-        averages = [np.nanmean(x) for x in zip(*y_pred)]
-        averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
-        results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
+        if 'sequence' in x_test.columns:
+            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
 
-    x_test_copy = subset_df_x.copy()
-    x_test_copy['carbs'] = 0
-    y_pred_carbs_0 = [np.nanmean(x) for x in zip(*model_instance.predict(x_test_copy))]
+        y_pred_bolus_0 = model_instance.predict(x_test_copy)
+        y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
 
-    for carb_intake in carb_intakes:
-        x_test_copy = subset_df_x.copy()
-        x_test_copy['carbs'] = carb_intake
-        y_pred = model_instance.predict(x_test_copy)
-        # Calculate the average of elements at each index position
-        averages = [np.nanmean(x) for x in zip(*y_pred)]
-        averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
-        results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+        for insulin_dose in insulin_doses:
+            if 'sequence' in x_test.columns:
+                x_test_copy = test_data.copy()
+            else:
+                x_test_copy = subset_df_x.copy()
+
+            x_test_copy[insulin_col] = insulin_dose
+
+            if 'sequence' in x_test.columns:
+                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
+            y_pred = model_instance.predict(x_test_copy)
+
+            # Calculate the average of elements at each index position
+            averages = [np.nanmean(x) for x in zip(*y_pred)]
+            averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+            results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
+
+    if 'carbs' in num_features:
+        if 'sequence' in x_test.columns:
+            x_test_copy = test_data.copy()
+        else:
+            x_test_copy = subset_df_x.copy()
+
+        x_test_copy['carbs'] = 0
+
+        if 'sequence' in x_test.columns:
+            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
+        y_pred_carbs_0 = model_instance.predict(x_test_copy)
+        y_pred_carbs_0 = [np.nanmean(x) for x in zip(*y_pred_carbs_0)]
+
+        for carb_intake in carb_intakes:
+            if 'sequence' in x_test.columns:
+                x_test_copy = test_data.copy()
+            else:
+                x_test_copy = subset_df_x.copy()
+
+            x_test_copy['carbs'] = carb_intake
+
+            if 'sequence' in x_test.columns:
+                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
+                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
+
+            y_pred = model_instance.predict(x_test_copy)
+            # Calculate the average of elements at each index position
+            averages = [np.nanmean(x) for x in zip(*y_pred)]
+            averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
+            results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     # Define the path to store the dataframe
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
+    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
 
     # Store the dataframe in a file
     results_df.to_csv(output_file, index=False)
@@ -351,130 +426,34 @@ def test_model(model_file):
 
 
 @click.command()
-@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
-                               'models will be evaluated. ',
-              default=None)
-@click.option('--metrics', help='List of metrics to be computed, separated by comma. '
-                                'By default RMSE will be computed. ', default='rmse')
-def calculate_metrics(models, metrics):
-    """
-    This command stores a report of the given metrics in data/reports/.
-    """
-    trained_models_path = "data/trained_models/"
-
-    if models is None:
-        models = helpers.list_files_in_directory(trained_models_path)
-    else:
-        models = helpers.split_string(models)
-
-    # Prepare a list of metrics
-    metrics = helpers.split_string(metrics)
-
-    results = []
-    click.echo(f"Calculating metrics...")
-    for model_file in models:
-        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
-                                                            int(model_file.split('__')[2].split('.')[0]))
-
-        model_config_manager = ModelConfigurationManager(config_file_name)
-        model_instance = helpers.get_trained_model(model_file)
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-
-        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-        x_test = processed_data.drop('target', axis=1)
-        y_test = processed_data['target']
-
-        y_pred = model_instance.predict(x_test)
-
-        for metric in metrics:
-            metric_module = helpers.get_metric_module(metric)
-            chosen_metric = metric_module.Metric()
-            score = chosen_metric(y_test, y_pred)
-            results.append({'Model name': model_name,
-                            'Configuration': config_file_name,
-                            'Prediction horizon': prediction_horizon,
-                            'Metric': metric,
-                            'Score': score})
-
-    # Convert results to DataFrame and save as CSV
-    df_results = pd.DataFrame(results)
-    metric_results_path = 'data/reports/'
-    os.makedirs(metric_results_path, exist_ok=True)
-
-    timestamp = datetime.now().isoformat()
-    safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-    results_file_name = f'{safe_timestamp}.csv'
-
-    df_results.to_csv(metric_results_path + results_file_name, index=False)
-
-    click.echo(
-        f"{metrics} for trained_models {models} are stored in '{metric_results_path}' as '{results_file_name}'")
-
-    click.echo(df_results.to_string(index=False))
-
-
-@click.command()
-@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
-                               'models will be evaluated. ', default=None)
+@click.option('--results-files', help='The name of the tested model results to evaluate, with ".csv". If '
+                                      'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
-    , default=False)
 @click.option('--start-date', type=str,
               help='Start date for the predictions. Default is the first sample in the test data. '
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--end-date', type=str,
               help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--carbs', type=int,
-              help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-@click.option('--insulin', type=float,
-              help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin):
+@click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
+                                            'without space. Required for scatter plot. ', default=None)
+def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
     """
     This command draws the given plots and store them in data/figures/.
-
-    The "real_time" parameter indicates whether all test data (including when there is no true values) should be
-    included. This parameter allows for real-time plots, but is not compatible with all the plots.
     """
     # Prepare a list of plots
     plots = helpers.split_string(plots)
 
-    if models is None:
-        models = helpers.list_files_in_directory('data/trained_models/')
+    if results_files is None:
+        results_files = helpers.list_files_in_directory('data/tested_models/')
     else:
-        models = helpers.split_string(models)
+        results_files = helpers.split_string(results_files)
 
-    click.echo(f"Calculating predictions...")
-    models_data = []
-    for model_file in models:
-        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
-                                                            int(model_file.split('__')[2].split('.')[0]))
-
-        model_config_manager = ModelConfigurationManager(config_file_name)
-        model_instance = helpers.get_trained_model(model_file)
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
-                                                     insulin=insulin, start_date=start_date, end_date=end_date)
-
-        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
-        x_test = processed_data.drop('target', axis=1)
-        y_test = processed_data['target']
-
-        y_pred = model_instance.predict(x_test)
-
-        model_data = {
-            'name': f'{model_name} {prediction_horizon}-minutes PH',
-            'y_pred': y_pred,
-            'y_true': y_test,
-            'prediction_horizon': prediction_horizon,
-            'config': config_file_name,
-            'real_time': is_real_time,
-            'carbs': carbs,
-            'insulin': insulin,
-        }
-        models_data.append(model_data)
+    dfs = []
+    for results_file in results_files:
+        df = generate_report.get_df_from_results_file(results_file)
+        dfs += [df]
 
     plot_results_path = 'data/figures/'
 
@@ -485,15 +464,27 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
-
         chosen_plot = plot_module.Plot()
-        chosen_plot(models_data)
 
-    click.echo(f"{plots} for trained_models {models} are stored in '{plot_results_path}'")
+        if plot == 'scatter_plot':
+            if prediction_horizons is None:
+                raise ValueError(f"{plot} requires that you provide --prediction-horizons")
+            prediction_horizons = helpers.split_string(prediction_horizons)
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon)
+
+        elif plot == 'trajectories':
+            chosen_plot(dfs)
+
+        else:
+            click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
+
+    click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 
 
 @click.command()
-@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".')
+@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".',
+              required=True)
 def generate_evaluation_pdf(results_file):
     """
     This command stores a standardized pdf report of the given model in data/reports/.
@@ -528,12 +519,19 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
+    def round_to_nearest_5(number, divisor):
+        result = number / divisor
+        rounded_result = 5 * round(result / 5)
+        return rounded_result
+
+    prediction_horizon = generate_report.get_ph(df)
+    ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
-    c = generate_report.draw_scatter_plot(c, df, 30, 100, 360)
-    c = generate_report.draw_scatter_plot(c, df, 60, 380, 360)
-    prediction_horizon = generate_report.get_ph(df)
-    c = generate_report.draw_scatter_plot(c, df, prediction_horizon - 30, 100, 120)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
     c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
@@ -555,9 +553,9 @@ def generate_evaluation_pdf(results_file):
     # Plot confusion matrixes
     classes = ['Hypo', 'Target', 'Hyper']
 
-    c = generate_report.plot_confusion_matrix(c, df, classes, 30, 50, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, 60, 320, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon - 50, 50, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
     c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
 
     c = generate_report.set_bottom_text(c)
@@ -575,21 +573,6 @@ def generate_evaluation_pdf(results_file):
 
     c = generate_report.set_bottom_text(c)
     c.showPage()
-
-    """
-    # PHYSIOLOGICAL ALIGNMENT PAGE
-    c = generate_report.set_title(c, f'Physiological Alignment')
-    c = generate_report.set_subtitle(c, f'Physiological Alignment for insulin', 720)
-    c = generate_report.draw_physiological_alignment_table(c, df, 'bolus', 670)
-    c = generate_report.plot_partial_dependency_heatmap(c, df, 'bolus', 100, 440,
-                                                        f'Average impact on prediction for 1U of insulin')
-    c = generate_report.set_subtitle(c, f'Physiological Alignment for carbohydrates', 380)
-    c = generate_report.draw_physiological_alignment_table(c, df, 'carbs', 330)
-    c = generate_report.plot_partial_dependency_heatmap(c, df, 'carbs', 100, 100,
-                                                        f'Average impact on prediction for 50g of carbohydrates')
-    c = generate_report.set_bottom_text(c)
-    c.showPage()
-    """
 
     # PREDICTION DISTRIBUTION PAGE
     c = generate_report.set_title(c, f'Distribution of Predictions')
@@ -619,7 +602,12 @@ def generate_comparison_pdf(results_files):
         results_files = helpers.split_string(results_files)
 
     results_file_path = "data/reports/"
-    results_file_name = f'comparison__{results_files}.pdf'
+
+    timestamp = datetime.now().isoformat()
+    safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+    safe_timestamp = safe_timestamp.replace('.', '_')
+
+    results_file_name = f'comparison_report_{safe_timestamp}.pdf'
 
     dfs = []
     for results_file in results_files:
@@ -632,14 +620,14 @@ def generate_comparison_pdf(results_files):
     # FRONT PAGE
     c = generate_report.set_title(c, f'Model Comparison Report')
     # TODO: Add front page summary of all parts and all the configurations
-    c = generate_report.draw_overall_ranking_table(c, dfs, y_placement=700 - 20*len(dfs))
+    c = generate_report.draw_overall_ranking_table(c, dfs, y_placement=700 - 20 * len(dfs))
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
     # MODEL ACCURACY
     c = generate_report.set_title(c, f'Model Accuracy')
-    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'rmse', 700 - 20*len(dfs))
-    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20*len(dfs))
+    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'rmse', 700 - 20 * len(dfs))
+    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20 * len(dfs))
     c = generate_report.plot_rmse_across_prediction_horizons(c, dfs, y_placement=200)
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -658,11 +646,6 @@ def generate_comparison_pdf(results_files):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
-    # PHYSIOLOGICAL ALIGNMENT
-    c = generate_report.set_title(c, f'Physiological Alignment')
-    c = generate_report.set_bottom_text(c)
-    c.showPage()
-
     # PREDICTED DISTRIBUTION
     c = generate_report.set_title(c, f'Predicted Distribution')
     # TODO: Draw both in the table, and add a total score. Plot the total score for each model.
@@ -675,179 +658,6 @@ def generate_comparison_pdf(results_files):
     c.save()
 
     click.echo(f"An evaluation report for {results_files} is stored in '{results_file_path}' as '{results_file_name}'")
-
-
-    """
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        # Plotting rmse values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, rmse_lists[i], marker='o', label=f'{models[i]}')
-        mean_rmse = np.mean(rmse_lists[i])
-        plt.axhline(y=mean_rmse, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_rmse + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'RMSE [{unit_config_manager.get_unit()}]')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'RMSE [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 300)
-
-    # Show the page
-    c.showPage()
-
-    # GLYCEMIA DETECTION
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Glycemia Detection")
-
-    # Table data
-    data = [
-        ['Rank', 'Model', f'Hypoglycemia Detection', f'Hyperglycemia Detection', 'Overall']
-    ]
-    # Sort for ranking
-    pairs = zip(glycemia_detection_list, [np.mean(values) for values in hypoglycemia_detection_lists],
-                [np.mean(values) for values in hyperglycemia_detection_lists], models)
-
-    # Sort the pairs based on the glycemia values (in descending order)
-    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=True)
-
-    # Unpack the sorted pairs back into separate lists
-    sorted_glycemia_list, sorted_hypo_list, sorted_hyper_list, sorted_models_list = zip(*sorted_pairs)
-
-    for i in range(len(models)):
-        glycemia_str = "{:.1f}%".format(sorted_glycemia_list[i])
-        hypo_str = "{:.1f}%".format(sorted_hypo_list[i])
-        hyper_str = "{:.1f}%".format(sorted_hyper_list[i])
-        new_row = [f'#{i + 1}', sorted_models_list[i], hypo_str, hyper_str, glycemia_str]
-        data += [new_row]
-
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('TOPPADDING', (0, 0), (-1, 0), 4),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ('GRID', (0, 1), (-1, -1), 1, colors.black),
-        ('GRID', (0, 0), (-1, -1), 0, colors.black)
-    ]))
-
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 600)
-
-    fig = plt.figure(figsize=(5, 2))
-
-    for i in range(len(models)):
-        # Plotting glycemia values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, hypoglycemia_detection_lists[i], marker='o', label=f'{models[i]}')
-        mean_hypo = np.mean(hypoglycemia_detection_lists[i])
-        plt.axhline(y=mean_hypo, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_hypo + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Hypoglycemia Detection')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Hypoglycemia Detection [%]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 320)
-
-    fig = plt.figure(figsize=(5, 2))
-
-    for i in range(len(models)):
-        # Plotting glycemia values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, hyperglycemia_detection_lists[i], marker='o', label=f'{models[i]}')
-        mean_hyper = np.mean(hyperglycemia_detection_lists[i])
-        plt.axhline(y=mean_hyper, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_hyper + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Hyperglycemia Detection')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Hyperglycemia Detection [%]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 100)
-
-    # Show the page
-    c.showPage()
-
-    # PREDICTION DISTRIBUTION
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Prediction Distribution")
-
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, std_lists[i], marker='o', label=f'{models[i]}')
-
-    plt.title(f'Prediction Standard Deviation')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Standard Deviation [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 450)
-
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, std_diff_lists[i], marker='o', label=f'{models[i]}')
-
-    plt.title(f'Prediction Standard Deviation minus Measurement Standard Deviation')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Standard Deviation [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 100)
-
-    # Show the page
-    c.showPage()
-
-    # Save the PDF
-    c.save()
-
-    click.echo(
-        f"An evaluation report for {models} is stored in '{results_file_path}' as '{results_file_name}'")
-    """
 
 
 @click.command()
@@ -865,7 +675,6 @@ cli = click.Group(commands={
     'generate_config': generate_config,
     'train_model': train_model,
     'test_model': test_model,
-    'calculate_metrics': calculate_metrics,
     'draw_plots': draw_plots,
     'generate_evaluation_pdf': generate_evaluation_pdf,
     'generate_comparison_pdf': generate_comparison_pdf,

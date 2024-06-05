@@ -12,7 +12,7 @@ class Model(BaseModel):
         self.columns = ['CGM', 'CGM_5', 'CGM_10']
         self.model= None
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, *args):
         # Define the base regressor
         base_regressor = LinearRegression()
 
@@ -25,9 +25,7 @@ class Model(BaseModel):
         self.model = multi_output_regressor
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         y_pred = self.model.predict(x_test[self.columns])
         y_pred = np.array(y_pred)
         return y_pred

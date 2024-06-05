@@ -17,7 +17,14 @@ class Model(BaseModel):
         self.insulin_sensitivity_factor = []
         self.carb_ratio = []
 
-    def fit(self, x_train, y_train, n_cross_val_samples=1000):
+    def _fit_model(self, x_train, y_train, n_cross_val_samples=1000, *args):
+        # TODO: Make a way to separate 'insulin' input into basal and bolus if not already done
+        required_columns = ['CGM', 'carbs', 'basal', 'bolus']
+        missing_columns = [col for col in required_columns if col not in x_train.columns]
+        if missing_columns:
+            raise ValueError(
+                f"The input DataFrame is missing the following required columns: {', '.join(missing_columns)}")
+
         self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
         target_col = 'target_' + str(self.prediction_horizon)
@@ -69,11 +76,9 @@ class Model(BaseModel):
             self.carb_ratio += [best_cr]
 
         print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
-
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
+    def _predict_model(self, x_test):
         """
         Return:
         y_pred -- A list of lists of the predicted trajectories.

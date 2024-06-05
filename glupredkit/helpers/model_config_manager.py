@@ -7,8 +7,8 @@ import json
 import os
 
 
-def generate_model_configuration(file_name, data, preprocessor, prediction_horizon, num_lagged_features, num_features,
-                                 cat_features):
+def generate_model_configuration(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features,
+                                 num_features, cat_features, what_if_features):
     # Check if the 'data' string is a valid file in the 'data/raw/' folder
     data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):
@@ -23,11 +23,13 @@ def generate_model_configuration(file_name, data, preprocessor, prediction_horiz
 
     config = {
         "data": data + '.csv',
+        "subject_ids": subject_ids,
         "preprocessor": preprocessor,
         "prediction_horizon": prediction_horizon,
         "num_lagged_features": num_lagged_features,
         "num_features": num_features,
-        "cat_features": cat_features
+        "cat_features": cat_features,
+        "what_if_features": what_if_features
     }
     # Save the generated config to a JSON file
     with open(f'data/configurations/{file_name}.json', 'w') as f:

@@ -14,7 +14,7 @@ class Model(BaseModel):
         self.subject_ids = None
         self.models = []
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, *args):
         self.subject_ids = x_train['id'].unique()
 
         # Define the parameter grid
@@ -35,17 +35,19 @@ class Model(BaseModel):
             self.models = self.models + [model]
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         y_pred = []
+        ids_list = x_test.id.unique()
 
-        for i in range(len(self.models)):
-            subset_df = x_test[x_test['id'] == self.subject_ids[i]]
+        for curr_id in ids_list:
+            model_index = np.where(self.subject_ids == curr_id)[0][0]
+            subset_df = x_test[x_test['id'] == curr_id]
+
             # Use the best estimator found by GridSearchCV to make predictions
-            predictions = self.models[i].best_estimator_.predict(subset_df)
+            predictions = self.models[model_index].best_estimator_.predict(subset_df)
             y_pred += predictions.tolist()
         y_pred = np.array(y_pred)
+
         return y_pred
 
     def best_params(self):

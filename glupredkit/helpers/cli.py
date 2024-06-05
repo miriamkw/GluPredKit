@@ -5,6 +5,8 @@ import ast
 import click
 import dill
 import importlib
+from importlib import resources
+from pathlib import Path
 from ..models.base_model import BaseModel
 from ..metrics.base_metric import BaseMetric
 from ..helpers.model_config_manager import ModelConfigurationManager
@@ -121,27 +123,42 @@ def list_files_in_directory(directory_path):
     return file_list
 
 
+def list_files_in_package(directory):
+    package = __import__('glupredkit')
+    package_path = Path(resources.files(package) / directory)
+    file_paths = [str(file) for file in package_path.iterdir() if file.is_file()]
+    file_names = [path.split('/')[-1] for path in file_paths]
+    return file_names
+
+
 def validate_file_name(ctx, param, value):
     file_name = str(value)
     # Removing the file extension, if any
     return file_name.partition('.')[0]
 
 
-def validate_prediction_horizons(ctx, param, value):
-    if value.startswith('[') and value.endswith(']'):
-        try:
-            # Convert string representation of a list to an actual list
-            value = ast.literal_eval(value)
-        except (ValueError, SyntaxError):
-            raise click.BadParameter("Invalid format for prediction horizons.")
-
+def validate_subject_ids(ctx, param, value):
+    if value is None or value.strip() == '':
+        return []
     try:
-        if isinstance(value, str):
-            value = value.replace(' ', '').split(',')
-        prediction_horizons = [int(val) for val in value]
-        return prediction_horizons
+        # Convert string representation of a list to an actual list
+        value = ast.literal_eval(value)
+        # Check if elements are integers, if not, raise ValueError
+        if not all(isinstance(val, int) for val in value):
+            raise ValueError
+        return value
+    except (ValueError, SyntaxError):
+        raise click.BadParameter("Invalid format for subject ids. List must be a comma-separated list of integers.")
+
+
+def validate_prediction_horizon(ctx, param, value):
+    try:
+        value = int(value)
+        if value < 0:
+            raise ValueError
     except ValueError:
-        raise click.BadParameter('Prediction horizons must be a comma-separated list of integers.')
+        raise click.BadParameter('Prediction horizon must be a positive integer.')
+    return value
 
 
 def validate_num_lagged_features(ctx, param, value):

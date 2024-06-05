@@ -37,9 +37,6 @@ def sample_data():
     return x_test
 
 
-# TODO: Test prediction output formats
-
-
 @pytest.mark.parametrize("model_cls", model_classes)
 def test_metric_class_name(model_cls):
     model = model_cls(prediction_horizon=30)

@@ -14,7 +14,16 @@ class Model(BaseModel):
         self.models = []
         self.subject_ids = []
 
-    def fit(self, x_train, y_train, n_steps=100000):
+    def _fit_model(self, x_train, y_train, n_steps=100000, *args):
+        # n_steps is the number of steps that will be used for identification
+        # (for multi-meal it should be at least 100k)
+        # Note that this class will not work if the dataset does not have five-minute intervals between measurements
+        required_columns = ['CGM', 'carbs', 'basal', 'bolus']
+        missing_columns = [col for col in required_columns if col not in x_train.columns]
+        if missing_columns:
+            raise ValueError(
+                f"The input DataFrame is missing the following required columns: {', '.join(missing_columns)}")
+
         x_train = self.process_input_data(x_train)
 
         # Fit parameters of ReplayBG object
@@ -22,8 +31,8 @@ class Model(BaseModel):
         bw = 80  # Placeholder body weight
         scenario = 'multi-meal'
         cgm_model = 'CGM'
-        n_steps = 1000  # set the number of steps that will be used for identification (for multi-meal it should be at least 100k)
-        training_samples_per_subject = 12 * 24 * 90
+        # training_samples_per_subject = 12 * 24 * 90
+        training_samples_per_subject = 4000
 
         self.subject_ids = x_train['id'].unique()
 
@@ -38,6 +47,7 @@ class Model(BaseModel):
                            plot_mode=False,
                            verbose=True,  # Turn of when training in server
                            analyze_results=False,)
+
             # Run identification
             rbg.run(data=subset_df, bw=bw)
 
@@ -52,16 +62,18 @@ class Model(BaseModel):
 
         return self
 
-    def predict(self, x_test):
-        super().predict(x_test)
-
+    def _predict_model(self, x_test):
         x_test = self.process_input_data(x_test)
 
         prediction_result = []
         for index, subject_id in enumerate(self.subject_ids):
             x_test_filtered = x_test[x_test['id'] == subject_id].copy().reset_index()
-            model_parameters = self.models[index].model.model_parameters
-            prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon)
+
+            if x_test_filtered.shape[0] == 0:
+                print(f'No test samples for subject {subject_id}, proceeding to next subject...')
+            else:
+                model_parameters = self.models[index].model.model_parameters
+                prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon)
 
         return prediction_result
 
