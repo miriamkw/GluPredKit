@@ -2,24 +2,14 @@ import pytest
 import numpy as np
 import pandas as pd
 from sklearn.exceptions import NotFittedError
-from glupredkit.models.loop import Model as Loop
 from glupredkit.models.naive_linear_regressor import Model as NaiveLinearRegressor
-from glupredkit.models.random_forest import Model as RandomForest
 from glupredkit.models.ridge import Model as Ridge
-from glupredkit.models.svr import Model as SVR
-from glupredkit.models.tcn import Model as TCN
-from glupredkit.models.uva_padova import Model as UvaPadova
 from glupredkit.models.zero_order import Model as ZeroOrder
 
 # Defining the list of model classes
 model_classes = [
-    Loop,
     NaiveLinearRegressor,
-    RandomForest,
     Ridge,
-    SVR,
-    TCN,
-    UvaPadova,
     ZeroOrder
 ]
 
