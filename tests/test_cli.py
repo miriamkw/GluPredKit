@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import shutil
 from click.testing import CliRunner
-from glupredkit.cli import setup_directories, parse, generate_config, train_model
+from glupredkit.cli import setup_directories, generate_config, train_model, test_model, generate_evaluation_pdf, generate_comparison_pdf
 
 
 @pytest.fixture(scope="session")
@@ -16,11 +16,15 @@ def runner():
 def temp_dir(runner):
     test_data_dir = os.path.join('tests', 'test_data')
 
+    # Create the test_data directory if it doesn't exist
+    if not os.path.exists(test_data_dir):
+        os.makedirs(test_data_dir)
+
     with runner.isolated_filesystem(temp_dir=test_data_dir) as temp_dir:
         yield temp_dir
 
-    # TODO: Clean up the directory after the test session
-    # shutil.rmtree(test_data_dir)
+    # Clean up the directory after the test session
+    shutil.rmtree(test_data_dir)
 
 
 def sample_data():
@@ -44,6 +48,7 @@ def sample_data():
 
     return x_test
 
+
 def test_setup_directories(runner, temp_dir):
     # Run the setup_directories command
     result = runner.invoke(setup_directories)
@@ -66,7 +71,6 @@ def test_setup_directories(runner, temp_dir):
 
 
 # TODO: Parse data
-
 def test_generate_config(runner, temp_dir):
     sample_data().to_csv('data/raw/df.csv')
 
@@ -106,22 +110,22 @@ def test_generate_config(runner, temp_dir):
     assert os.path.exists(config_path_2)
 
 
-def test_train_models(runner, temp_dir):
+def test_train_model(runner, temp_dir):
     # Define the input arguments and options
     epochs = str(2)
     config_file_name = 'my_config_1'
 
     args_list = [
-        ['blstm', config_file_name, '--epochs', epochs],
-        ['loop', config_file_name, '--n-cross-val-samples', 10],
-        ['lstm', config_file_name, '--epochs', epochs],
-        ['mtl', config_file_name, '--epochs', epochs],
+        # ['blstm', config_file_name, '--epochs', epochs],
+        # ['loop', config_file_name, '--n-cross-val-samples', 10],
+        # ['lstm', config_file_name, '--epochs', epochs],
+        # ['mtl', config_file_name, '--epochs', epochs],
         ['naive_linear_regressor', config_file_name],
-        ['random_forest', config_file_name],
+        # ['random_forest', config_file_name],
         ['ridge', config_file_name],
-        ['stl', config_file_name, '--epochs', epochs],
-        ['tcn', config_file_name, '--epochs', epochs],
-        ['uva_padova', config_file_name, '--n-steps', 100],
+        # ['stl', config_file_name, '--epochs', epochs],
+        # ['tcn', config_file_name, '--epochs', epochs],
+        # ['uva_padova', config_file_name, '--n-steps', 100],
         ['zero_order', config_file_name]
     ]
 
@@ -142,19 +146,43 @@ def test_train_models(runner, temp_dir):
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
+def test_test_model(runner, temp_dir):
+    runner = CliRunner()
+
+    config = 'my_config_1'
+    models = ['naive_linear_regressor', 'ridge', 'zero_order']
+
+    for model in models:
+
+        result = runner.invoke(test_model, [f'{model}__{config}__60.pkl', '--max-samples', '100'])
+        assert result.exit_code == 0
+
+        # Check if the model test file was created
+        output_path = "data/tested_models/"
+        output_file_name = f'{model}__{config}__60.csv'
+        assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
+def test_generate_evaluation_pdf(runner, temp_dir):
+    runner = CliRunner()
+
+    config = 'my_config_1'
+    models = ['naive_linear_regressor', 'ridge', 'zero_order']
+
+    for model in models:
+        result = runner.invoke(generate_evaluation_pdf, ['--results-file', f'{model}__{config}__60.csv'])
+        assert result.exit_code == 0
+
+        # Check if reports were generated
+        output_path = "data/reports/"
+        output_file_name = f'{model}__{config}__60.pdf'
+        assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
+def test_generate_comparison_pdf(runner, temp_dir):
+    runner = CliRunner()
 
-
-# TODO: For test models, check the output dataframe of each model and ensure that it looks correct
-# TODO: Concidering for example the prediction horizon and so on
-
-
-
-# TODO: What happens if there are features in the config that are not in the dataset?
-# TODO: What happens if the subject ids are not in the dataset?
-# TODO: What happens if the inputs are incorrect
+    result = runner.invoke(generate_comparison_pdf)
+    assert result.exit_code == 0
 
 

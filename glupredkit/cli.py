@@ -297,7 +297,7 @@ def test_model(model_file, max_samples):
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
-    metrics = helpers.list_files_in_directory('glupredkit/metrics/')
+    metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
     if target_cols == ['target']:
@@ -418,7 +418,7 @@ def test_model(model_file, max_samples):
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     # Define the path to store the dataframe
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}_results.csv"
+    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
 
     # Store the dataframe in a file
     results_df.to_csv(output_file, index=False)
@@ -426,67 +426,34 @@ def test_model(model_file, max_samples):
 
 
 @click.command()
-@click.option('--models', help='List of trained models separated by comma, without ".pkl". If none, all '
-                               'models will be evaluated. ', default=None)
+@click.option('--results-files', help='The name of the tested model results to evaluate, with ".csv". If '
+                                      'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.option('--is-real-time', type=bool, help='Whether to include test data without matching true measurements.'
-    , default=False)
 @click.option('--start-date', type=str,
               help='Start date for the predictions. Default is the first sample in the test data. '
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--end-date', type=str,
               help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--carbs', type=int,
-              help='Artificial carbohydrate input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-@click.option('--insulin', type=float,
-              help='Artificial insulin input for one prediction plots. Only available when is-real-time is true.',
-              default=None)
-def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin):
+@click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
+                                            'without space. Required for scatter plot. ', default=None)
+def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
     """
     This command draws the given plots and store them in data/figures/.
-
-    The "real_time" parameter indicates whether all test data (including when there is no true values) should be
-    included. This parameter allows for real-time plots, but is not compatible with all the plots.
     """
     # Prepare a list of plots
     plots = helpers.split_string(plots)
 
-    if models is None:
-        models = helpers.list_files_in_directory('data/trained_models/')
+    if results_files is None:
+        results_files = helpers.list_files_in_directory('data/tested_models/')
     else:
-        models = helpers.split_string(models)
+        results_files = helpers.split_string(results_files)
 
-    click.echo(f"Calculating predictions...")
-    models_data = []
-    for model_file in models:
-        model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
-                                                            int(model_file.split('__')[2].split('.')[0]))
-
-        model_config_manager = ModelConfigurationManager(config_file_name)
-        model_instance = helpers.get_trained_model(model_file)
-        _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager, carbs=carbs,
-                                                     insulin=insulin, start_date=start_date, end_date=end_date)
-
-        processed_data = model_instance.process_data(test_data, model_config_manager, real_time=is_real_time)
-        x_test = processed_data.drop('target', axis=1)
-        y_test = processed_data['target']
-
-        y_pred = model_instance.predict(x_test)
-
-        model_data = {
-            'name': f'{model_name} {prediction_horizon}-minutes PH',
-            'y_pred': y_pred,
-            'y_true': y_test,
-            'prediction_horizon': prediction_horizon,
-            'config': config_file_name,
-            'real_time': is_real_time,
-            'carbs': carbs,
-            'insulin': insulin,
-        }
-        models_data.append(model_data)
+    dfs = []
+    for results_file in results_files:
+        df = generate_report.get_df_from_results_file(results_file)
+        dfs += [df]
 
     plot_results_path = 'data/figures/'
 
@@ -497,15 +464,27 @@ def draw_plots(models, plots, is_real_time, start_date, end_date, carbs, insulin
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
-
         chosen_plot = plot_module.Plot()
-        chosen_plot(models_data)
 
-    click.echo(f"{plots} for trained_models {models} are stored in '{plot_results_path}'")
+        if plot == 'scatter_plot':
+            if prediction_horizons is None:
+                raise ValueError(f"{plot} requires that you provide --prediction-horizons")
+            prediction_horizons = helpers.split_string(prediction_horizons)
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon)
+
+        elif plot == 'trajectories':
+            chosen_plot(dfs)
+
+        else:
+            click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
+
+    click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 
 
 @click.command()
-@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".')
+@click.option('--results-file', help='The name of the tested model results to evaluate, with ".csv".',
+              required=True)
 def generate_evaluation_pdf(results_file):
     """
     This command stores a standardized pdf report of the given model in data/reports/.
@@ -623,7 +602,12 @@ def generate_comparison_pdf(results_files):
         results_files = helpers.split_string(results_files)
 
     results_file_path = "data/reports/"
-    results_file_name = f'comparison__{results_files}.pdf'
+
+    timestamp = datetime.now().isoformat()
+    safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+    safe_timestamp = safe_timestamp.replace('.', '_')
+
+    results_file_name = f'comparison_report_{safe_timestamp}.pdf'
 
     dfs = []
     for results_file in results_files:
@@ -662,11 +646,6 @@ def generate_comparison_pdf(results_files):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
-    # PHYSIOLOGICAL ALIGNMENT
-    c = generate_report.set_title(c, f'Physiological Alignment')
-    c = generate_report.set_bottom_text(c)
-    c.showPage()
-
     # PREDICTED DISTRIBUTION
     c = generate_report.set_title(c, f'Predicted Distribution')
     # TODO: Draw both in the table, and add a total score. Plot the total score for each model.
@@ -679,178 +658,6 @@ def generate_comparison_pdf(results_files):
     c.save()
 
     click.echo(f"An evaluation report for {results_files} is stored in '{results_file_path}' as '{results_file_name}'")
-
-    """
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        # Plotting rmse values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, rmse_lists[i], marker='o', label=f'{models[i]}')
-        mean_rmse = np.mean(rmse_lists[i])
-        plt.axhline(y=mean_rmse, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_rmse + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'RMSE [{unit_config_manager.get_unit()}]')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'RMSE [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 300)
-
-    # Show the page
-    c.showPage()
-
-    # GLYCEMIA DETECTION
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Glycemia Detection")
-
-    # Table data
-    data = [
-        ['Rank', 'Model', f'Hypoglycemia Detection', f'Hyperglycemia Detection', 'Overall']
-    ]
-    # Sort for ranking
-    pairs = zip(glycemia_detection_list, [np.mean(values) for values in hypoglycemia_detection_lists],
-                [np.mean(values) for values in hyperglycemia_detection_lists], models)
-
-    # Sort the pairs based on the glycemia values (in descending order)
-    sorted_pairs = sorted(pairs, key=lambda x: x[0], reverse=True)
-
-    # Unpack the sorted pairs back into separate lists
-    sorted_glycemia_list, sorted_hypo_list, sorted_hyper_list, sorted_models_list = zip(*sorted_pairs)
-
-    for i in range(len(models)):
-        glycemia_str = "{:.1f}%".format(sorted_glycemia_list[i])
-        hypo_str = "{:.1f}%".format(sorted_hypo_list[i])
-        hyper_str = "{:.1f}%".format(sorted_hyper_list[i])
-        new_row = [f'#{i + 1}', sorted_models_list[i], hypo_str, hyper_str, glycemia_str]
-        data += [new_row]
-
-    # Create a table
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-        ('TOPPADDING', (0, 0), (-1, 0), 4),
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
-        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
-        ('GRID', (0, 1), (-1, -1), 1, colors.black),
-        ('GRID', (0, 0), (-1, -1), 0, colors.black)
-    ]))
-
-    # Draw the table on the canvas
-    table.wrapOn(c, 0, 0)
-    table.drawOn(c, 100, 600)
-
-    fig = plt.figure(figsize=(5, 2))
-
-    for i in range(len(models)):
-        # Plotting glycemia values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, hypoglycemia_detection_lists[i], marker='o', label=f'{models[i]}')
-        mean_hypo = np.mean(hypoglycemia_detection_lists[i])
-        plt.axhline(y=mean_hypo, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_hypo + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Hypoglycemia Detection')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Hypoglycemia Detection [%]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 320)
-
-    fig = plt.figure(figsize=(5, 2))
-
-    for i in range(len(models)):
-        # Plotting glycemia values
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, hyperglycemia_detection_lists[i], marker='o', label=f'{models[i]}')
-        mean_hyper = np.mean(hyperglycemia_detection_lists[i])
-        plt.axhline(y=mean_hyper, color='black', linestyle='-')
-        # Add text on the horizontal line
-        plt.text(2, mean_hyper + 1, f'{models[i]}', color='black', fontsize=8)
-
-    # Setting the title and labels with placeholders for the metric unit
-    plt.title(f'Hyperglycemia Detection')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Hyperglycemia Detection [%]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 100)
-
-    # Show the page
-    c.showPage()
-
-    # PREDICTION DISTRIBUTION
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(letter[0] / 2, 750, "Prediction Distribution")
-
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, std_lists[i], marker='o', label=f'{models[i]}')
-
-    plt.title(f'Prediction Standard Deviation')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Standard Deviation [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 450)
-
-    fig = plt.figure(figsize=(5, 3))
-
-    for i in range(len(models)):
-        x_values = list(range(5, 5 * len(rmse_lists[i]) + 1, 5))
-        plt.plot(x_values, std_diff_lists[i], marker='o', label=f'{models[i]}')
-
-    plt.title(f'Prediction Standard Deviation minus Measurement Standard Deviation')
-    plt.xlabel('Prediction Horizons (minutes)')
-    plt.ylabel(f'Standard Deviation [{unit_config_manager.get_unit()}]')
-    plt.legend()
-
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, 70, 100)
-
-    # Show the page
-    c.showPage()
-
-    # Save the PDF
-    c.save()
-
-    click.echo(
-        f"An evaluation report for {models} is stored in '{results_file_path}' as '{results_file_name}'")
-    """
 
 
 @click.command()

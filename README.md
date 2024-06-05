@@ -1,16 +1,18 @@
 # Blood Glucose Prediction-Kit
+[![PyPI](https://img.shields.io/pypi/v/glupredkit?label=pypi%20package)](https://pypi.org/project/glupredkit/1.0.0/)
+[![test_metrics](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml)
+[![test_models](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml)
+[![test_cli](https://github.com/miriamkw/GluPredKit/actions/workflows/test_cli.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_cli.yml)
 
 This Blood Glucose (BG) Prediction Framework streamlines the process of data handling, training, and evaluating blood 
 glucose prediction models in Python. Access all features via the integrated Command Line Interface (CLI), or download
-the repository via PyPi.
+the repository via PyPi. 
 
 The figure below illustrates an overview over the pipeline including all the stages of this blood glucose prediction 
 framework.
 
-# TODO: This figure should be refined, maybe a table with all the modules and implemented components or something instead.
-
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/pipeline_overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/Functionality%20Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/Functionality%20Overview.png)
 
 
 ## Table of Contents
@@ -22,8 +24,10 @@ framework.
    - [Parsing Data](#parsing-data)
    - [Generate Model Training Configuration](#generate-model-training-configuration)
    - [Train a Model](#train-a-model)
-   - [Evaluate Models](#evaluate-models)
-   - [Setting Configurations](#setting-configurations)
+   - [Test a Model](#test-a-model)
+   - [Generate Evaluation Reports](#generate-evaluation-reports)
+   - [Draw Plots](#draw-plots)
+   - [Setting Unit of Evaluations](#setting-unit-of-evaluations)
 3. [Contributing with Code](#contributing-with-code)
    - [Making Contributions](#making-contributions)
    - [Reporting Issues](#reporting-issues)
@@ -79,8 +83,8 @@ Make sure that the virtual environment `bgp-evaluation` is activated before you 
 The command-line tool is designed to streamline the end-to-end process of data handling, preprocessing, model training, evaluation, and configuration for blood glucose prediction. The following is a guide to using this script.
 
 The following figure is an overview over all the CLI commands and how they interact with the files in the folders.
-<!-- ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png) -->
-![img.png](https://miriamkw.folk.ntnu.no/figures/CLI_Overview.png)
+<!-- ![img.png](https://miriamkw.folk.ntnu.no/CLI%20Overview.png) -->
+![img.png](https://miriamkw.folk.ntnu.no/figures/CLI%20Overview.png)
 
 ### Getting started
 1) First, follow the instructions above in "Setup and Installation". 
@@ -281,7 +285,7 @@ glupredkit generate_evaluation_pdf --results-file ridge__my_config__180.csv
 glupredkit generate_comparison_pdf  
 ```
 
-- `--results-files` (optional): File names from `data/tested_models/` of the model that you want to evaluate, comma separated without space. If none, all models will be tested.
+- `--results-files` (optional): File names from `data/tested_models/` of the models that you want to evaluate, comma separated without space. If none, all models will be tested.
 
 #### Example
 ```
@@ -296,32 +300,17 @@ glupredkit generate_comparison_pdf --results-files ridge__my_config__180.csv,lst
 ```
 glupredkit draw_plots
 ```
-- `--models`: Specify the list of trained models you'd like to visualize. Input model names separated by commas, with the ".pkl" extension. By default, all available models will be evaluated.
-- `--plots`: Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
+- `--results-files`: File names from `data/tested_models/` of the models that you want to plot, comma separated without space.
+- `--plots` (optional): Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
     - scatter_plot
     - trajectories
-    - one_prediction
-- `--is-real-time`: A boolean flag indicating whether to consider test data without matching true measurements. By default, it is set to False.
-- `--start-date`: The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
-- `--end-date`: This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
-- `--carbs`: This allows you to set an artificial carbohydrate input for one_prediction plots. This option is only valid when is-real-time is set to True.
-- `--insulin`: Similar to the carbs option, this lets you provide an artificial insulin input for one_prediction plots. Again, it's only available when is-real-time is True.
+- `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
+- `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
 
 #### Example
 ```
-glupredkit draw_plots --models ridge_ph-60.pkl,arx_ph-60,svr_ph-60.pkl --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
 ```
-
-### Real-Time Prediction Plots
-
-**Description**: To achieve real-time predictions, it is necessary to have a data-source that provides real-time data. 
-Nightscout API can be a real-time API if the insulin management system is uploading data continuously (which is, to our knowledge,
-only possible to achieve with open-source insulin management systems). The steps to draw real-time plots are the following:
-1. Train one or more models using the steps above.
-2. Parse some up-to-date data, using for example the nightscout-parser.
-3. Update the model configurations to have the data from (2) as a data source for predictions.
-4. Call the `draw_plots` command with `--plots one_prediction` and `--is-real-time True` 
-
 
 ---
 ### Setting Unit of Evaluations
@@ -454,10 +443,29 @@ If you need help with setup, understanding the codebase, or have other questions
 
 
 ## Testing
-(OLD!) To run the tests, write `python tests/test_all.py` in the terminal.
 
-To run the tests, write `pytest` in the terminal.
+To run the tests:
 
+**1. Clone the Repository:**
+```
+git clone https://github.com/miriamkw/glupredkit.git
+cd glupredkit
+```
+**2. Set Up Environment:**
+```
+python -m venv glupredkit_venv
+source glupredkit_venv/bin/activate  # On Windows use `glupredkit_venv\Scripts\activate`
+pip install -r requirements.txt
+pip install .[test]
+```
+**3. Run Tests:**
+```
+pytest
+```
+
+*Note:* Tests are only included in the source distributions, not in the PyPI installations.
+
+For issues, visit our GitHub Issues page.
 
 ## Disclaimers and limitations
 * Datetimes that are fetched from Tidepool API are received converted to timezone offset +00:00. There is no way to get information about the original timezone offset from this data source.

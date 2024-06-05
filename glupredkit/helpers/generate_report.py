@@ -233,7 +233,8 @@ def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
             y_test = ast.literal_eval(y_test)
             y_pred = y_pred.replace("nan", "None")
             y_pred = ast.literal_eval(y_pred)
-            result = np.std(y_pred) / np.std(y_test) * 100
+            y_pred = [np.nan if val is None else val for val in y_pred]
+            result = np.nanstd(y_pred) / np.nanstd(y_test) * 100
             std_result_values += [result]
         result_list += [np.mean(std_result_values)]
         deviation_from_target_list += [np.abs(np.mean(std_result_values) - 100)]
@@ -276,13 +277,19 @@ def draw_overall_ranking_table(c, dfs, y_placement):
         seg_list += [np.mean([df[f'parkes_error_grid_exp_{ph}'][0] for ph in prediction_horizons])]
         mcc_list += [np.mean([(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0]) / 2 for ph in prediction_horizons])]
 
-        y_test_std = [np.std(ast.literal_eval(df[f'target_{ph}'][0])) for ph in prediction_horizons]
-        y_pred_std = [np.std(ast.literal_eval(df[f'y_pred_{ph}'][0])) for ph in prediction_horizons]
+        y_test = [ast.literal_eval(df[f'target_{ph}'][0]) for ph in prediction_horizons]
+        y_test_std = [np.nanstd(y_vals) for y_vals in y_test]
+
+        y_pred_std = []
+        for ph in prediction_horizons:
+            y_pred = df[f'y_pred_{ph}'][0].replace("nan", "None")
+            y_pred = ast.literal_eval(y_pred)
+            y_pred = [np.nan if val is None else val for val in y_pred]
+            result = np.nanstd(y_pred)
+            y_pred_std += [result]
+
         relative_std = np.abs(np.mean(y_pred_std) / np.mean(y_test_std) * 100 - 100)
         std_list += [relative_std]
-
-    print("models", models)
-    print("stc", std_list)
 
     results_df = pd.DataFrame({'Models': models,
                                'RMSE': rmse_list,
@@ -484,9 +491,14 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
                             correct_sign_values += 1
                         if row[i] > prev_value:
                             persistant_values += 1
-                        calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60, 180) * estimated_ISF / \
-                                        row[i]
-                        calculated_ratios += [calculated_CR]
+
+                        if not row[i] == 0:
+                            calculated_CR = quantities[index] * get_fraction_absorbed((i + 1) * 5, 60,
+                                                                                      180) * estimated_ISF / \
+                                            row[i]
+                            calculated_ratios += [calculated_CR]
+                        else:
+                            calculated_ratios += [np.nan]
                     else:
                         if row[i] < 0:
                             correct_sign_values += 1
@@ -556,6 +568,8 @@ def plot_across_prediction_horizons(c, df, title, columns, height=2, y_labels=No
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -583,6 +597,8 @@ def plot_rmse_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -610,6 +626,8 @@ def plot_error_grid_across_prediction_horizons(c, dfs, height=2, y_placement=300
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -636,6 +654,8 @@ def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -675,6 +695,8 @@ def plot_partial_dependencies_across_prediction_horizons(c, df, col, height=2, y
         drawing = svg2rlg(buffer)
 
         renderPDF.draw(drawing, c, 70, y_placement)
+
+        plt.close(fig)
         return c
 
 
@@ -687,10 +709,11 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
         y_values = []
         for ph in x_values:
             y_test = df[f'target_{ph}'][0]
-            y_pred = df[f'y_pred_{ph}'][0]
+            y_pred = df[f'y_pred_{ph}'][0].replace("nan", "None")
             y_test = ast.literal_eval(y_test)
             y_pred = ast.literal_eval(y_pred)
-            y_values += [np.std(y_pred) / np.std(y_test) * 100]
+            y_pred = [np.nan if x is None else x for x in y_pred]
+            y_values += [np.nanstd(y_pred) / np.nanstd(y_test) * 100]
         plt.plot(x_values, y_values, marker='o', label=model_name)
 
     # Setting the title and labels with placeholders for the metric unit
@@ -705,6 +728,8 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, 70, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -740,6 +765,8 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -775,6 +802,8 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
     buffer.seek(0)  # Move the file pointer to the beginning
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
+
+    plt.close(fig)
     return c
 
 
@@ -795,6 +824,7 @@ def plot_confusion_matrix(c, df, classes, ph, x_placement, y_placement, cmap=plt
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
 
+    plt.close(fig)
     return c
 
 
@@ -867,6 +897,7 @@ def plot_partial_dependency_heatmap(c, df, feature, x_placement, y_placement, ti
     drawing = svg2rlg(buffer)
     renderPDF.draw(drawing, c, x_placement, y_placement)
 
+    plt.close(fig)
     return c
 
 
