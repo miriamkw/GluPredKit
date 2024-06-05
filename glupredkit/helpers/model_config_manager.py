@@ -7,8 +7,8 @@ import json
 import os
 
 
-def generate_model_configuration(file_name, data, preprocessor, prediction_horizons, num_lagged_features, num_features,
-                                 cat_features, test_size):
+def generate_model_configuration(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features,
+                                 num_features, cat_features, what_if_features):
     # Check if the 'data' string is a valid file in the 'data/raw/' folder
     data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):
@@ -21,18 +21,15 @@ def generate_model_configuration(file_name, data, preprocessor, prediction_horiz
     except ImportError:
         raise ValueError(f"Preprocessor '{preprocessor}' not found in 'preprocessors' module.")
 
-    # Check if 'test_size' is a float between 0 and 1
-    if not isinstance(test_size, float) or test_size < 0 or test_size > 1:
-        raise ValueError("Test size must be a float between 0 and 1.")
-
     config = {
         "data": data + '.csv',
+        "subject_ids": subject_ids,
         "preprocessor": preprocessor,
-        "prediction_horizons": prediction_horizons,
+        "prediction_horizon": prediction_horizon,
         "num_lagged_features": num_lagged_features,
         "num_features": num_features,
         "cat_features": cat_features,
-        "test_size": test_size
+        "what_if_features": what_if_features
     }
     # Save the generated config to a JSON file
     with open(f'data/configurations/{file_name}.json', 'w') as f:
@@ -44,12 +41,13 @@ class ModelConfigurationManager:
         self.config_file = 'data/configurations/' + config_file + '.json'
         self.schema = {
             "data": str,
+            "subject_ids": list,
             "preprocessor": str,
-            "prediction_horizons": list,
+            "prediction_horizon": int,
             "num_lagged_features": int,
             "num_features": list,
             "cat_features": list,
-            "test_size": float
+            "what_if_features": list
         }
         self.config = self.load_config()
 
@@ -72,11 +70,14 @@ class ModelConfigurationManager:
     def get_data(self):
         return self.config["data"]
 
+    def get_subject_ids(self):
+        return self.config["subject_ids"]
+
     def get_preprocessor(self):
         return self.config["preprocessor"]
 
-    def get_prediction_horizons(self):
-        return self.config["prediction_horizons"]
+    def get_prediction_horizon(self):
+        return self.config["prediction_horizon"]
 
     def get_num_lagged_features(self):
         return self.config["num_lagged_features"]
@@ -87,5 +88,5 @@ class ModelConfigurationManager:
     def get_cat_features(self):
         return self.config["cat_features"]
 
-    def get_test_size(self):
-        return self.config["test_size"]
+    def get_what_if_features(self):
+        return self.config["what_if_features"]

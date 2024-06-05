@@ -1,6 +1,6 @@
 from sklearn.model_selection import GridSearchCV
-from sklearn.pipeline import Pipeline
-from sklearn.linear_model import Lasso
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.svm import SVR
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
 
@@ -11,22 +11,26 @@ class Model(BaseModel):
 
         self.model = None
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, *args):
+        # Define the base regressor
+        base_regressor = SVR(tol=1, kernel='rbf')
 
-        # Define the model
-        pipeline = Pipeline([('regressor', Lasso(tol=1))])
+        # Wrap the base regressor with MultiOutputRegressor
+        multi_output_regressor = MultiOutputRegressor(base_regressor)
 
         # Define the parameter grid
         param_grid = {
-            'regressor__alpha': [0.0001]
+            'estimator__C': [100],
+            'estimator__epsilon': [0.03],
+            'estimator__gamma': [0.008],
         }
 
         # Define GridSearchCV
-        self.model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
+        self.model = GridSearchCV(multi_output_regressor, param_grid, cv=5, scoring='neg_mean_squared_error')
         self.model.fit(x_train, y_train)
         return self
 
-    def predict(self, x_test):
+    def _predict_model(self, x_test):
         # Use the best estimator found by GridSearchCV to make predictions
         y_pred = self.model.best_estimator_.predict(x_test)
         return y_pred

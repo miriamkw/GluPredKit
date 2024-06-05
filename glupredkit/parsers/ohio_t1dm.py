@@ -6,6 +6,7 @@ from .base_parser import BaseParser
 import xml.etree.ElementTree as ET
 import pandas as pd
 import os
+import datetime
 
 
 class Parser(BaseParser):
@@ -44,11 +45,12 @@ class Parser(BaseParser):
 
         # Resampling all datatypes into the same time-grid
         df = dataframes['glucose_level'].copy()
+
         df['ts'] = pd.to_datetime(df['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)
         df.set_index('date', inplace=True)
-        df = df.resample('5T', label='right').last()
+        df = df.resample('5min', label='left').last()
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
@@ -58,9 +60,11 @@ class Parser(BaseParser):
             df_carbs.rename(columns={'ts': 'date'}, inplace=True)
             df_carbs = df_carbs[['date', 'carbs']]
             df_carbs.set_index('date', inplace=True)
-            df_carbs = df_carbs.resample('5T', label='right').sum().fillna(value=0)
+            df_carbs = df_carbs.resample('5min', label='right').sum().fillna(value=0)
             df = pd.merge(df, df_carbs, on="date", how='outer')
             df['carbs'] = df['carbs'].fillna(value=0.0)
+        else:
+            df['carbs'] = 0.0
 
         # Bolus doses
         df_bolus = dataframes['bolus'].copy()
@@ -69,7 +73,7 @@ class Parser(BaseParser):
         df_bolus.rename(columns={'ts_begin': 'date', 'dose': 'bolus'}, inplace=True)
         df_bolus = df_bolus[['date', 'bolus']]
         df_bolus.set_index('date', inplace=True)
-        df_bolus = df_bolus.resample('5T', label='right').sum().fillna(value=0)
+        df_bolus = df_bolus.resample('5min', label='right').sum().fillna(value=0)
         df = pd.merge(df, df_bolus, on="date", how='outer')
         df['bolus'] = df['bolus'].fillna(value=0.0)
 
@@ -80,7 +84,7 @@ class Parser(BaseParser):
         df_basal.rename(columns={'ts': 'date', 'value': 'basal'}, inplace=True)
         df_basal = df_basal[['date', 'basal']]
         df_basal.set_index('date', inplace=True)
-        df_basal = df_basal.resample('5T', label='right').asfreq().ffill()
+        df_basal = df_basal.resample('5min', label='right').last().ffill()
 
         # Temp basal rates
         df_temp_basal = dataframes['temp_basal'].copy()
@@ -91,15 +95,20 @@ class Parser(BaseParser):
                                                      errors='coerce')
             # Override the basal rates with the temp basal rate data
             for index, row in df_temp_basal.iterrows():
-                start_date = row['ts_begin']  # Assuming the column name in df_temp_basal is 'start_date'
-                end_date = row['ts_end']  # Assuming the column name in df_temp_basal is 'end_date'
+                def round_down_date_time(dt):
+                    delta_min = dt.minute % 5
+                    return datetime.datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute - delta_min)
+
+                # Convert dates to nearest five minutes
+                start_date = round_down_date_time(row['ts_begin'])
+                end_date = round_down_date_time(row['ts_end'])
                 value = row['value']
                 df_basal.loc[start_date:end_date] = float(value)
 
-        # Convert basal rates from U/hr to U
+        # Merge basal into dataframe
         df_basal['basal'] = pd.to_numeric(df_basal['basal'], errors='coerce')
         df = pd.merge(df, df_basal, on="date", how='outer')
-        df['basal'] = df['basal'].fillna(value=0.0)
+        df['basal'] = df['basal'].ffill()
 
         # Heart rate
         df = merge_data_type_into_dataframe(df, dataframes, 'basis_heart_rate', 'heartrate')
@@ -132,13 +141,11 @@ class Parser(BaseParser):
         if year not in ['2018', '2020']:
             raise ValueError('The input year must be either 2018 or 2020.')
 
-
     @staticmethod
     def parse_xml_file(base_path, dataset_type, subject_id, year):
         file_name = f"{subject_id}-ws-{dataset_type}.xml"
         file_path = os.path.join(base_path, 'OhioT1DM', year, dataset_type, file_name)
         return ET.parse(file_path)
-
 
 
 def merge_data_type_into_dataframe(df, data, type_name, value_name):
@@ -148,8 +155,7 @@ def merge_data_type_into_dataframe(df, data, type_name, value_name):
         df_data_type['value'] = pd.to_numeric(df_data_type['value'], errors='coerce')
         df_data_type.rename(columns={'ts': 'date', 'value': value_name}, inplace=True)
         df_data_type.set_index('date', inplace=True)
-        df_data_type = df_data_type.resample('5T', label='right').mean()
+        df_data_type = df_data_type.resample('5min', label='right').mean()
         return pd.merge(df, df_data_type, on="date", how='outer')
     else:
         return df
-

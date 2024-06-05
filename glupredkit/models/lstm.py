@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import ast
 from datetime import datetime
-from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input
+from tensorflow.keras.layers import LSTM, Dense, Embedding, Flatten, concatenate, Input, Masking, Dropout, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, Callback
 from sklearn.model_selection import TimeSeriesSplit
 from .base_model import BaseModel
@@ -17,21 +17,28 @@ class Model(BaseModel):
         # Using current date in the file name to remove chances of equal file names
         timestamp = datetime.now().isoformat()
         safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
+        safe_timestamp = safe_timestamp.replace('.', '_')
         self.model_path = f"data/.keras_models/lstm_ph-{prediction_horizon}_{safe_timestamp}.h5"
+        self.input_shape = None
+        self.num_outputs = None
 
-    def fit(self, x_train, y_train):
+    def _fit_model(self, x_train, y_train, epochs=20, *args):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_train['sequence']]
-        targets = y_train.tolist()
+        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_train['target']]
 
         sequences = np.array(sequences)
         targets = np.array(targets)
+
+        # Determine the number of outputs
+        self.input_shape = (sequences.shape[1], sequences.shape[2])
+        self.num_outputs = targets.shape[1]  # Assuming targets is 2D: [samples, outputs]
 
         # Model architecture
         input_layer = Input(shape=(sequences.shape[1], sequences.shape[2]))
         lstm = LSTM(50, return_sequences=True)(input_layer)
         lstm = LSTM(50, return_sequences=True)(lstm)
         lstm = LSTM(50, return_sequences=False)(lstm)
-        output_layer = Dense(1)(lstm)
+        output_layer = Dense(self.num_outputs)(lstm)
 
         model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
         model.compile(
@@ -59,21 +66,21 @@ class Model(BaseModel):
         train_Y = np.concatenate(train_Y, axis=0)
 
         # Fit the model with early stopping and reduce LR on plateau
-        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=20, batch_size=1,
+        model.fit(train_X, train_Y, validation_data=(val_X, val_Y), epochs=epochs, batch_size=1,
                   callbacks=[early_stopping, reduce_lr])
 
         model.save(self.model_path)
-
         return self
 
-    def predict(self, x_test):
+    def _predict_model(self, x_test):
         sequences = [np.array(ast.literal_eval(seq_str)) for seq_str in x_test['sequence']]
         sequences = np.array(sequences)
 
         model = tf.keras.models.load_model(self.model_path, custom_objects={"Adam": tf.keras.optimizers.legacy.Adam})
         predictions = model.predict(sequences)
+        predictions = predictions.tolist()
 
-        return [val[0] for val in predictions]
+        return predictions
 
     def best_params(self):
         # Return the best parameters found by GridSearchCV
@@ -81,3 +88,4 @@ class Model(BaseModel):
 
     def process_data(self, df, model_config_manager, real_time):
         return process_data(df, model_config_manager, real_time)
+

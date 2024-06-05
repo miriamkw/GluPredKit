@@ -1,11 +1,13 @@
 import json
-import pkg_resources
+from importlib import resources
 import os
 
 
 class UnitConfigManager:
     def __init__(self):
-        self.default_config_file = pkg_resources.resource_filename('glupredkit', 'unit_config.json')
+        package = __import__('glupredkit')
+        resource_path = resources.files(package) / 'unit_config.json'
+        self.default_config_file = str(resource_path)
 
         self.user_config_dir = os.path.expanduser("~/.glupredkit")
         self.user_config_file = os.path.join(self.user_config_dir, "unit_config.json")  # Fixed the path
@@ -36,6 +38,12 @@ class UnitConfigManager:
         if not self.use_mgdl:
             return value / 18.018
         return value
+
+    def get_unit(self):
+        if self.use_mgdl:
+            return "mg/dL"
+        else:
+            return "mmol/L"
 
 
 # You can create a global instance of the config manager.

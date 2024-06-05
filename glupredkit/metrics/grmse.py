@@ -15,7 +15,7 @@ class Metric(BaseMetric):
 
         pen = [penalty(true_val, pred_val) for true_val, pred_val in zip(y_true, y_pred)]
         se = np.square(y_true - y_pred)
-        gMSE = np.mean(se * pen)
+        gMSE = np.nanmean(se * pen)
         gRMSE = np.sqrt(gMSE)
 
         if unit_config_manager.use_mgdl:
@@ -30,9 +30,9 @@ def sigmoid(x, a, epsilon):
     if x <= a:
         return 0
     elif a < x <= a + (epsilon / 2):
-        return -0.5 * xi**4 - xi**3 + xi + 0.5
+        return -0.5 * xi ** 4 - xi ** 3 + xi + 0.5
     elif a + (epsilon / 2) < x <= a + epsilon:
-        return 0.5 * xi**4 - xi**3 + xi + 0.5
+        return 0.5 * xi ** 4 - xi ** 3 + xi + 0.5
     else:  # x > a + epsilon
         return 1
 
@@ -43,9 +43,9 @@ def sigmoid_hat(x, a, epsilon):
     if x <= a - epsilon:
         return 1
     elif a - epsilon < x <= a - (epsilon / 2):
-        return 0.5 * xi_hat**4 - xi_hat**3 + xi_hat + 0.5
+        return 0.5 * xi_hat ** 4 - xi_hat ** 3 + xi_hat + 0.5
     elif a - (epsilon / 2) < x <= a:
-        return -0.5 * xi_hat**4 - xi_hat**3 + xi_hat + 0.5
+        return -0.5 * xi_hat ** 4 - xi_hat ** 3 + xi_hat + 0.5
     else:  # a <= x
         return 0
 
@@ -68,11 +68,11 @@ def penalty(g, g_hat):
     sigma_gamma_H = sigmoid_hat(g_hat, g, gamma_H)
 
     # Final penalty calculation
-    pen = (1 + alpha_L * sigma_T_L * sigma_gamma_L
-               + alpha_H * sigma_T_H * sigma_gamma_H)
+    pen = (1 + alpha_L * sigma_T_L * sigma_gamma_L + alpha_H * sigma_T_H * sigma_gamma_H)
     return pen
 
 
+"""
 def plot_penalty():
     # Create a grid for g and g_hat
     g_values = np.linspace(0, 400, 400)
@@ -125,4 +125,4 @@ def plot_sigmoid_hat(a, epsilon):
     plt.ylabel('Sigmoid(x)')
     plt.legend()
     plt.show()
-
+"""

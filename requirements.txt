@@ -1,15 +1,23 @@
-# opsb-pyloopkit==0.1.0 # This is the original pyloopkit
 matplotlib
+reportlab
+svglib
+seaborn
 pandas
 scikit-learn
-xgboost
-tensorflow
-keras-tcn
+tidepool-data-science-project
 numpy
 aiohttp
 click
 dill
-tidepool-data-science-project
 python-nightscout
 error-grids
-torch
+# Optional heavy dependencies
+# tensorflow
+# keras-tcn
+# torch
+# opsb-pyloopkit==0.1.0 # This is the original pyloopkit with linear meal model
+# py_replay_bg
+# Testing dependencies
+# pytest
+# pytest-ordering
+

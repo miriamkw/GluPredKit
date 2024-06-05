@@ -4,19 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "glupredkit"
-version = "0.1.7"
+version = "1.0.0"
 authors = [
   { name="Miriam K. Wolff", email="miriamkwolff@outlook.com" },
 ]
 description = "GluPredKit aims to make blood glucose model training and prediction more accessible."
 readme = "README.md"
-requires-python = ">=3.7, <3.10"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
+dynamic = ["requires-python", "license", "scripts", "dependencies", "optional-dependencies"]
 
 [project.urls]
 "Homepage" = "https://github.com/miriamkw/GluPredKit"
 "Bug Tracker" = "https://github.com/miriamkw/GluPredKit/issues"
+
+[tool.pytest.ini_options]
+# Specify options for pytest
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]
+python_files = [
+    "test_*.py",
+    "*_test.py"
+]
+python_classes = "Test*"
+python_functions = "test_*"

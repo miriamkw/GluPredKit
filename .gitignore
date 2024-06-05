@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# secret stuff
+*.local
+
 # C extensions
 *.so
 
@@ -68,6 +71,7 @@ coverage.xml
 
 # Test Files
 tests/__pycache__/
+tests/test_data/*
 
 # Django stuff:
 *.log
