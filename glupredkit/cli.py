@@ -109,6 +109,8 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
             raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
             parsed_data = chosen_parser(file_path=file_path)
+            save_data(output_file_name="open_aps", data=parsed_data)
+            return
     elif parser in ['ohio_t1dm']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
@@ -139,7 +141,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
     split_index = int((len(parsed_data)) * (1 - test_size))
 
     parsed_data['is_test'] = False
-    parsed_data['is_test'].iloc[split_index:] = True
+    parsed_data.loc[split_index:, 'is_test'] = True
     parsed_data = parsed_data.drop(parsed_data.index[split_index - margin:split_index + margin])
 
     save_data(output_file_name=output_file_name, data=parsed_data)

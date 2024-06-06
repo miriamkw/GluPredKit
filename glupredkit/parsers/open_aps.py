@@ -14,13 +14,35 @@ class Parser(BaseParser):
         """
         file_path -- the file path to the processed data including <file_name>.pkl.
         """
-        print("FILE PATH", file_path)
+        df = pd.read_csv(file_path, low_memory=False)
+        relevant_columns = ['date', 'bg', 'basal', 'carbs', 'bolus', 'PtID']
+        df = df[relevant_columns]
+        df = df.rename(columns={'bg': 'CGM', 'PtID': 'id'})
+        df['date'] = pd.to_datetime(df['date'])
 
-        with open(file_path, 'rb') as f:
-            loaded_object = pickle.load(f)
+        # Sort by 'id' and the index (date)
+        df = df.sort_values(by=['id', 'date'])
 
-        df = loaded_object
+        # Set date to index
+        df = df.set_index('date')
 
-        print(df)
+        # Function to validate the time intervals
+        def validate_intervals(group):
+            # Calculate the time difference between consecutive dates
+            time_diff = group.index.to_series().diff().dt.total_seconds().dropna()
+            # Check if all time differences are exactly 300 seconds (5 minutes)
+            valid = (time_diff == 300).all()
+            if not valid:
+                print(f"ID {group['id'].iloc[0]} has invalid intervals.")
+            return valid
+
+        # Group by 'id' and apply the validation function
+        valid_intervals = df.groupby('id').apply(validate_intervals)
+
+        if valid_intervals.all():
+            print("All IDs have valid 5-minute intervals with no bigger breaks than 5 minutes.")
+        else:
+            print("There are IDs with invalid intervals.")
 
         return df
+
