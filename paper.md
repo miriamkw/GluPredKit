@@ -48,7 +48,7 @@ To ensure broad usability and scalability, `GluPredKit` consolidates prominent w
 
 # `GluPredKit` Workflow
 
-The `GluPredKit` workflow is typically used through the Command Line Interface or as a dependency in external projects via PyPi. The first step involves parsing the input data to prepare it for processing. Users then configure the settings tailored to their specific needs before moving on to model training and testing phases. After testing, the user can generate an Excel sheet and a PDF report for a standardized evaluation report based on evaluation consensus guided by Jacobs et al. [Jacobs:2023]. 
+The `GluPredKit` workflow is typically used through the CLI or as a dependency in external projects via PyPi. The first step involves parsing the input data to prepare it for processing. Users then configure the settings tailored to their specific needs before moving on to model training and testing phases. After testing, the user can generate an Excel sheet and a PDF report for a standardized evaluation report based on evaluation consensus guided by Jacobs et al. [Jacobs:2023]. 
 
 
 The software consists of four key modules: data source parsers, preprocessors, prediction models, and evaluation metrics. Detailed instructions and standardized code interfaces are provided in the repository's documentation, guiding contributors on how to add and integrate their modules.
