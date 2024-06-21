@@ -29,6 +29,7 @@ setup(
         "scikit-learn",
         "tidepool-data-science-project",
         "numpy",
+        "psutil",
         "aiohttp",
         "click",
         "dill",

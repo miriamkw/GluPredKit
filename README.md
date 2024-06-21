@@ -121,13 +121,13 @@ In the examples below we will use `glupredkit`.
 If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
 
 ```
-glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
+glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm|open_aps] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
 ```
 
 - `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
 - `--username` (Optional): Your username for the data source (for nightscout, use url).
 - `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
-- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
+- `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health and open_aps parser).
     - For the Ohio T1DM parser, the file path is the folder where the `test` and `train` folder are located. Example: `data/raw/`. 
 - `--start-date` (Optional): Start date for data retrieval, default is two weeks ago. Format "dd-mm-yyyy".
 - `--end-date` (Optional): End date for data retrieval, default is now. Format "dd-mm-yyyy".
@@ -153,6 +153,11 @@ glupredkit parse --parser apple_health --file-path data/raw/export.xml --start-d
 - `--file-path` shall be the path to where the `OhioT1DM` root folder is stored.
 ```
 glupredkit parse --parser ohio_t1dm --file-path data/raw/
+```
+#### Example Open APS Parser
+- `--file-path` shall be the path to where the dataset root folder is stored.
+```
+glupredkit parse --parser open_aps --file-path data/raw/OpenAPS/
 ```
 
 ---
