@@ -180,242 +180,240 @@ class Parser(BaseParser):
                         # Add id to a column
                         df['id'] = subject_id
 
-                        # We save the merged dataframe as csv, but update it for each iteration in case something goes wrong
                         merged_df = pd.concat([df, merged_df], ignore_index=False)
-
                         print(f"Current memory usage: {get_memory_usage()} MB")
 
-            id_name = file.split('.')[0]
+            else:
+                id_name = file.split('.')[0]
 
-            print(f'Processing {file}...')
-            zip_file_path = file_path + file
-            sub_folder_path = 'direct-sharing-31/'
+                print(f'Processing {file}...')
+                zip_file_path = file_path + file
+                sub_folder_path = 'direct-sharing-31/'
 
-            # Open the zip file
-            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-                def get_relevant_files(name):
-                    relevant_files = []
+                # Open the zip file
+                with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                    def get_relevant_files(name):
+                        relevant_files = []
 
-                    for file_name in zip_ref.namelist():
-                        if len(file_name.split('/')) == 2:
-                            if name in file_name.lower():
-                                if file_name.endswith('.json'):
-                                    relevant_files.append(file_name)
+                        for file_name in zip_ref.namelist():
+                            if len(file_name.split('/')) == 2:
+                                if name in file_name.lower():
+                                    if file_name.endswith('.json'):
+                                        relevant_files.append(file_name)
 
-                    # Check whether the file is found
-                    if not relevant_files:
-                        print(f"No files found  containing '{name}' in the name!")
+                        # Check whether the file is found
+                        if not relevant_files:
+                            print(f"No files found  containing '{name}' in the name!")
 
-                    return relevant_files
+                        return relevant_files
 
-                # Blood glucose
-                entries_files = get_relevant_files('entries')
-                all_entries_dfs = []
-                for entries_file in entries_files:
-                    with zip_ref.open(entries_file) as f:
-                        if entries_file.startswith(sub_folder_path):
-                            try:
-                                entries_df = pd.read_json(f, convert_dates=False)
-                            except ValueError as e:
-                                # Reset the file handle to the start
-                                f.seek(0)
-                                entries_df = pd.DataFrame()
-                                print(f"Error parsing JSON directly: {e}")
-                                for line in f:
-                                    try:
-                                        data = json.loads(line)
-                                        entries_df = entries_df._append(data, ignore_index=True)
-                                    except json.JSONDecodeError as json_err:
-                                        print(f"Skipping line due to error: {json_err}")
-                        else:
-                            entries_df = pd.read_json(f, convert_dates=False, lines=True)
-                        if entries_df.empty:
-                            continue
-                        entries_df['dateString'] = entries_df['dateString'].apply(parse_datetime_without_timezone)
-                        entries_df['sgv'] = pd.to_numeric(entries_df['sgv'])
-                        entries_df = entries_df[['dateString', 'sgv']]
-                        entries_df.rename(columns={'sgv': 'CGM', 'dateString': 'date'}, inplace=True)
-                        entries_df.set_index('date', inplace=True)
-                        entries_df.sort_index(inplace=True)
-                        all_entries_dfs.append(entries_df)
-
-                if len(all_entries_dfs) == 0:
-                    print(f'No glucose entries for {file}. Skipping to next subject.')
-                    continue
-                df = pd.concat(all_entries_dfs)
-                df = df.resample('5min').mean()
-
-                # Carbohydrates
-                treatments_files = get_relevant_files('treatments')
-                carbs_dfs = []
-                bolus_dfs = []
-                temp_basal_dfs = []
-                for treatments_file in treatments_files:
-                    with zip_ref.open(treatments_file) as f:
-                        if treatments_file.startswith(sub_folder_path):
-                            treatments_df = pd.read_json(f, convert_dates=False)
-                        else:
-                            treatments_df = pd.read_json(f, convert_dates=False, lines=True)
-
-                        if treatments_df.empty:
-                            continue
-
-                        carbs_df = treatments_df.copy()[['created_at', 'carbs']]
-                        carbs_df['created_at'] = carbs_df['created_at'].apply(parse_datetime_without_timezone)
-                        carbs_df['carbs'] = pd.to_numeric(carbs_df['carbs'])
-                        carbs_df.rename(columns={'created_at': 'date'}, inplace=True)
-                        carbs_df.set_index('date', inplace=True)
-                        carbs_df.sort_index(inplace=True)
-                        carbs_df = carbs_df[carbs_df['carbs'].notna() & (carbs_df['carbs'] != 0)]
-                        carbs_dfs.append(carbs_df)
-
-                        bolus_df = treatments_df.copy()[['created_at', 'insulin']]
-                        bolus_df['created_at'] = bolus_df['created_at'].apply(parse_datetime_without_timezone)
-                        bolus_df['insulin'] = pd.to_numeric(bolus_df['insulin'])
-                        bolus_df.rename(columns={'created_at': 'date', 'insulin': 'bolus'}, inplace=True)
-                        bolus_df.set_index('date', inplace=True)
-                        bolus_df.sort_index(inplace=True)
-                        bolus_df = bolus_df[bolus_df['bolus'].notna() & (bolus_df['bolus'] != 0)]
-                        bolus_dfs.append(bolus_df)
-
-                        if not 'rate' in treatments_df.columns:
-                            if ('percent' in treatments_df.columns) and ('duration' in treatments_df.columns):
-                                temp_basal_df = treatments_df.copy()[['created_at', 'percent', 'duration']]
-                                temp_basal_df['temp'] = 'percentage'
-                                temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
-                                    parse_datetime_without_timezone)
-                                temp_basal_df['percent'] = pd.to_numeric(temp_basal_df['percent'],
-                                                                         errors='coerce') + 100
-                                temp_basal_df.rename(columns={'created_at': 'date', 'percent': 'temp_basal'},
-                                                     inplace=True)
-                            elif ('absolute' in treatments_df.columns) and ('duration' in treatments_df.columns):
-                                temp_basal_df = treatments_df.copy()[['created_at', 'absolute', 'duration']]
-                                temp_basal_df['temp'] = np.nan
-                                temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
-                                    parse_datetime_without_timezone)
-                                temp_basal_df['absolute'] = pd.to_numeric(temp_basal_df['absolute'], errors='coerce')
-                                temp_basal_df.rename(columns={'created_at': 'date', 'absolute': 'temp_basal'},
-                                                     inplace=True)
+                    # Blood glucose
+                    entries_files = get_relevant_files('entries')
+                    all_entries_dfs = []
+                    for entries_file in entries_files:
+                        with zip_ref.open(entries_file) as f:
+                            if entries_file.startswith(sub_folder_path):
+                                try:
+                                    entries_df = pd.read_json(f, convert_dates=False)
+                                except ValueError as e:
+                                    # Reset the file handle to the start
+                                    f.seek(0)
+                                    entries_df = pd.DataFrame()
+                                    print(f"Error parsing JSON directly: {e}")
+                                    for line in f:
+                                        try:
+                                            data = json.loads(line)
+                                            entries_df = entries_df._append(data, ignore_index=True)
+                                        except json.JSONDecodeError as json_err:
+                                            print(f"Skipping line due to error: {json_err}")
                             else:
-                                print("No columns for temporary basal is found! ")
-                                print(f'Data columns are: {treatments_df.columns}')
-                                print(f'EventTypes are: {treatments_df.eventType.unique()}')
-                                temp_basal_df = pd.DataFrame()
-                        else:
-                            if 'temp' in treatments_df.columns:
-                                temp_basal_df = treatments_df.copy()[['created_at', 'rate', 'duration', 'temp']]
+                                entries_df = pd.read_json(f, convert_dates=False, lines=True)
+                            if entries_df.empty:
+                                continue
+                            entries_df['dateString'] = entries_df['dateString'].apply(parse_datetime_without_timezone)
+                            entries_df['sgv'] = pd.to_numeric(entries_df['sgv'])
+                            entries_df = entries_df[['dateString', 'sgv']]
+                            entries_df.rename(columns={'sgv': 'CGM', 'dateString': 'date'}, inplace=True)
+                            entries_df.set_index('date', inplace=True)
+                            entries_df.sort_index(inplace=True)
+                            all_entries_dfs.append(entries_df)
+
+                    if len(all_entries_dfs) == 0:
+                        print(f'No glucose entries for {file}. Skipping to next subject.')
+                        continue
+                    df = pd.concat(all_entries_dfs)
+                    df = df.resample('5min').mean()
+
+                    # Carbohydrates
+                    treatments_files = get_relevant_files('treatments')
+                    carbs_dfs = []
+                    bolus_dfs = []
+                    temp_basal_dfs = []
+                    for treatments_file in treatments_files:
+                        with zip_ref.open(treatments_file) as f:
+                            if treatments_file.startswith(sub_folder_path):
+                                treatments_df = pd.read_json(f, convert_dates=False)
                             else:
-                                temp_basal_df = treatments_df.copy()[['created_at', 'rate', 'duration']]
-                                temp_basal_df['temp'] = None
-                            temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
-                                parse_datetime_without_timezone)
-                            temp_basal_df['rate'] = pd.to_numeric(temp_basal_df['rate'], errors='coerce')
-                            temp_basal_df.rename(columns={'created_at': 'date', 'rate': 'temp_basal'}, inplace=True)
-                        if not temp_basal_df.empty:
-                            temp_basal_df.set_index('date', inplace=True)
-                            temp_basal_df.sort_index(inplace=True)
-                            temp_basal_df = temp_basal_df[temp_basal_df['temp_basal'].notna()]
-                            temp_basal_dfs.append(temp_basal_df)
+                                treatments_df = pd.read_json(f, convert_dates=False, lines=True)
 
-                df_carbs = pd.concat(carbs_dfs)
-                df_carbs = drop_duplicates(df_carbs, 'carbs')
-                df_carbs = df_carbs.resample('5min').sum().fillna(value=0)
-                df = pd.merge(df, df_carbs, on="date", how='outer')
-                df['carbs'] = df['carbs'].fillna(value=0.0)
+                            if treatments_df.empty:
+                                continue
 
-                df_bolus = pd.concat(bolus_dfs)
-                df_bolus = drop_duplicates(df_bolus, 'bolus')
-                df_bolus = df_bolus.resample('5min').sum().fillna(value=0)
-                df = pd.merge(df, df_bolus, on="date", how='outer')
-                df['bolus'] = df['bolus'].fillna(value=0.0)
+                            carbs_df = treatments_df.copy()[['created_at', 'carbs']]
+                            carbs_df['created_at'] = carbs_df['created_at'].apply(parse_datetime_without_timezone)
+                            carbs_df['carbs'] = pd.to_numeric(carbs_df['carbs'])
+                            carbs_df.rename(columns={'created_at': 'date'}, inplace=True)
+                            carbs_df.set_index('date', inplace=True)
+                            carbs_df.sort_index(inplace=True)
+                            carbs_df = carbs_df[carbs_df['carbs'].notna() & (carbs_df['carbs'] != 0)]
+                            carbs_dfs.append(carbs_df)
 
-                if temp_basal_df.empty:
-                    df['temp_basal'] = np.nan
-                    df['duration'] = np.nan
-                    df['temp'] = np.nan
-                else:
-                    df_temp_basal = pd.concat(temp_basal_dfs)
-                    df_temp_basal = df_temp_basal.resample('5min').last()
-                    df = pd.merge(df, df_temp_basal, on="date", how='outer')
+                            bolus_df = treatments_df.copy()[['created_at', 'insulin']]
+                            bolus_df['created_at'] = bolus_df['created_at'].apply(parse_datetime_without_timezone)
+                            bolus_df['insulin'] = pd.to_numeric(bolus_df['insulin'])
+                            bolus_df.rename(columns={'created_at': 'date', 'insulin': 'bolus'}, inplace=True)
+                            bolus_df.set_index('date', inplace=True)
+                            bolus_df.sort_index(inplace=True)
+                            bolus_df = bolus_df[bolus_df['bolus'].notna() & (bolus_df['bolus'] != 0)]
+                            bolus_dfs.append(bolus_df)
 
-                # Forward fill temp_basal up to the number in the duration column
-                for idx, row in df.iterrows():
-                    if not pd.isna(row['temp_basal']) and not pd.isna(row['duration']):
-                        fill_limit = int(row['duration'])  # duration in minutes, index freq is 5 minutes
-                        timedeltas = range(5, int(row['duration']), 5)
-
-                        for timedelta in timedeltas:
-                            fill_index = idx + pd.Timedelta(minutes=timedelta)
-                            if fill_index in df.index:
-                                if pd.isna(df.loc[fill_index, 'temp_basal']):
-                                    df.loc[fill_index, 'temp_basal'] = row['temp_basal']
-                                    df.loc[fill_index, 'temp'] = row['temp']
+                            if not 'rate' in treatments_df.columns:
+                                if ('percent' in treatments_df.columns) and ('duration' in treatments_df.columns):
+                                    temp_basal_df = treatments_df.copy()[['created_at', 'percent', 'duration']]
+                                    temp_basal_df['temp'] = 'percentage'
+                                    temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
+                                        parse_datetime_without_timezone)
+                                    temp_basal_df['percent'] = pd.to_numeric(temp_basal_df['percent'],
+                                                                             errors='coerce') + 100
+                                    temp_basal_df.rename(columns={'created_at': 'date', 'percent': 'temp_basal'},
+                                                         inplace=True)
+                                elif ('absolute' in treatments_df.columns) and ('duration' in treatments_df.columns):
+                                    temp_basal_df = treatments_df.copy()[['created_at', 'absolute', 'duration']]
+                                    temp_basal_df['temp'] = np.nan
+                                    temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
+                                        parse_datetime_without_timezone)
+                                    temp_basal_df['absolute'] = pd.to_numeric(temp_basal_df['absolute'], errors='coerce')
+                                    temp_basal_df.rename(columns={'created_at': 'date', 'absolute': 'temp_basal'},
+                                                         inplace=True)
                                 else:
-                                    continue
+                                    print("No columns for temporary basal is found! ")
+                                    print(f'Data columns are: {treatments_df.columns}')
+                                    print(f'EventTypes are: {treatments_df.eventType.unique()}')
+                                    temp_basal_df = pd.DataFrame()
+                            else:
+                                if 'temp' in treatments_df.columns:
+                                    temp_basal_df = treatments_df.copy()[['created_at', 'rate', 'duration', 'temp']]
+                                else:
+                                    temp_basal_df = treatments_df.copy()[['created_at', 'rate', 'duration']]
+                                    temp_basal_df['temp'] = None
+                                temp_basal_df['created_at'] = temp_basal_df['created_at'].apply(
+                                    parse_datetime_without_timezone)
+                                temp_basal_df['rate'] = pd.to_numeric(temp_basal_df['rate'], errors='coerce')
+                                temp_basal_df.rename(columns={'created_at': 'date', 'rate': 'temp_basal'}, inplace=True)
+                            if not temp_basal_df.empty:
+                                temp_basal_df.set_index('date', inplace=True)
+                                temp_basal_df.sort_index(inplace=True)
+                                temp_basal_df = temp_basal_df[temp_basal_df['temp_basal'].notna()]
+                                temp_basal_dfs.append(temp_basal_df)
 
-                # Drop the duration column
-                df.drop(columns='duration', inplace=True)
+                    df_carbs = pd.concat(carbs_dfs)
+                    df_carbs = drop_duplicates(df_carbs, 'carbs')
+                    df_carbs = df_carbs.resample('5min').sum().fillna(value=0)
+                    df = pd.merge(df, df_carbs, on="date", how='outer')
+                    df['carbs'] = df['carbs'].fillna(value=0.0)
 
-                # Basal rates
-                profile_files = get_relevant_files('profile')
-                for profile_file in profile_files:
-                    with zip_ref.open(profile_file) as f:
-                        if profile_file.startswith(sub_folder_path):
-                            basal_df = pd.read_json(f, convert_dates=False)
-                        else:
-                            basal_df = pd.read_json(f, convert_dates=False, lines=True)
+                    df_bolus = pd.concat(bolus_dfs)
+                    df_bolus = drop_duplicates(df_bolus, 'bolus')
+                    df_bolus = df_bolus.resample('5min').sum().fillna(value=0)
+                    df = pd.merge(df, df_bolus, on="date", how='outer')
+                    df['bolus'] = df['bolus'].fillna(value=0.0)
 
-                        if 'store' in basal_df.columns:
-                            basal_df = basal_df[['store', 'startDate', 'defaultProfile']]
-                            basal_df['startDate'] = basal_df['startDate'].apply(parse_datetime_without_timezone)
-                            basal_df.set_index('startDate', inplace=True)
+                    if temp_basal_df.empty:
+                        df['temp_basal'] = np.nan
+                        df['duration'] = np.nan
+                        df['temp'] = np.nan
+                    else:
+                        df_temp_basal = pd.concat(temp_basal_dfs)
+                        df_temp_basal = df_temp_basal.resample('5min').last()
+                        df = pd.merge(df, df_temp_basal, on="date", how='outer')
 
-                            # Drop duplicates based on the date part of the DatetimeIndex
-                            basal_df = basal_df[~basal_df.index.normalize().duplicated(keep='first')]
-                            basal_df.sort_index(inplace=True)
+                    # Forward fill temp_basal up to the number in the duration column
+                    for idx, row in df.iterrows():
+                        if not pd.isna(row['temp_basal']) and not pd.isna(row['duration']):
+                            fill_limit = int(row['duration'])  # duration in minutes, index freq is 5 minutes
+                            timedeltas = range(5, int(row['duration']), 5)
 
-                            df['basal'] = np.nan
-                            for idx, row in basal_df.iterrows():
-                                if pd.isna(row['store']):
-                                    continue
-                                basal_rates = row['store'][row['defaultProfile']]['basal']
-                                for basal in basal_rates:
-                                    basal_time = datetime.strptime(basal['time'], "%H:%M").time()
-                                    # Create filter mask for main_df based on time and date
-                                    mask = (df.index >= idx) & (df.index.time >= basal_time)
-                                    df.loc[mask, 'basal'] = float(basal['value'])
-                        elif 'basal' in basal_df.columns:
-                            basal_df = basal_df[['basal', 'startDate']]
-                            basal_df['startDate'] = basal_df['startDate'].apply(parse_datetime_without_timezone)
-                            basal_df.set_index('startDate', inplace=True)
+                            for timedelta in timedeltas:
+                                fill_index = idx + pd.Timedelta(minutes=timedelta)
+                                if fill_index in df.index:
+                                    if pd.isna(df.loc[fill_index, 'temp_basal']):
+                                        df.loc[fill_index, 'temp_basal'] = row['temp_basal']
+                                        df.loc[fill_index, 'temp'] = row['temp']
+                                    else:
+                                        continue
 
-                            # Drop duplicates based on the date part of the DatetimeIndex
-                            basal_df = basal_df[~basal_df.index.normalize().duplicated(keep='first')]
-                            basal_df.sort_index(inplace=True)
+                    # Drop the duration column
+                    df.drop(columns='duration', inplace=True)
 
-                            df['basal'] = np.nan
-                            for idx, row in basal_df.iterrows():
-                                basal_rates = row['basal']
-                                for basal in basal_rates:
-                                    basal_time = datetime.strptime(basal['time'], "%H:%M").time()
-                                    # Create filter mask for main_df based on time and date
-                                    mask = (df.index >= idx) & (df.index.time >= basal_time)
-                                    df.loc[mask, 'basal'] = float(basal['value'])
-                        else:
-                            print(f"GET BASAL ERROR FOR {file}")
+                    # Basal rates
+                    profile_files = get_relevant_files('profile')
+                    for profile_file in profile_files:
+                        with zip_ref.open(profile_file) as f:
+                            if profile_file.startswith(sub_folder_path):
+                                basal_df = pd.read_json(f, convert_dates=False)
+                            else:
+                                basal_df = pd.read_json(f, convert_dates=False, lines=True)
 
-                df['merged_basal'] = df['temp_basal'].combine_first(df['basal'])
+                            if 'store' in basal_df.columns:
+                                basal_df = basal_df[['store', 'startDate', 'defaultProfile']]
+                                basal_df['startDate'] = basal_df['startDate'].apply(parse_datetime_without_timezone)
+                                basal_df.set_index('startDate', inplace=True)
 
-                # Check if temp basal is "Percentage". If yes, calculate from basal rate. Print those columns
-                df.loc[df['temp'] == 'percentage', 'merged_basal'] = df['temp_basal'] * df['basal'] / 100
-                df.drop(columns=['temp', 'temp_basal', 'basal'], inplace=True)
-                df.rename(columns={'merged_basal': 'basal'}, inplace=True)
-                df['insulin'] = df['bolus'] + df['basal'] * 5 / 60
-                df['id'] = id_name
+                                # Drop duplicates based on the date part of the DatetimeIndex
+                                basal_df = basal_df[~basal_df.index.normalize().duplicated(keep='first')]
+                                basal_df.sort_index(inplace=True)
 
-                print(f"Current memory usage: {get_memory_usage()} MB")
+                                df['basal'] = np.nan
+                                for idx, row in basal_df.iterrows():
+                                    if pd.isna(row['store']):
+                                        continue
+                                    basal_rates = row['store'][row['defaultProfile']]['basal']
+                                    for basal in basal_rates:
+                                        basal_time = datetime.strptime(basal['time'], "%H:%M").time()
+                                        # Create filter mask for main_df based on time and date
+                                        mask = (df.index >= idx) & (df.index.time >= basal_time)
+                                        df.loc[mask, 'basal'] = float(basal['value'])
+                            elif 'basal' in basal_df.columns:
+                                basal_df = basal_df[['basal', 'startDate']]
+                                basal_df['startDate'] = basal_df['startDate'].apply(parse_datetime_without_timezone)
+                                basal_df.set_index('startDate', inplace=True)
 
-            merged_df = pd.concat([df, merged_df], ignore_index=False)
+                                # Drop duplicates based on the date part of the DatetimeIndex
+                                basal_df = basal_df[~basal_df.index.normalize().duplicated(keep='first')]
+                                basal_df.sort_index(inplace=True)
+
+                                df['basal'] = np.nan
+                                for idx, row in basal_df.iterrows():
+                                    basal_rates = row['basal']
+                                    for basal in basal_rates:
+                                        basal_time = datetime.strptime(basal['time'], "%H:%M").time()
+                                        # Create filter mask for main_df based on time and date
+                                        mask = (df.index >= idx) & (df.index.time >= basal_time)
+                                        df.loc[mask, 'basal'] = float(basal['value'])
+                            else:
+                                print(f"GET BASAL ERROR FOR {file}")
+
+                    df['merged_basal'] = df['temp_basal'].combine_first(df['basal'])
+
+                    # Check if temp basal is "Percentage". If yes, calculate from basal rate. Print those columns
+                    df.loc[df['temp'] == 'percentage', 'merged_basal'] = df['temp_basal'] * df['basal'] / 100
+                    df.drop(columns=['temp', 'temp_basal', 'basal'], inplace=True)
+                    df.rename(columns={'merged_basal': 'basal'}, inplace=True)
+                    df['insulin'] = df['bolus'] + df['basal'] * 5 / 60
+                    df['id'] = id_name
+
+                    print(f"Current memory usage: {get_memory_usage()} MB")
+                    merged_df = pd.concat([df, merged_df], ignore_index=False)
 
         """
         # TODO: This should be removed to the CLI and check for all of the datasets
