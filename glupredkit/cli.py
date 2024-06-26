@@ -141,7 +141,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
     split_index = int((len(parsed_data)) * (1 - test_size))
 
     parsed_data['is_test'] = False
-    parsed_data.loc[split_index:, 'is_test'] = True
+    parsed_data.iloc[split_index:].loc[:, 'is_test'] = True
     parsed_data = parsed_data.drop(parsed_data.index[split_index - margin:split_index + margin])
 
     save_data(output_file_name=output_file_name, data=parsed_data)
@@ -181,6 +181,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.argument('model', type=click.Choice([
     'double_lstm',
     'loop',
+    'loop_algorithm',
     'lstm',
     'mtl',
     'naive_linear_regressor',
@@ -280,16 +281,26 @@ def test_model(model_file, max_samples):
     hypo_threshold = 70
     hyper_threshold = 180
 
+    # Determine the count of hypo samples
+    if not training_data.empty:
+        hypo_training_samples = [training_data[training_data['CGM'] < hypo_threshold].shape[0]]
+        hyper_training_samples = [training_data[training_data['CGM'] > hyper_threshold].shape[0]]
+    else:
+        hypo_training_samples = [0]
+        hyper_training_samples = [0]
+
     # Create a dataframe to store the model name, configuration, predictions, and other results
     results_df = pd.DataFrame({
         'Model Name': [model_name],
         'training_samples': [training_data.shape[0]],
         'test_samples': [test_data.shape[0]],
-        'hypo_training_samples': [training_data[training_data['CGM'] < hypo_threshold].shape[0]],
+        'hypo_training_samples': hypo_training_samples,
         'hypo_test_samples': [test_data[test_data['CGM'] < hypo_threshold].shape[0]],
-        'hyper_training_samples': [training_data[training_data['CGM'] > hyper_threshold].shape[0]],
+        'hyper_training_samples': hyper_training_samples,
         'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]],
-        'unit': [unit_config_manager.get_unit()]
+        'unit': [unit_config_manager.get_unit()],
+        'x_test_dates': [x_test.index.tolist()],
+        'config_file_name': config_file_name,
     })
 
     configs = model_config_manager.load_config()
@@ -343,8 +354,8 @@ def test_model(model_file, max_samples):
     subset_size = x_test.shape[0]
 
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova'):
-        subset_size = 1000
+    if (model_name == 'loop') | (model_name == 'uva_padova') | (model_name == 'loop_algorithm'):
+        subset_size = 500
     subset_df_x = x_test[-subset_size:]
 
     insulin_doses = [1, 5, 10]
@@ -437,15 +448,15 @@ def test_model(model_file, max_samples):
                                       'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
+
+@click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
+                                            'without space. Required for scatter plot. ', default=None)
 @click.option('--start-date', type=str,
               help='Start date for the predictions. Default is the first sample in the test data. '
                    'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--end-date', type=str,
-              help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
-                   'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
-                                            'without space. Required for scatter plot. ', default=None)
-def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
+@click.option('--n-samples', type=int, default=144)
+@click.option('--interval', type=int, default=30)
+def draw_plots(results_files, plots, prediction_horizons, start_date, n_samples, interval):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -481,7 +492,7 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
                 chosen_plot(dfs, prediction_horizon)
 
         elif plot == 'trajectories':
-            chosen_plot(dfs)
+            chosen_plot(dfs, start_date=start_date, n_samples=n_samples, interval=interval)
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")

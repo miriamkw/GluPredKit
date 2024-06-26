@@ -305,12 +305,18 @@ glupredkit draw_plots
 - `--plots` (optional): Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
     - scatter_plot
     - trajectories
-- `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
-- `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
+- `--prediction-horizons` (optional, scatter_plot): The number of glucose samples to include in the trajectories plot.
+- `--start-date` (optional, trajectories): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
+- `--n-samples` (optional, trajectories): The number of glucose samples to include in the trajectories plot. Default is 144.
+- `--interval` (optional, trajectories): The interval in minutes between each predicted trajectory. Default is 30.
+
 
 #### Example
 ```
-glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --prediction-horizons 30,60
+```
+```
+glupredkit draw_plots --results-files ridge__my_config__180.csv --plots trajectories --start-date 23-06-2024/00:30 --n-samples 288 --interval 15
 ```
 
 ---
