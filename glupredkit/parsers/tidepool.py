@@ -91,10 +91,6 @@ class Parser(BaseParser):
             df['basal'] = df['basal'].ffill(limit=12 * 24 * 2)
             df[['insulin', 'basal']] = df[['insulin', 'basal']].fillna(value=0.0)
             df['insulin'] = df['insulin'] + df['basal']
-            #df.drop(columns=(["basal_rate"]), inplace=True)
-
-            # Add hour of day
-            df['hour'] = df.index.hour
 
             if not df_workouts.empty:
                 # Add activity states
@@ -161,10 +157,6 @@ class Parser(BaseParser):
             except ValueError:
                 # If second format also fails, return NaT
                 return pd.NaT
-
-
-
-
 
     def get_json_from_parsed_df(self, start_date, end_date, username: str, password: str, start_test_date, basal,
                                isf, cr):
@@ -234,7 +226,7 @@ class Parser(BaseParser):
         return json.dumps(data, indent=2)
 
     def get_json_from_raw_data(self, start_date, end_date, username: str, password: str, start_test_date, basal,
-                               isf, cr):
+                               isf, cr, recommendation_settings=None):
         tp_api = TidepoolAPI(username, password)
         tp_api.login()
 
@@ -316,8 +308,28 @@ class Parser(BaseParser):
             "sensitivity": ins_sens
         }
 
+        if recommendation_settings:
+            data = {**data, **recommendation_settings}
+
         # Convert the data dictionary to a JSON string
         return json.dumps(data, indent=2)
 
-
+    def getRecommendationSettings(self):
+        data = {
+            "predictionStart": "2024-06-23T16:00:11Z",
+            "maxBasalRate": 4.1,
+            "maxBolus": 9,
+            "target": [
+                {
+                    "endDate": "2025-10-18T03:10:00Z",
+                    "lowerBound": 101,
+                    "startDate": "2022-10-17T20:59:03Z",
+                    "upperBound": 115
+                }
+            ],
+            # Are these necessary?
+            "recommendationInsulinType": "novolog",
+            "recommendationType": "automaticBolus",
+        }
+        return data
 

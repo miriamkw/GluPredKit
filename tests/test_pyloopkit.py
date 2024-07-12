@@ -1,12 +1,13 @@
-"""
 import pandas as pd
 import json
+import ast
+import numpy as np
 from glupredkit.models.loop import Model
 from pyloopkit.loop_data_manager import update
 from pyloopkit.dose import DoseType
 
 # Parse json file
-test_file = 'data/raw/live_capture_input.json'
+test_file = 'data/raw/test_file.json'
 f = open(test_file)
 data = json.load(f)
 f.close()
@@ -19,42 +20,60 @@ df_glucose.sort_values(by='date', inplace=True, ascending=True)
 df_glucose.set_index('date', inplace=True)
 
 carb_data = data['carbEntries']
-df_carbs = pd.json_normalize(carb_data)[['date', 'grams']]
-df_carbs.date = pd.to_datetime(df_carbs.date)
-df_carbs.rename(columns={"grams": "carbs"}, inplace=True)
-df_carbs.sort_values(by='date', inplace=True, ascending=True)
-df_carbs.set_index('date', inplace=True)
+if len(carb_data) > 0:
+    df_carbs = pd.json_normalize(carb_data)[['date', 'grams']]
+    df_carbs.date = pd.to_datetime(df_carbs.date)
+    df_carbs.rename(columns={"grams": "carbs"}, inplace=True)
+    df_carbs.sort_values(by='date', inplace=True, ascending=True)
+    df_carbs.set_index('date', inplace=True)
+else:
+    df_carbs = pd.DataFrame()
 
 bolus_data = [dose for dose in data['doses'] if dose['type'] == 'bolus']
-df_bolus = pd.json_normalize(bolus_data)[['startDate', 'volume']]
-df_bolus.startDate = pd.to_datetime(df_bolus.startDate)
-df_bolus.rename(columns={"startDate": "date", "volume": "bolus"}, inplace=True)
-df_bolus.sort_values(by='date', inplace=True, ascending=True)
-df_bolus.set_index('date', inplace=True)
+if len(bolus_data) > 0:
+    df_bolus = pd.json_normalize(bolus_data)[['startDate', 'volume']]
+    df_bolus.startDate = pd.to_datetime(df_bolus.startDate)
+    df_bolus.rename(columns={"startDate": "date", "volume": "bolus"}, inplace=True)
+    df_bolus.sort_values(by='date', inplace=True, ascending=True)
+    df_bolus.set_index('date', inplace=True)
+else:
+    df_bolus = pd.DataFrame()
 
 basal_data = [dose for dose in data['doses'] if dose['type'] == 'basal']
-df_basal = pd.json_normalize(basal_data)[['startDate', 'volume']]
-df_basal.startDate = pd.to_datetime(df_basal.startDate)
-df_basal.rename(columns={"startDate": "date", "volume": "basal"}, inplace=True)
-df_basal.sort_values(by='date', inplace=True, ascending=True)
-df_basal.set_index('date', inplace=True)
+if len(basal_data) > 0:
+    df_basal = pd.json_normalize(basal_data)[['startDate', 'volume']]
+    df_basal.startDate = pd.to_datetime(df_basal.startDate)
+    df_basal.rename(columns={"startDate": "date", "volume": "basal"}, inplace=True)
+    df_basal.sort_values(by='date', inplace=True, ascending=True)
+    df_basal.set_index('date', inplace=True)
+else:
+    df_basal = pd.DataFrame()
 
 # Resampling all datatypes into the same time-grid
 df = df_glucose.copy()
 df = df.resample('5min', label='right').mean()
 
-df_carbs = df_carbs.resample('5min', label='right').sum()
-df = pd.merge(df, df_carbs, on="date", how='outer')
-df['carbs'] = df['carbs']
+if df_carbs.empty:
+    df['carbs'] = np.nan
+else:
+    df_carbs = df_carbs.resample('5min', label='right').sum()
+    df = pd.merge(df, df_carbs, on="date", how='outer')
+    df['carbs'] = df['carbs']
 
-df_bolus = df_bolus.resample('5min', label='right').sum()
-df = pd.merge(df, df_bolus, on="date", how='outer')
+if df_bolus.empty:
+    df['bolus'] = np.nan
+else:
+    df_bolus = df_bolus.resample('5min', label='right').sum()
+    df = pd.merge(df, df_bolus, on="date", how='outer')
 
-df_basal = df_basal.resample('5min', label='right').sum()
-df_basal['basal'] = df_basal['basal']
-df = pd.merge(df, df_basal, on="date", how='outer')
-df['basal'] = df['basal'].ffill(limit=12 * 24 * 2)
-df['basal'] = df['basal'].fillna(value=0.0)
+if df_basal.empty:
+    df['basal'] = np.nan
+else:
+    df_basal = df_basal.resample('5min', label='right').sum()
+    df_basal['basal'] = df_basal['basal']
+    df = pd.merge(df, df_basal, on="date", how='outer')
+    df['basal'] = df['basal'].ffill(limit=12 * 24 * 2)
+    df['basal'] = df['basal'].fillna(value=0.0)
 
 # Therapy settings
 basal = data['basal'][0]['value']
@@ -99,7 +118,14 @@ combined = combined_basal + combined_bolus
 combined.sort(key=lambda x: x[1])
 
 # Step 4: Separate into individual lists
-dose_types, start_times, end_times, values, units = zip(*combined)
+if len(combined) > 0:
+    dose_types, start_times, end_times, values, units = zip(*combined)
+else:
+    dose_types = []
+    start_times = []
+    end_times = []
+    values = []
+    units = []
 
 input_dict["dose_types"] = dose_types
 input_dict["dose_start_times"] = start_times
@@ -114,8 +140,7 @@ prediction_result = output_dict.get("predicted_glucose_values")
 prediction_dates = output_dict.get("predicted_glucose_dates")
 
 for i in range(len(prediction_dates)):
-    print(f'Pred: {prediction_result[i]} Date: {prediction_dates[i]}')
-"""
+    print(f'{i} Pred: {prediction_result[i]} Date: {prediction_dates[i]}')
 
 
 

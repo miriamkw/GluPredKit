@@ -14,7 +14,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_date=None, n_samples=12*12, interval=30, alpha=0.2, *args):
+    def __call__(self, dfs, start_date=None, n_samples=12*12, interval=30, alpha=0.4, *args):
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
@@ -75,10 +75,15 @@ class Plot(BasePlot):
 
         lines = []
 
+        # List of standard color names from matplotlib
+        colors = ['green', 'brown', 'purple', 'orange', 'magenta', 'blue', 'cyan']
+        count = 0
+
         for df in dfs:
             model_name = df['Model Name'][0]
             # TODO: Add config file name to the labels
             # config_file_name = df['config_file_name']
+
             ph = int(df['prediction_horizon'][0])
 
             prediction_horizons = range(5, ph + 1, 5)
@@ -97,9 +102,8 @@ class Plot(BasePlot):
             y_pred_lists = np.array(y_pred_lists)
             y_pred_lists = np.transpose(y_pred_lists)[1 + start_index:start_index + n_samples + 1]
 
-            # List of standard color names from matplotlib
-            colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'brown']
-            random_color = random.choice(colors)  # Choose a random color
+            current_color = colors[count]
+            count += 1
 
             # Add predicted trajectories
             for i in range(0, len(y_pred_lists), interval // 5):
@@ -108,9 +112,9 @@ class Plot(BasePlot):
                 trajectory_timestamps = [timestamps[i] + pd.Timedelta(minutes=5*j) for j in range(ph // 5 + 1)]
 
                 if i == 0:
-                    line, = ax.plot(trajectory_timestamps, trajectory, linestyle='--', color=random_color, label=f'Predicted trajectories for {model_name}')
+                    line, = ax.plot(trajectory_timestamps, trajectory, linestyle='--', color=current_color, label=f'Predicted trajectories for {model_name}')
                 else:
-                    line, = ax.plot(trajectory_timestamps, trajectory, linestyle='--', color=random_color)
+                    line, = ax.plot(trajectory_timestamps, trajectory, linestyle='--', color=current_color)
                 lines.append(line)
 
         fig.canvas.mpl_connect('motion_notify_event', on_hover)

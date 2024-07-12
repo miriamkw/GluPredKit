@@ -63,11 +63,11 @@ class Preprocessor(BasePreprocessor):
             encoder = OneHotEncoder(drop='first')  # dropping the first column to avoid dummy variable trap
 
             # Fit the encoder only on training data
-            encoder.fit(train_df[self.categorical_features])
+            encoder.fit(processed_train_df[self.categorical_features])
 
             # Transform data
-            processed_train_df = self.transform_with_encoder(train_df, encoder)
-            processed_test_df = self.transform_with_encoder(test_df, encoder)
+            processed_train_df = self.transform_with_encoder(processed_train_df, encoder)
+            processed_test_df = self.transform_with_encoder(processed_test_df, encoder)
 
         return processed_train_df, processed_test_df
 

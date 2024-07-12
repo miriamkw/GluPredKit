@@ -50,7 +50,8 @@ def setup_directories():
 @click.option('--end-date', type=str, help='End date for data retrieval. Default is now. Format "dd-mm-yyyy"')
 @click.option('--output-file-name', type=str, help='The file name for the output.')
 @click.option('--test-size', type=float, default=0.25)
-def parse(parser, username, password, start_date, file_path, end_date, output_file_name, test_size):
+@click.option('--derived-features', type=str)
+def parse(parser, username, password, start_date, file_path, end_date, output_file_name, test_size, derived_features):
     """Parse data and store it as CSV in data/raw using a selected parser"""
 
     # Load the chosen parser dynamically based on user input
@@ -62,6 +63,8 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
     # Create an instance of the chosen parser
     chosen_parser = parser_module.Parser()
+
+    derived_features = helpers.split_string(derived_features)
 
     click.echo(f"Parsing data using {parser}...")
 
@@ -135,6 +138,9 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
 
+    # Add derived features
+    parsed_data = helpers.add_derived_features(parsed_data, derived_features)
+
     # Train and test split
     # Adding a margin of 24 hours to the train and the test data to avoid memory leak
     margin = int((12 * 24) / 2)
@@ -182,6 +188,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'double_lstm',
     'loop',
     'loop_algorithm',
+    'loop_ridge',
     'lstm',
     'mtl',
     'naive_linear_regressor',
@@ -230,7 +237,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
     # Ensure that the optional params match the parser
     if model in ['double_lstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
         model_instance = chosen_model.fit(x_train, y_train, epochs)
-    elif model in ['loop'] and n_cross_val_samples:
+    elif model in ['loop', 'loop_algorithm'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
     elif model in ['uva_padova'] and n_steps:
         model_instance = chosen_model.fit(x_train, y_train, n_steps)
@@ -354,7 +361,8 @@ def test_model(model_file, max_samples):
     subset_size = x_test.shape[0]
 
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova') | (model_name == 'loop_algorithm'):
+    if ((model_name == 'loop') | (model_name == 'uva_padova') | (model_name == 'loop_algorithm') |
+            (model_name == 'loop_ridge')):
         subset_size = 500
     subset_df_x = x_test[-subset_size:]
 
@@ -448,7 +456,6 @@ def test_model(model_file, max_samples):
                                       'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-
 @click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
                                             'without space. Required for scatter plot. ', default=None)
 @click.option('--start-date', type=str,
@@ -528,12 +535,16 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.set_title(c, f'Model Accuracy')
     c = generate_report.draw_model_accuracy_table(c, df)
     plot_height = 1.3  # TODO: Dynamically scale when table is larger
+    #c = generate_report.plot_across_prediction_horizons(c, df, f'RMSE [{unit_config_manager.get_unit()}]',
+    #                                                    ['rmse'], y_placement=420, height=plot_height)
+    #c = generate_report.plot_across_prediction_horizons(c, df, f'ME [{unit_config_manager.get_unit()}]',
+    #                                                    ['me'], y_placement=260, height=plot_height)
+    #c = generate_report.plot_across_prediction_horizons(c, df, f'MARE [%]',
+    #                                                    ['mare'], y_placement=100, height=plot_height)
     c = generate_report.plot_across_prediction_horizons(c, df, f'RMSE [{unit_config_manager.get_unit()}]',
-                                                        ['rmse'], y_placement=420, height=plot_height)
+                                                        ['rmse'], y_placement=260, height=plot_height)
     c = generate_report.plot_across_prediction_horizons(c, df, f'ME [{unit_config_manager.get_unit()}]',
-                                                        ['me'], y_placement=260, height=plot_height)
-    c = generate_report.plot_across_prediction_horizons(c, df, f'MARE [%]',
-                                                        ['mare'], y_placement=100, height=plot_height)
+                                                        ['me'], y_placement=100, height=plot_height)
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
@@ -547,9 +558,10 @@ def generate_evaluation_pdf(results_file):
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
+    #c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
+    #c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
+    #c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
+    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 120)
     c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
@@ -560,7 +572,7 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.draw_mcc_table(c, df)
     c = generate_report.plot_across_prediction_horizons(c, df, f'Matthews Correlation Coefficient (MCC)',
                                                         ['mcc_hypo', 'mcc_hyper'], y_placement=150,
-                                                        height=4, y_label='MCC',
+                                                        height=3, y_label='MCC',
                                                         y_labels=['MCC Hypoglycemia', 'MCC Hyperglycemia'])
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -573,8 +585,10 @@ def generate_evaluation_pdf(results_file):
 
     c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
     c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
-    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
+    #c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
+    #c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 50, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, None, 320, 150)
 
     c = generate_report.set_bottom_text(c)
     c.showPage()

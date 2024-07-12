@@ -14,15 +14,19 @@ def add_time_lagged_features(df, lagged_cols, num_lagged_features):
     return lagged_df
 
 
-def add_what_if_features(df, what_if_cols, prediction_horizon):
+def add_what_if_features(df, what_if_cols, prediction_horizon, categorical_features):
     what_if_df = pd.DataFrame()
     prediction_index = prediction_horizon // 5
     indexes = list(range(1, prediction_index + 1))
 
-    for col in what_if_cols:
+    # Find common elements between what if columns and categorical features
+    all_cols = [col1 for col1 in df.columns if any(col1.startswith(col2) for col2 in what_if_cols)]
+
+    for col in all_cols:
         for i in indexes:
             new_col_name = col + "_what_if_" + str(i * 5)
             what_if_df = pd.concat([what_if_df, df[col].shift(-i).rename(new_col_name)], axis=1)
+
     return what_if_df
 
 
@@ -43,12 +47,14 @@ def process_data(df, model_config_manager: ModelConfigurationManager, real_time=
         # Identify the subset of the DataFrame for the current subject ID
         subset_df = df[df['id'] == subject_id]
 
+        # Add what-if features
+        what_if_df = add_what_if_features(subset_df, model_config_manager.get_what_if_features(),
+                                          model_config_manager.get_prediction_horizon(),
+                                          model_config_manager.get_cat_features())
+
         # Add time-lagged features directly to the subset
         lagged_features = add_time_lagged_features(subset_df, model_config_manager.get_num_features(),
                                                    model_config_manager.get_num_lagged_features())
-        # Add what-if features
-        what_if_df = add_what_if_features(subset_df, model_config_manager.get_what_if_features(),
-                                          model_config_manager.get_prediction_horizon())
 
         # Update the subset DataFrame with the new time-lagged features
         subset_df = pd.concat([subset_df, lagged_features], axis=1)

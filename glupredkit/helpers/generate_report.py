@@ -258,6 +258,10 @@ def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
     return c
 
 
+def get_full_model_name(df):
+    return df['Model Name'][0] + '__' + df['config_file_name'][0] + '__' + str(get_ph(df))
+
+
 def draw_overall_ranking_table(c, dfs, y_placement):
     data = [
         ['Rank', 'Model', 'RMSE', 'ME', 'SEG', 'MCC', 'STD']
@@ -271,7 +275,7 @@ def draw_overall_ranking_table(c, dfs, y_placement):
     std_list = []
     for df in dfs:
         prediction_horizons = range(5, get_ph(df) + 1, 5)
-        models += [df['Model Name'][0]]
+        models += [get_full_model_name(df)]
         rmse_list += [np.mean([df[f'rmse_{ph}'][0] for ph in prediction_horizons])]
         me_list += [np.mean([df[f'me_{ph}'][0] for ph in prediction_horizons])]
         seg_list += [np.mean([df[f'parkes_error_grid_exp_{ph}'][0] for ph in prediction_horizons])]
@@ -577,7 +581,7 @@ def plot_rmse_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     fig = plt.figure(figsize=(5.5, height))
 
     for df in dfs:
-        model_name = df['Model Name'][0]
+        model_name = get_full_model_name(df)
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
@@ -606,7 +610,7 @@ def plot_error_grid_across_prediction_horizons(c, dfs, height=2, y_placement=300
     fig = plt.figure(figsize=(5.5, height))
 
     for df in dfs:
-        model_name = df['Model Name'][0]
+        model_name = get_full_model_name(df)
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
@@ -635,7 +639,7 @@ def plot_mcc_across_prediction_horizons(c, dfs, height=2, y_placement=300):
     fig = plt.figure(figsize=(5.5, height))
 
     for df in dfs:
-        model_name = df['Model Name'][0]
+        model_name = get_full_model_name(df)
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
@@ -704,7 +708,7 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
     fig = plt.figure(figsize=(5.5, height))
 
     for df in dfs:
-        model_name = df['Model Name'][0]
+        model_name = get_full_model_name(df)
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
@@ -808,23 +812,60 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
 
 
 def plot_confusion_matrix(c, df, classes, ph, x_placement, y_placement, cmap=plt.cm.Blues):
-    percentages = df[f'glycemia_detection_{ph}'][0]
-    percentages = ast.literal_eval(percentages)
+    if ph:
+        percentages = df[f'glycemia_detection_{ph}'][0]
+        percentages = ast.literal_eval(percentages)
 
-    fig = plt.figure(figsize=(3, 2.5))
-    sns.heatmap(percentages, annot=True, cmap=cmap, fmt='.2%', xticklabels=classes, yticklabels=classes)
-    plt.title(f'{ph} minutes')
-    plt.xlabel('True label')
-    plt.ylabel('Predicted label')
+        fig = plt.figure(figsize=(3, 2.5))
+        sns.heatmap(percentages, annot=True, cmap=cmap, fmt='.0%', xticklabels=classes, yticklabels=classes, vmin=0, vmax=1)
+        plt.title(f'{ph} minutes')
+        plt.xlabel('True label')
+        plt.ylabel('Predicted label')
 
-    # Save the plot as an image
-    buffer = BytesIO()
-    fig.savefig(buffer, format='svg')
-    buffer.seek(0)  # Move the file pointer to the beginning
-    drawing = svg2rlg(buffer)
-    renderPDF.draw(drawing, c, x_placement, y_placement)
+        # Save the plot as an image
+        buffer = BytesIO()
+        fig.savefig(buffer, format='svg')
+        buffer.seek(0)  # Move the file pointer to the beginning
+        drawing = svg2rlg(buffer)
+        renderPDF.draw(drawing, c, x_placement, y_placement)
 
-    plt.close(fig)
+        plt.close(fig)
+    else:
+        prediction_horizons = range(5, get_ph(df) + 1, 5)
+        num_matrices = len(prediction_horizons)
+        result_matrix = [[0.0 for _ in range(3)] for _ in range(3)]
+
+        matrices = []
+        for ph in prediction_horizons:
+            percentages = ast.literal_eval(df[f'glycemia_detection_{ph}'][0])
+            matrices += [percentages]
+
+        # Sum corresponding elements of each matrix
+        for matrix in matrices:
+            for i in range(3):
+                for j in range(3):
+                    result_matrix[i][j] += matrix[i][j]
+
+        # Calculate average by dividing by the number of matrices
+        for i in range(3):
+            for j in range(3):
+                result_matrix[i][j] /= num_matrices
+
+        fig = plt.figure(figsize=(3, 2.5))
+        sns.heatmap(result_matrix, annot=True, cmap=cmap, fmt='.0%', xticklabels=classes, yticklabels=classes, vmin=0,
+                    vmax=1)
+        plt.title(f'Total')
+        plt.xlabel('True label')
+        plt.ylabel('Predicted label')
+
+        # Save the plot as an image
+        buffer = BytesIO()
+        fig.savefig(buffer, format='svg')
+        buffer.seek(0)  # Move the file pointer to the beginning
+        drawing = svg2rlg(buffer)
+        renderPDF.draw(drawing, c, x_placement, y_placement)
+
+        plt.close(fig)
     return c
 
 

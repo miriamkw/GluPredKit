@@ -1,6 +1,9 @@
+import numpy as np
 import pandas as pd
 import sys
+import ctypes
 import os
+import json
 import ast
 import click
 import dill
@@ -198,3 +201,123 @@ def validate_test_size(ctx, param, value):
         raise click.BadParameter('Test size must be a float between 0 and 1. Decimal values are represented using a '
                                  'period (dot).')
     return test_size
+
+
+def add_derived_features(parsed_data, derived_features):
+    if 'hour' in derived_features:
+        parsed_data['hour'] = parsed_data.index.tz_localize(None).hour
+    if 'active_insulin' or 'active_carbs' in derived_features:
+        parsed_data['active_insulin'] = np.nan
+        parsed_data['active_carbs'] = np.nan
+
+        for i in range(72, len(parsed_data)):
+            subset_df = parsed_data.iloc[i-72:i]
+            active_insulin, active_carbs = get_active_insulin_and_carbs(subset_df)
+
+            parsed_data.at[parsed_data.index[i], 'active_insulin'] = active_insulin
+            parsed_data.at[parsed_data.index[i], 'active_carbs'] = active_carbs
+
+    return parsed_data
+
+
+def get_active_insulin_and_carbs(subset_df):
+    json_data = get_json_from_df(subset_df)
+    json_bytes = json_data.encode('utf-8')
+
+    # Load the shared library
+    swift_lib = ctypes.CDLL('./libLoopAlgorithmToPython.dylib')
+
+    # Set input and return types
+    swift_lib.getActiveInsulin.argtypes = [ctypes.c_char_p]
+    swift_lib.getActiveInsulin.restype = ctypes.c_double
+    swift_lib.getActiveCarbs.argtypes = [ctypes.c_char_p]
+    swift_lib.getActiveCarbs.restype = ctypes.c_double
+
+    # Call the Swift functions
+    result_active_insulin = swift_lib.getActiveInsulin(json_bytes)
+    result_active_carbs = swift_lib.getActiveCarbs(json_bytes)
+
+    return result_active_insulin, result_active_carbs
+
+
+def get_json_from_df(subset_df):
+    subset_df = subset_df.reset_index()
+
+    df_glucose = subset_df[['date', 'CGM']].copy()
+    df_glucose = df_glucose.dropna(subset=['CGM'])  # Drop rows where 'CGM' is NaN
+    df_glucose['CGM'] = df_glucose['CGM'].astype(int)
+    df_glucose['date'] = df_glucose['date'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    df_glucose.rename(columns={"CGM": "value"}, inplace=True)
+    df_glucose.sort_values(by='date', inplace=True, ascending=True)
+
+    # Dataframe carbohydrates
+    df_carbs = subset_df[['date', 'carbs']].copy()
+    df_carbs = df_carbs[df_carbs['carbs'] > 0]
+    df_carbs['absorptionTime'] = 10800
+    df_carbs.rename(columns={"carbs": "grams"}, inplace=True)
+    df_carbs.sort_values(by='date', inplace=True, ascending=True)
+    df_carbs['date'] = df_carbs['date'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    # Dataframe bolus doses
+    df_bolus = subset_df[['date', 'bolus']].copy()
+    df_bolus = df_bolus[df_bolus['bolus'] > 0]
+    df_bolus.rename(columns={"date": "startDate", "bolus": "volume"}, inplace=True)
+    df_bolus.sort_values(by='startDate', inplace=True, ascending=True)
+    df_bolus['startDate'] = df_bolus['startDate'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    df_bolus['endDate'] = df_bolus['startDate']
+    df_bolus['type'] = "bolus"
+
+    # Dataframe basal rates
+    df_basal = subset_df[['date', 'basal']].copy()
+    df_basal.rename(columns={"date": "startDate", "basal": "volume"}, inplace=True)
+    df_basal.sort_values(by='startDate', inplace=True, ascending=True)
+    df_basal['endDate'] = df_basal['startDate'] + pd.Timedelta(minutes=5)
+    df_basal['startDate'] = df_basal['startDate'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    df_basal['endDate'] = df_basal['endDate'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    df_basal['type'] = "basal"
+
+    df_insulin = pd.concat([df_bolus, df_basal], ignore_index=True)
+    df_insulin.sort_values(by='startDate', inplace=True, ascending=True)
+
+    insulin_history_list = df_insulin.to_dict(orient='records')
+    glucose_history_list = df_glucose.to_dict(orient='records')
+    carbs_history_list = df_carbs.to_dict(orient='records')
+
+    basal = [{"endDate": "2030-06-23T05:00:00Z", "startDate": "2020-06-22T10:00:00Z", "value": 0.0}]
+    carb_ratio = [{"endDate": "2030-06-23T05:00:00Z", "startDate": "2020-06-22T10:00:00Z", "value": 10}]
+    ins_sens = [{"endDate": "2030-06-23T05:00:00Z", "startDate": "2020-06-22T10:00:00Z", "value": 60}]
+
+    # Create the final JSON structure
+    data = {
+        "carbEntries": carbs_history_list,
+        "doses": insulin_history_list,
+        "glucoseHistory": glucose_history_list,
+        "basal": basal,
+        "carbRatio": carb_ratio,
+        "sensitivity": ins_sens
+    }
+    data = {**data, **get_recommendation_settings(df_glucose.iloc[-1].loc['date'])}
+
+    # Convert the data dictionary to a JSON string
+    return json.dumps(data, indent=2)
+
+
+def get_recommendation_settings(prediction_start):
+    data = {
+        "predictionStart": prediction_start,
+        "maxBasalRate": 4.1,
+        "maxBolus": 9,
+        "target": [
+            {
+                "endDate": "2025-10-18T03:10:00Z",
+                "lowerBound": 101,
+                "startDate": "2022-10-17T20:59:03Z",
+                "upperBound": 115
+            }
+        ],
+        # Are these necessary?
+        "recommendationInsulinType": "novolog",
+        "recommendationType": "automaticBolus",
+    }
+    return data
+

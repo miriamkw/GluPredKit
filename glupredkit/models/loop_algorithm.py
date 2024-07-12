@@ -1,7 +1,12 @@
 from glupredkit.models.base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
+from skopt import gp_minimize
+from skopt.space import Real
+from glupredkit.metrics.mcc_hypo import Metric as MCC_Hypo
+from glupredkit.metrics.mcc_hyper import Metric as MCC_Hyper
 import ctypes
 import pandas as pd
+import numpy as np
 import json
 
 class Model(BaseModel):
@@ -12,10 +17,127 @@ class Model(BaseModel):
         self.insulin_sensitivity_factor = None
         self.carb_ratio = None
 
-    def _fit_model(self, x_train, y_train, basal=0.75, insulin_sensitivity_factor=66.6, carb_ratio=9, *args):
-        self.basal = basal
-        self.insulin_sensitivity_factor = insulin_sensitivity_factor
-        self.carb_ratio = carb_ratio
+    def _fit_model(self, x_train, y_train, n_cross_val_samples=1000, tuning=True, *args):
+        # TODO: Train per id, change therapy settings to lists
+        self.basal = 0.75
+        self.insulin_sensitivity_factor = 66.6
+        self.carb_ratio = 9
+
+        if tuning:
+            sampled_indices = x_train.sample(n=n_cross_val_samples, random_state=42).index
+            subset_df_x = x_train.loc[sampled_indices]
+            subset_df_y = y_train.loc[sampled_indices]
+
+            # Calculate total daily insulin
+            daily_avg_insulin = np.mean(x_train.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+            print(f"Daily average insulin: ", daily_avg_insulin)
+
+            initial_basal = daily_avg_insulin * 0.5 / 24  # Basal 50% of TDI
+            initial_isf = 1800 / daily_avg_insulin  # ISF 1800 rule
+            initial_cr = 500 / daily_avg_insulin  # CR 500 rule
+
+            lower_multiplication_factor = 0.5
+            upper_multiplication_factor = 2.0
+
+            # Use the model parameters to predict sequences
+            def custom_model(params):
+                self.basal = params[0]
+                self.insulin_sensitivity_factor = params[1]
+                self.carb_ratio = params[2]
+
+                y_pred = self._predict_model(subset_df_x)
+                flattened_predictions = [item for sublist in y_pred for item in sublist]
+                return flattened_predictions
+
+            # Convert continuous values to categories
+            def categorize(values, a, b):
+                categories = np.digitize(values, bins=[a, b], right=True)
+                return categories
+
+            # True categories for the target sequence
+            low_threshold = 80
+            high_threshold = 180
+
+            true_values = subset_df_y.values.tolist()
+            flattened_true_values = [item for sublist in true_values for item in sublist]
+            true_categories = np.array(categorize(flattened_true_values, a=low_threshold, b=high_threshold))
+
+            # Using inverse frequency, assigning higher weights to less frequent categories
+            num_categories = 3
+            category_counts = np.array([np.sum(true_categories == i) for i in range(num_categories)])
+            weights = 1 / category_counts
+            weights = weights / np.sum(weights)  # Normalize to ensure the weights sum to 1
+            print("Weights: ", weights)
+
+            # Define your objective function
+            def objective(params):
+                # Get the sequence from your model
+                sequence = custom_model(params)
+
+                # Categorize the predicted sequence
+                predicted_categories = categorize(sequence, a=low_threshold, b=high_threshold)
+
+                squared_errors = [(true_categories == i) & (predicted_categories != i) for i in range(num_categories)]
+                squared_errors = [np.sum(errors) / len(true_categories) for errors in squared_errors]
+                weighted_squared_errors = [error * weight for error, weight in zip(squared_errors, weights)]
+                total_error = np.sum(weighted_squared_errors)
+
+                print(f'Params: {params}, MSE: {total_error * 10000}')
+
+                return total_error
+
+            def objective_mcc(params):
+                mcc_hypo = MCC_Hypo()
+                mcc_hyper = MCC_Hyper()
+
+                flattened_predictions = custom_model(params)
+
+                hypo_results = mcc_hypo(flattened_true_values, flattened_predictions)
+                hyper_results = mcc_hyper(flattened_true_values, flattened_predictions)
+                total_error = np.mean([hypo_results, hyper_results])
+
+                print(f'Hypo results: {hypo_results}, hyper results: {hyper_results}, mean: {total_error}')
+
+                # Add 1 and invert to make so that lower is better
+                total_error = 2 - (total_error + 1)
+
+                print(f'Params: {params}, MCC: {total_error}')
+
+                return total_error
+
+            def objective_mse(params):
+                flattened_predictions = custom_model(params)
+                res = np.square(np.subtract(flattened_true_values, flattened_predictions)).mean()
+
+                print(f'MSE: {res}, RMSE: {np.sqrt(res)}')
+                print(f'Params: {params}')
+
+                return res
+
+            # Define the parameter space
+            param_space = [
+                Real(initial_basal * lower_multiplication_factor, initial_basal * upper_multiplication_factor, name='basal'),
+                Real(initial_isf * lower_multiplication_factor, initial_isf * upper_multiplication_factor, name='isf'),
+                Real(initial_cr * lower_multiplication_factor, initial_cr * upper_multiplication_factor, name='cr')
+            ]
+
+            # Run Bayesian Optimization. We treat
+            result = gp_minimize(
+                objective_mse,  # Objective function
+                param_space,  # Parameter space
+                n_calls=100,  # Number of evaluations
+                random_state=0  # For reproducibility
+            )
+
+            # Print the results
+            print("Best score achieved: ", result.fun)
+            print("Best parameters: ", result.x)
+
+            self.basal = result.x[0]
+            self.insulin_sensitivity_factor = result.x[1]
+            self.carb_ratio = result.x[2]
+
+        print(f"Therapy settings: ISF {self.insulin_sensitivity_factor}, CR: {self.carb_ratio}, basal: {self.basal}")
 
         return self
 
@@ -23,20 +145,15 @@ class Model(BaseModel):
         predictions = []
         n_predictions = self.prediction_horizon // 5
 
-        # Load the dynamic Swift / C LoopAlgorithms library
-        swift_lib = ctypes.CDLL('./libLoopAlgorithmToPython.dylib')
-
-        # Specify the argument types and return type of the Swift function
-        swift_lib.generatePrediction.argtypes = [ctypes.c_char_p]
-        swift_lib.generatePrediction.restype = ctypes.POINTER(ctypes.c_double)
-
         count = 1
+        print("Starting predicting...")
         for idx, row in x_test.iterrows():
             json_data = self.get_json_from_df(row, idx)
             json_bytes = json_data.encode('utf-8')  # Convert JSON string to bytes
-            predictions += [self.get_predictions_from_json(swift_lib, json_bytes, n_predictions)]
+            predictions += [self.get_predictions_from_json(json_bytes, n_predictions)]
 
-            print(f'Prediction {count} of {x_test.shape[0]}')
+            if count % 1000 == 0:
+                print(f'Prediction {count} of {x_test.shape[0]}')
             count += 1
 
         return predictions
@@ -180,7 +297,14 @@ class Model(BaseModel):
         }
         return json.dumps(data, indent=2)
 
-    def get_predictions_from_json(self, swift_lib, json_bytes, n):
+    def get_predictions_from_json(self, json_bytes, n):
+        # Load the dynamic Swift / C LoopAlgorithms library
+        swift_lib = ctypes.CDLL('./libLoopAlgorithmToPython.dylib')
+
+        # Specify the argument types and return type of the Swift function
+        swift_lib.generatePrediction.argtypes = [ctypes.c_char_p]
+        swift_lib.generatePrediction.restype = ctypes.POINTER(ctypes.c_double)
+
         # Call the Swift function
         result = swift_lib.generatePrediction(json_bytes)
         glucose_array = [result[i] for i in range(1, n+1)]  # Read the array from the returned pointer
