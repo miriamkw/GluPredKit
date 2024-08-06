@@ -250,7 +250,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
 @click.command()
 @click.argument('model_file', type=str)
 @click.option('--max-samples', type=int, required=False)
-def test_model(model_file, max_samples):
+def evaluate_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
 
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
@@ -675,7 +675,7 @@ cli = click.Group(commands={
     'parse': parse,
     'generate_config': generate_config,
     'train_model': train_model,
-    'test_model': test_model,
+    'evaluate_model': evaluate_model,
     'draw_plots': draw_plots,
     'generate_evaluation_pdf': generate_evaluation_pdf,
     'generate_comparison_pdf': generate_comparison_pdf,

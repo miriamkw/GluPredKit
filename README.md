@@ -250,17 +250,17 @@ All the implemented metrics are the following:
 - **rmse**: Root mean squared error
 
 ```
-glupredkit test_model MODEL_FILE 
+glupredkit evaluate_model MODEL_FILE 
 ```
 - `model-file`: Name of the model file (with .pkl) to be tested. The file name must exist in `data/trained_models/`.
 - `--max-samples` (optional): Set an upper limit for the number of test samples to reduce the run time. Default is all the test samples in the dataset.
 
 #### Examples
 ```
-glupredkit test_model ridge__my_config__180.pkl
+glupredkit evaluate_model ridge__my_config__180.pkl
 ```
 ```
-glupredkit test_model ridge__my_config__180.pkl --max-samples 1000
+glupredkit evaluate_model ridge__my_config__180.pkl --max-samples 1000
 ```
 ---
 
