@@ -9,6 +9,7 @@ import os
 
 def generate_model_configuration(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features,
                                  num_features, cat_features, what_if_features):
+
     # Check if the 'data' string is a valid file in the 'data/raw/' folder
     data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):

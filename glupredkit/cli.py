@@ -141,10 +141,11 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
 
 @click.command()
-@click.option('--file-name', help='Name of the configuration file (without file extension).',
-              callback=helpers.validate_file_name, required=True)
-@click.option('--data', help='Name of the data file from data/raw/.',
-              callback=helpers.validate_file_name, required=True)
+@click.option('--file-name', help='Give a file name to the configuration file (e.g., "my_config").',
+              callback=helpers.validate_config_file_name, required=True)
+@click.option('--data', help='Name of the input data file (e.g., "data.csv"). '
+                             'This file should be located in data/raw/.',
+              callback=helpers.check_if_data_file_exists, required=True)
 @click.option('--subject-ids', help='The ids you want to include in the model training and testing. '
                                     ' will include all of the subjects.', callback=helpers.validate_subject_ids,
               required=False, default='')

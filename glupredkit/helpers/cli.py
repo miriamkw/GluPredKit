@@ -131,10 +131,29 @@ def list_files_in_package(directory):
     return file_names
 
 
-def validate_file_name(ctx, param, value):
-    file_name = str(value)
-    # Removing the file extension, if any
-    return file_name.partition('.')[0]
+def validate_config_file_name(ctx, param, file_name):
+    file_name = str(file_name)
+    base_name = os.path.basename(file_name)
+    name_without_extension = os.path.splitext(base_name)[0]
+    return name_without_extension
+
+
+def check_if_data_file_exists(ctx, param, file_path):
+    # Function to strip the extension and return the file name without extension
+    def strip_extension(file_path):
+        return os.path.splitext(os.path.basename(file_path))[0]
+
+    # Check if file exists within a relative path
+    if os.path.isfile(file_path):
+        return strip_extension(file_path)
+
+    # If it's not a relative path, construct the path using the data/raw/ directory
+    data_folder = 'data/raw/'
+    full_path = os.path.join(data_folder, file_path)
+    if not os.path.isfile(full_path):
+        raise ValueError(f"Data file '{file_path}' not found in '{data_folder}' folder. Ensure the file is in the "
+                         f"correct directory or provide the full path.")
+    return strip_extension(full_path)
 
 
 def validate_subject_ids(ctx, param, value):
