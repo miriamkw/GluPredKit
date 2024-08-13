@@ -158,7 +158,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 @click.option('--num-lagged-features', help='Number of lagged features.',
               callback=helpers.validate_num_lagged_features, required=True)
 @click.option('--num-features', help='Comma-separated list of numerical features.',
-              callback=helpers.validate_feature_list, required=True)
+              callback=helpers.validate_feature_list, required=True, default='CGM')
 @click.option('--cat-features', help='Comma-separated list of categorical features.',
               callback=helpers.validate_feature_list, required=False, default='')
 @click.option('--what-if-features', help='Comma-separated list of categorical features.',

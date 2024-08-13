@@ -91,7 +91,10 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     exclude_features = ['id', 'is_test']
 
     missing_features = [feature for feature in required_features if feature not in columns_list]
-    common_elements = [item for item in exclude_features if item in columns_list]
+    common_elements = [item for item in exclude_features if item in required_features]
+    if not "CGM" in config_manager.get_num_features():
+        raise ValueError(f"CGM is a required column for numerical features. Please ensure that your configuration and "
+                         f"input data are valid.")
     if missing_features:
         raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
                          f"{', '.join(missing_features)}. ")

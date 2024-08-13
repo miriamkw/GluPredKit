@@ -5,6 +5,7 @@ models before preprocessing and training.
 
 import json
 import os
+import warnings
 
 
 def generate_model_configuration(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features,
@@ -14,6 +15,11 @@ def generate_model_configuration(file_name, data, subject_ids, preprocessor, pre
     data_path = os.path.join('data/raw', data + '.csv')
     if not os.path.isfile(data_path):
         raise ValueError(f"Data file '{data + '.csv'}' not found in 'data/raw/' folder.")
+
+    if not "CGM" in num_features:
+        warnings.warn("Warning: The 'CGM' column is required for numerical features. Please note that CGM is "
+                      "added to your configuration by the system.", UserWarning)
+        num_features += ["CGM"]
 
     # Check if 'preprocessor' is a valid preprocessor module
     preprocessor_module = f'glupredkit.preprocessors.{preprocessor}'
