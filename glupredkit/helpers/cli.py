@@ -84,6 +84,22 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     # Load the input CSV file into a DataFrame
     data = read_data_from_csv("data/raw/", input_file_name)
 
+    # Checking if the data and the configuration are aligned
+    required_features = (config_manager.get_num_features() + config_manager.get_cat_features() +
+                         config_manager.get_what_if_features())
+    columns_list = data.columns.tolist()
+    exclude_features = ['id', 'is_test']
+
+    missing_features = [feature for feature in required_features if feature not in columns_list]
+    common_elements = [item for item in exclude_features if item in columns_list]
+    if missing_features:
+        raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
+                         f"{', '.join(missing_features)}. ")
+    if common_elements:
+        raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
+                         f"separate subjects and train and test data. Please remove these features from the "
+                         f"configuration.")
+
     if carbs:
         if 'carbs' in data.columns:
             data.at[data.index[-1], 'carbs'] = carbs

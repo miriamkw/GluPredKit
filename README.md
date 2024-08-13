@@ -177,6 +177,7 @@ glupredkit generate_config
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
 - `--cat-features` (optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
+- `--what-if-features` (optional): List of what-if features, separated by comma. What-if events are scenarios where we have prior knowledge of future information. Note that the feature names must be identical to column names in the input file. Default is empty.
 
 #### Examples 
 
