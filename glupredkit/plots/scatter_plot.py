@@ -31,6 +31,10 @@ class Plot(BasePlot):
         for df in dfs:
             model_name = df['Model Name'][0]
 
+            if f'target_{prediction_horizon}' not in df.columns:
+                raise ValueError("The given prediction horizon is not within the total prediction horizon of the "
+                                 "trained model. Please provide a valid prediction horizon.")
+
             y_true = df[f'target_{prediction_horizon}'][0]
             y_true = ast.literal_eval(y_true)
 

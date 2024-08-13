@@ -521,19 +521,27 @@ def generate_evaluation_pdf(results_file):
     c.showPage()
 
     def round_to_nearest_5(number, divisor):
+        if number <= 5:
+            return 5
         result = number / divisor
         rounded_result = 5 * round(result / 5)
         return rounded_result
+
+    # TODO: IF PH < 20, handle differently, create just a list
 
     prediction_horizon = generate_report.get_ph(df)
     ph_quarter = round_to_nearest_5(prediction_horizon, 4)
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
+
     c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
-    c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
+    if ph_quarter * 2 >= 10 and ph_quarter * 2 <= prediction_horizon:
+        c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
+    if ph_quarter * 3 >= 15 and ph_quarter * 3 <= prediction_horizon:
+        c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
+    if ph_quarter * 4 <= prediction_horizon:
+        c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -555,9 +563,12 @@ def generate_evaluation_pdf(results_file):
     classes = ['Hypo', 'Target', 'Hyper']
 
     c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
-    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
+    if ph_quarter * 2 >= 10 and ph_quarter * 2 <= prediction_horizon:
+        c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
+    if ph_quarter * 3 >= 15 and ph_quarter * 2 <= prediction_horizon:
+        c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
+    if ph_quarter * 4 <= prediction_horizon:
+        c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
 
     c = generate_report.set_bottom_text(c)
     c.showPage()

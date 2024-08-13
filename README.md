@@ -304,8 +304,8 @@ glupredkit draw_plots
 ```
 - `--results-files`: File names from `data/tested_models/` of the models that you want to plot, comma separated without space.
 - `--plots` (optional): Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
-    - scatter_plot
-    - trajectories
+    - **scatter_plot**
+    - **trajectories** (providing start- and end- date for up to 48 hours is recommended for readability)
 - `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
 - `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
 - `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot.
