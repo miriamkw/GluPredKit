@@ -198,18 +198,19 @@ glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 5
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
-    - double_lstm: A double long short-term memory recurrent neural network (http://smarthealth.cs.ohio.edu/nih.html). 
-    - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
+    - double_lstm: A double long short-term memory recurrent neural network ([LSTMs and Neural Attention Models for Blood Glucose Prediction: Comparative Experiments on Real and Synthetic Data
+](https://ieeexplore.ieee.org/document/8856940)). 
+    - loop: The model used in Tidepool Loop ([PyLoopKit](https://github.com/tidepool-org/PyLoopKit)).
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
-    - mtl: Multitask learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
+    - mtl: Multitask learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
     - random_forest: An off-the-shelf implementation of a random forest regressor.
     - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization. 
-    - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) (https://gitlab.com/Hoda-Nemat/data-fusion-stacking).
-    - stl: Single-task learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
+    - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) ([Data Fusion Stacking](https://gitlab.com/Hoda-Nemat/data-fusion-stacking)).
+    - stl: Single-task learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
-    - tcn: (https://github.com/locuslab/TCN/tree/master)
-    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
+    - tcn: [TCN](https://github.com/locuslab/TCN/tree/master)
+    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation ([py_replay_bg](https://github.com/gcappon/py_replay_bg?tab=readme-ov-file)), and particle filter for prediction ([phy-predict](https://github.com/checoisback/phy-predict)).
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).

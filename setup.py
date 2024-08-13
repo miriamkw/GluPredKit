@@ -37,7 +37,7 @@ setup(
     ],
     extras_require={
         'heavy': [
-            "tensorflow",
+            "tensorflow==2.14.0",
             "keras-tcn",
             "torch",
             "opsb-pyloopkit==0.1.0",
