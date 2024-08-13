@@ -307,10 +307,11 @@ glupredkit draw_plots
     - trajectories
 - `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
 - `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
+- `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot.
 
 #### Example
 ```
-glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45 --prediction-horizons 30,60
 ```
 
 ---
