@@ -171,8 +171,8 @@ glupredkit generate_config
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
 - `--subject-ids` (optional): List of subject ids from the dataset that shall be used in model training and testing. Default is None, which will include the whole dataset.
 - `--preprocessor` (optional): The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
-    - basic (default)
-    - standardscaler
+    - **basic (default)**: Linear interpolation of missing samples, and one-hot-encoding of categorical features.
+    - **standardscaler**: Akima interpolation of missing samples, standard scaling of numerical features and one-hot-encoding of categorical features.
 - `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes).  
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is "CGM".
