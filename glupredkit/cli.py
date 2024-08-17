@@ -165,6 +165,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
               callback=helpers.validate_feature_list, required=False, default='')
 def generate_config(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features, num_features,
                     cat_features, what_if_features):
+
     generate_model_configuration(file_name, data, subject_ids, preprocessor, int(prediction_horizon),
                                  int(num_lagged_features), num_features, cat_features, what_if_features)
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")

@@ -121,8 +121,7 @@ In the examples below we will use `glupredkit`.
 
 
 ### Parsing Data
-**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing. 
-If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you provide your own dataset, store it in `data/raw`, and make sure that the dataset adheres to the format defined in the output format of [Parsers](#parsers). This repository provides a synthetic dataset for testing, if you want to use it you can skip this step and go directly to preprocessing. 
 
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
@@ -164,6 +163,8 @@ glupredkit parse --parser ohio_t1dm --file-path data/raw/
 ### Generate Model Training Configuration
 **Description**: This command generates a configuration with a given raw dataset, and various settings for training blood glucose predictions. These configurations will be stored in `data/configurations/`, enabling their reuse for different model approaches and evaluations.
 
+**Example data**: If you write `synthetic_data.csv` in the `--data` argument, the synthetic dataset will be copied into your `data/raw/` folder, and you can use it for experimentation of the software.
+
 ```
 glupredkit generate_config 
 ```
@@ -181,13 +182,18 @@ glupredkit generate_config
 
 #### Examples 
 
+Example using the synthetic dataset and only the required inputs:
+```
+glupredkit generate_config --file-name my_config_1 --data synthetic_data.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
+```
+
 Example using only the required inputs:
 ```
-glupredkit generate_config --file-name my_config_1 --data df.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
+glupredkit generate_config --file-name my_config_2 --data df.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
 ```
 Example using all inputs:
 ```
-glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 540,544 --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 18 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs
+glupredkit generate_config --file-name my_config_3 --data df.csv --subject-ids 540,544 --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 18 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs
 ```
 
 ---

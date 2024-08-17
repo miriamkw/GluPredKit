@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import os
 import ast
+import requests
 import click
 import dill
 import importlib
@@ -157,20 +158,36 @@ def validate_config_file_name(ctx, param, file_name):
     return name_without_extension
 
 
-def check_if_data_file_exists(ctx, param, file_path):
+def check_if_data_file_exists(ctx, param, file_name):
     # Function to strip the extension and return the file name without extension
-    def strip_extension(file_path):
-        return os.path.splitext(os.path.basename(file_path))[0]
+    def strip_extension(file_name):
+        return os.path.splitext(os.path.basename(file_name))[0]
+
+    if strip_extension(file_name) == 'synthetic_data':
+        # TODO: Change url to main branch when merged
+        # TODO: add tests!
+        url = 'https://github.com/miriamkw/GluPredKit/blob/joss_review/example_data/synthetic_data.csv'
+        save_folder = 'data/raw/'
+        save_path = os.path.join(save_folder, 'synthetic_data.csv')
+
+        if not os.path.exists(save_path):
+            response = requests.get(url)
+            with open(save_path, 'wb') as file:
+                file.write(response.content)
+
+            print(f"File saved to {save_path}")
+        else:
+            print(f"{save_path} already exists, skipping to next step...")
 
     # Check if file exists within a relative path
-    if os.path.isfile(file_path):
-        return strip_extension(file_path)
+    if os.path.isfile(file_name):
+        return strip_extension(file_name)
 
     # If it's not a relative path, construct the path using the data/raw/ directory
     data_folder = 'data/raw/'
-    full_path = os.path.join(data_folder, file_path)
+    full_path = os.path.join(data_folder, file_name)
     if not os.path.isfile(full_path):
-        raise ValueError(f"Data file '{file_path}' not found in '{data_folder}' folder. Ensure the file is in the "
+        raise ValueError(f"Data file '{file_name}' not found in '{data_folder}' folder. Ensure the file is in the "
                          f"correct directory or provide the full path.")
     return strip_extension(full_path)
 
