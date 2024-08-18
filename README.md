@@ -184,7 +184,7 @@ glupredkit generate_config
 
 Example using the synthetic dataset and only the required inputs:
 ```
-glupredkit generate_config --file-name my_config_1 --data synthetic_data.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
+glupredkit generate_config --file-name my_config_1 --data synthetic_data.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour
 ```
 
 Example using only the required inputs:
