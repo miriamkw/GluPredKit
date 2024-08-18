@@ -164,9 +164,8 @@ def check_if_data_file_exists(ctx, param, file_name):
         return os.path.splitext(os.path.basename(file_name))[0]
 
     if strip_extension(file_name) == 'synthetic_data':
-        # TODO: Change url to main branch when merged
         # TODO: add tests!
-        url = 'https://github.com/miriamkw/GluPredKit/blob/joss_review/example_data/synthetic_data.csv'
+        url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
         save_folder = 'data/raw/'
         save_path = os.path.join(save_folder, 'synthetic_data.csv')
 
