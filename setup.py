@@ -28,6 +28,7 @@ setup(
         "pandas",
         "scikit-learn",
         "tidepool-data-science-project",
+        "reportlab",
         "numpy",
         "aiohttp",
         "click",
