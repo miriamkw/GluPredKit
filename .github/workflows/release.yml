@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main  # Trigger only on pushes to the main branch
-  #pull_request: # Workaround to get the action to show up before merge to main
 
 jobs:
   release:
@@ -23,10 +22,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel twine bumpversion
 
+      - name: Set up Git user
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+
       - name: Bump version
         run: bumpversion patch  # Adjust this if you want to bump major or minor versions
 
-      - name: Build and upload package to Test PyPI
+      - name: Build and upload package to PyPI
         run: |
           python setup.py sdist bdist_wheel
           twine upload dist/*
