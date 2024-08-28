@@ -310,7 +310,7 @@ def evaluate_model(model_file, max_samples):
 
         for i, minutes in enumerate(range(5, n_predictions * 5 + 1, 5)):
             curr_y_test = targets[:, i].tolist()
-            curr_y_pred = [val[i] for val in y_pred]
+            curr_y_pred = [float(val[i]) for val in y_pred]
             results_df = results_df.copy()  # To silent PerformanceWarning
             results_df[f'target_{minutes}'] = [curr_y_test]
             results_df[f'y_pred_{minutes}'] = [curr_y_pred]
@@ -324,7 +324,7 @@ def evaluate_model(model_file, max_samples):
     else:
         for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
             curr_y_test = y_test[target_cols[i]].tolist()
-            curr_y_pred = [val[i] for val in y_pred]
+            curr_y_pred = [float(val[i]) for val in y_pred]
             results_df = results_df.copy()  # To silent PerformanceWarning
             results_df[target_cols[i]] = [curr_y_test]
             results_df[f'y_pred_{minutes}'] = [curr_y_pred]
@@ -383,7 +383,8 @@ def evaluate_model(model_file, max_samples):
 
             # Calculate the average of elements at each index position
             averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+            averages = [float(x - y) for x, y in zip(averages, y_pred_bolus_0)]
+
             results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
 
     if 'carbs' in num_features:
@@ -416,7 +417,7 @@ def evaluate_model(model_file, max_samples):
             y_pred = model_instance.predict(x_test_copy)
             # Calculate the average of elements at each index position
             averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
+            averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     # Define the path to store the dataframe

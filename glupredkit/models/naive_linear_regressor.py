@@ -10,7 +10,7 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
 
         self.columns = ['CGM', 'CGM_5', 'CGM_10']
-        self.model= None
+        self.model = None
 
     def _fit_model(self, x_train, y_train, *args):
         # Define the base regressor
