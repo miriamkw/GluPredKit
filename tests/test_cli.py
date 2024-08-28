@@ -90,7 +90,7 @@ def test_generate_config(runner, temp_dir):
         '--prediction-horizon', '180',
         '--num-lagged-features', '18',
         '--num-features', 'CGM,insulin,carbs',
-        #'--cat-features', 'hour',
+        '--cat-features', 'hour',
         '--what-if-features', 'insulin,carbs'
     ]
     result_1 = runner.invoke(generate_config, inputs_1)
