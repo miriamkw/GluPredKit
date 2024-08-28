@@ -2,6 +2,7 @@ name: Test PyPi Release
 
 on:
   workflow_dispatch:  # Allows manual trigger
+  pull_request: # Workaround to get the action to show up before merge to main
 
 jobs:
   release:
