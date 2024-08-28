@@ -22,7 +22,7 @@ jobs:
           pip install setuptools wheel twine bumpversion
 
       - name: Bump version
-        run: bumpversion patch  # Adjust this if you want to bump major or minor versions
+        run: bumpversion patch --new-version 1.0.0 # Adjust this if you want to bump major or minor versions
 
       - name: Build and upload package to Test PyPI
         run: |
