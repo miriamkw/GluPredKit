@@ -39,7 +39,7 @@ jobs:
 
       - name: Push changes
         run: |
-          git push 
+          git push --set-upstream origin joss_review
           git push --tags
 
       - name: Clean up old builds
