@@ -87,6 +87,10 @@ The following figure is an overview over all the CLI commands and how they inter
 ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI%20Overview.png)
 
 ### Getting started
+
+TESTING TESTINGS
+
+
 1) First, follow the instructions above in "Setup and Installation". 
 2) Then, navigate to a desired folder in your command line. 
 This is the folder where the datasets, models and results will be stored.
