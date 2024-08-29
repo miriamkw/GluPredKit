@@ -165,9 +165,10 @@ def check_if_data_file_exists(ctx, param, file_name):
 
     if strip_extension(file_name) == 'synthetic_data':
         # TODO: add tests!
+        cwd = os.getcwd()
         url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
         save_folder = 'data/raw/'
-        save_path = os.path.join(save_folder, 'synthetic_data.csv')
+        save_path = os.path.join(cwd, save_folder, 'synthetic_data.csv')
 
         if not os.path.exists(save_path):
             response = requests.get(url)

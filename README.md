@@ -121,7 +121,10 @@ In the examples below we will use `glupredkit`.
 
 
 ### Parsing Data
-**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you provide your own dataset, store it in `data/raw`, and make sure that the dataset adheres to the format defined in the output format of [Parsers](#parsers). This repository provides a synthetic dataset for testing, if you want to use it you can skip this step and go directly to preprocessing. 
+
+> **Synthetic Data:** If you want to test the software with a synthetic dataset, you can skip to the next step.
+
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you provide your own dataset, store it in `data/raw`, and make sure that the dataset adheres to the format defined in the output format of [Parsers](#parsers). 
 
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
