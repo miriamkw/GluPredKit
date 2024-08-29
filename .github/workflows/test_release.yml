@@ -45,7 +45,7 @@ jobs:
           git add .  # Add updated files to the commit
           git commit -m "Bump version to $(python setup.py --version)"
           git tag $(python setup.py --version)  # Create a new tag with the new version
-          git push
+          git push origin HEAD:${{ github.head_ref }}
           git push --tags  # Push the new tag to the remote repository
 
       - name: Clean up old builds
