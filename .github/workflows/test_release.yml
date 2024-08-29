@@ -32,21 +32,11 @@ jobs:
           git fetch origin pull/${{ github.event.pull_request.number }}/head:${{ github.head_ref }}
           git checkout ${{ github.head_ref }}
 
-      - name: Determine next version
-        id: next_version
-        run: |
-          # Get the current version from setup.py or another file
-          CURRENT_VERSION=$(python setup.py --version)
-          # Calculate the next version (you can adjust this logic if needed)
-          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_ENV
-          NEXT_VERSION=$(bump2version --dry-run --list patch | grep new_version | cut -d '=' -f 2 | xargs)
-          echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_ENV
-          echo "Next version: ${NEXT_VERSION}"
-
       - name: Bump version
         id: bump_version
         run: |
           bump2version patch  # Change to minor or major if needed
+          NEW_VERSION=$(bump2version --dry-run --list patch | grep new_version | cut -d '=' -f 2 | xargs)
           git add .  # Add updated files to the commit
           git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
           git push
