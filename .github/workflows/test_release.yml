@@ -29,8 +29,8 @@ jobs:
 
       - name: Checkout the PR branch
         run: |
-          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr_branch
-          git checkout pr_branch
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:${{ github.head_ref }}
+          git checkout ${{ github.head_ref }}
 
       - name: Determine next version
         id: next_version
