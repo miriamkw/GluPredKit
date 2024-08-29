@@ -27,7 +27,18 @@ jobs:
           git config --local user.email "github-actions@github.com"
 
       - name: Bump version
-        run: bumpversion patch # Adjust this if you want to bump major or minor versions
+        id: bump_version
+        run: |
+          bumpversion patch # Adjust this if you want to bump major or minor versions
+          git add .  # Add updated files to the commit
+          git commit -m "Bump version to $(bumpversion --list | grep current_version | cut -d '=' -f 2 | xargs)"
+          git tag $(python setup.py --version)  # Create a new tag with the new version
+          git push
+          git push --tags  # Push the new tag to the remote repository
+
+      - name: Clean up old builds
+        run: |
+          rm -rf dist build *.egg-info
 
       - name: Build and upload package to Test PyPI
         run: |
