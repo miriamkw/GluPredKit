@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import click
 import dill
+import requests
 import os
 import ast
 import importlib
@@ -166,7 +167,18 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 def generate_config(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features, num_features,
                     cat_features, what_if_features):
 
-    print("JUST TESTING THAT PRINTS SHOW UP!")
+    if data == 'synthetic_data':
+        cwd = os.getcwd()
+        url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
+        save_folder = 'data/raw/'
+        save_path = os.path.join(cwd, save_folder, 'synthetic_data.csv')
+
+        if not os.path.exists(save_path):
+            response = requests.get(url)
+            with open(save_path, 'wb') as file:
+                file.write(response.content)
+
+            click.echo(f"Synthetic data saved to {save_path}")
 
     generate_model_configuration(file_name, data, subject_ids, preprocessor, int(prediction_horizon),
                                  int(num_lagged_features), num_features, cat_features, what_if_features)

@@ -163,33 +163,8 @@ def check_if_data_file_exists(ctx, param, file_name):
     def strip_extension(file_name):
         return os.path.splitext(os.path.basename(file_name))[0]
 
-    click.echo("CHECKING IF FILE EXISTS")
-    click.echo(f"FILE NAME {file_name}")
-    click.echo(f"STRIPPED FILE NAME {strip_extension(file_name)}")
-    print("CHECKING IF FILE EXISTS")
-    print("FILE NAME", file_name)
-    print("STRIPPED FILE NAME", strip_extension(file_name))
-
     if strip_extension(file_name) == 'synthetic_data':
-        # TODO: add tests!
-        print("Saving synthetic data to data/raw/...")
-        click.echo("Saving synthetic data to data/raw/...")
-
-        cwd = os.getcwd()
-        url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
-        save_folder = 'data/raw/'
-        save_path = os.path.join(cwd, save_folder, 'synthetic_data.csv')
-
-        click.echo(f"save path: {save_path}")
-
-        if not os.path.exists(save_path):
-            response = requests.get(url)
-            with open(save_path, 'wb') as file:
-                file.write(response.content)
-
-            click.echo(f"File saved to {save_path}")
-        else:
-            click.echo(f"{save_path} already exists, skipping to next step...")
+        return strip_extension(file_name)
 
     # Check if file exists within a relative path
     if os.path.isfile(file_name):
