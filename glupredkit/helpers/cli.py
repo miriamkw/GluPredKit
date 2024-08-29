@@ -163,8 +163,13 @@ def check_if_data_file_exists(ctx, param, file_name):
     def strip_extension(file_name):
         return os.path.splitext(os.path.basename(file_name))[0]
 
+    print("CHECKING IF FILE EXISTS")
+    print("FILE NAME", file_name)
+    print("STRIPPED FILE NAME", strip_extension(file_name))
+
     if strip_extension(file_name) == 'synthetic_data':
         # TODO: add tests!
+        print("Saving synthetic data to data/raw/...")
         cwd = os.getcwd()
         url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
         save_folder = 'data/raw/'
