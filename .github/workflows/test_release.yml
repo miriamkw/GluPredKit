@@ -50,7 +50,7 @@ jobs:
           git add .  # Add updated files to the commit
           git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
           git tag ${{ env.NEXT_VERSION }}
-          git push origin pr_branch
+          git push origin ${{ github.head_ref }}
           git push --tags  # Push the new tag to the remote repository
 
       - name: Clean up old builds
