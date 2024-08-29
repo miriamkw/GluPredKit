@@ -35,11 +35,24 @@ jobs:
       - name: Bump version
         id: bump_version
         run: |
-          bump2version patch  # Change to minor or major if needed
+          # Bump the version in setup.py and pyproject.toml
+          bump2version patch --allow-dirty --verbose  # Ensure you see what's happening
+      
+          # Capture the new version
           NEW_VERSION=$(bump2version --dry-run --list patch | grep new_version | cut -d '=' -f 2 | xargs)
-          git add .  # Add updated files to the commit
-          git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
-          git push
+          echo "New version: ${NEW_VERSION}"  # Debug output
+      
+          # Ensure changes are staged for commit
+          git add setup.py pyproject.toml
+      
+          # Check if there are any changes to commit
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+          else
+            git commit -m "Bump version to ${NEW_VERSION}"
+            git push origin HEAD
+            git push --tags  # Push tags if needed
+          fi
 
       - name: Clean up old builds
         run: |
