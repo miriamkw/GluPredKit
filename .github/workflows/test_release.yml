@@ -49,7 +49,6 @@ jobs:
           bump2version patch  # Change to minor or major if needed
           git add .  # Add updated files to the commit
           git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
-          git tag ${{ env.NEXT_VERSION }}
           git push
 
       - name: Clean up old builds
