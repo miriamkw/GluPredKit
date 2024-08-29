@@ -50,8 +50,7 @@ jobs:
           git add .  # Add updated files to the commit
           git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
           git tag ${{ env.NEXT_VERSION }}
-          git push origin pr_branch || echo "Failed to push to branch"
-          git push --tags -v || echo "Failed to push tags"
+          git push
 
       - name: Clean up old builds
         run: |
