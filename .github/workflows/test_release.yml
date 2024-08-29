@@ -27,6 +27,11 @@ jobs:
           git config --local user.name "github-actions"
           git config --local user.email "github-actions@github.com"
 
+      - name: Checkout the PR branch
+        run: |
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr_branch
+          git checkout pr_branch
+
       - name: Determine next version
         id: next_version
         run: |
@@ -43,9 +48,9 @@ jobs:
         run: |
           bump2version patch  # Change to minor or major if needed
           git add .  # Add updated files to the commit
-          git commit -m "Bump version to $(python setup.py --version)"
-          git tag $(python setup.py --version)  # Create a new tag with the new version
-          git push origin HEAD:${{ github.head_ref }}
+          git commit -m "Bump version to ${{ env.NEXT_VERSION }}"
+          git tag ${{ env.NEXT_VERSION }}
+          git push origin pr_branch
           git push --tags  # Push the new tag to the remote repository
 
       - name: Clean up old builds
