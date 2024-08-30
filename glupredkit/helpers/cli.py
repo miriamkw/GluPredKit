@@ -2,6 +2,7 @@ import pandas as pd
 import sys
 import os
 import ast
+import requests
 import click
 import dill
 import importlib
@@ -84,6 +85,25 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     # Load the input CSV file into a DataFrame
     data = read_data_from_csv("data/raw/", input_file_name)
 
+    # Checking if the data and the configuration are aligned
+    required_features = (config_manager.get_num_features() + config_manager.get_cat_features() +
+                         config_manager.get_what_if_features())
+    columns_list = data.columns.tolist()
+    exclude_features = ['id', 'is_test']
+
+    missing_features = [feature for feature in required_features if feature not in columns_list]
+    common_elements = [item for item in exclude_features if item in required_features]
+    if "CGM" not in config_manager.get_num_features():
+        raise ValueError(f"CGM is a required column for numerical features. Please ensure that your configuration and "
+                         f"input data are valid.")
+    if missing_features:
+        raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
+                         f"{', '.join(missing_features)}. ")
+    if common_elements:
+        raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
+                         f"separate subjects and train and test data. Please remove these features from the "
+                         f"configuration.")
+
     if carbs:
         if 'carbs' in data.columns:
             data.at[data.index[-1], 'carbs'] = carbs
@@ -131,10 +151,32 @@ def list_files_in_package(directory):
     return file_names
 
 
-def validate_file_name(ctx, param, value):
-    file_name = str(value)
-    # Removing the file extension, if any
-    return file_name.partition('.')[0]
+def validate_config_file_name(ctx, param, file_name):
+    file_name = str(file_name)
+    base_name = os.path.basename(file_name)
+    name_without_extension = os.path.splitext(base_name)[0]
+    return name_without_extension
+
+
+def check_if_data_file_exists(ctx, param, file_name):
+    # Function to strip the extension and return the file name without extension
+    def strip_extension(file_name):
+        return os.path.splitext(os.path.basename(file_name))[0]
+
+    if strip_extension(file_name) == 'synthetic_data':
+        return strip_extension(file_name)
+
+    # Check if file exists within a relative path
+    if os.path.isfile(file_name):
+        return strip_extension(file_name)
+
+    # If it's not a relative path, construct the path using the data/raw/ directory
+    data_folder = 'data/raw/'
+    full_path = os.path.join(data_folder, file_name)
+    if not os.path.isfile(full_path):
+        raise ValueError(f"Data file '{file_name}' not found in '{data_folder}' folder. Ensure the file is in the "
+                         f"correct directory or provide the full path.")
+    return strip_extension(full_path)
 
 
 def validate_subject_ids(ctx, param, value):
@@ -154,8 +196,8 @@ def validate_subject_ids(ctx, param, value):
 def validate_prediction_horizon(ctx, param, value):
     try:
         value = int(value)
-        if value < 0:
-            raise ValueError
+        if value < 10:
+            raise ValueError("The prediction horizon must be greater than or equal to 10. Current value: {}".format(value))
     except ValueError:
         raise click.BadParameter('Prediction horizon must be a positive integer.')
     return value

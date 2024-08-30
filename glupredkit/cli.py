@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import click
 import dill
+import requests
+import warnings
 import os
 import ast
 import importlib
@@ -141,10 +143,11 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
 
 @click.command()
-@click.option('--file-name', help='Name of the configuration file (without file extension).',
-              callback=helpers.validate_file_name, required=True)
-@click.option('--data', help='Name of the data file from data/raw/.',
-              callback=helpers.validate_file_name, required=True)
+@click.option('--file-name', help='Give a file name to the configuration file (e.g., "my_config").',
+              callback=helpers.validate_config_file_name, required=True)
+@click.option('--data', help='Name of the input data file (e.g., "data.csv"). '
+                             'This file should be located in data/raw/.',
+              callback=helpers.check_if_data_file_exists, required=True)
 @click.option('--subject-ids', help='The ids you want to include in the model training and testing. '
                                     ' will include all of the subjects.', callback=helpers.validate_subject_ids,
               required=False, default='')
@@ -157,13 +160,27 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 @click.option('--num-lagged-features', help='Number of lagged features.',
               callback=helpers.validate_num_lagged_features, required=True)
 @click.option('--num-features', help='Comma-separated list of numerical features.',
-              callback=helpers.validate_feature_list, required=True)
+              callback=helpers.validate_feature_list, required=True, default='CGM')
 @click.option('--cat-features', help='Comma-separated list of categorical features.',
               callback=helpers.validate_feature_list, required=False, default='')
 @click.option('--what-if-features', help='Comma-separated list of categorical features.',
               callback=helpers.validate_feature_list, required=False, default='')
 def generate_config(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features, num_features,
                     cat_features, what_if_features):
+
+    if data == 'synthetic_data':
+        cwd = os.getcwd()
+        url = 'https://raw.githubusercontent.com/miriamkw/GluPredKit/main/example_data/synthetic_data.csv'
+        save_folder = 'data/raw/'
+        save_path = os.path.join(cwd, save_folder, 'synthetic_data.csv')
+
+        if not os.path.exists(save_path):
+            response = requests.get(url)
+            with open(save_path, 'wb') as file:
+                file.write(response.content)
+
+            click.echo(f"Synthetic data saved to {save_path}")
+
     generate_model_configuration(file_name, data, subject_ids, preprocessor, int(prediction_horizon),
                                  int(num_lagged_features), num_features, cat_features, what_if_features)
     click.echo(f"Storing configuration file to data/configurations/{file_name}...")
@@ -196,6 +213,12 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
     1) Process data using the given configurations
     2) Train the given models for the given prediction horizons in the configuration
     """
+    # Filtering out UserWarning because we are using an old Keras file format on purpose
+    warnings.filterwarnings(
+        "ignore",
+        message=".*You are saving your model as an HDF5 file.*"
+    )
+
     click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
     model_config_manager = ModelConfigurationManager(config_file_name)
 
@@ -249,7 +272,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
 @click.command()
 @click.argument('model_file', type=str)
 @click.option('--max-samples', type=int, required=False)
-def test_model(model_file, max_samples):
+def evaluate_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
 
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
@@ -308,7 +331,7 @@ def test_model(model_file, max_samples):
 
         for i, minutes in enumerate(range(5, n_predictions * 5 + 1, 5)):
             curr_y_test = targets[:, i].tolist()
-            curr_y_pred = [val[i] for val in y_pred]
+            curr_y_pred = [float(val[i]) for val in y_pred]
             results_df = results_df.copy()  # To silent PerformanceWarning
             results_df[f'target_{minutes}'] = [curr_y_test]
             results_df[f'y_pred_{minutes}'] = [curr_y_pred]
@@ -322,7 +345,7 @@ def test_model(model_file, max_samples):
     else:
         for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
             curr_y_test = y_test[target_cols[i]].tolist()
-            curr_y_pred = [val[i] for val in y_pred]
+            curr_y_pred = [float(val[i]) for val in y_pred]
             results_df = results_df.copy()  # To silent PerformanceWarning
             results_df[target_cols[i]] = [curr_y_test]
             results_df[f'y_pred_{minutes}'] = [curr_y_pred]
@@ -381,7 +404,8 @@ def test_model(model_file, max_samples):
 
             # Calculate the average of elements at each index position
             averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [x - y for x, y in zip(averages, y_pred_bolus_0)]
+            averages = [float(x - y) for x, y in zip(averages, y_pred_bolus_0)]
+
             results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
 
     if 'carbs' in num_features:
@@ -414,7 +438,7 @@ def test_model(model_file, max_samples):
             y_pred = model_instance.predict(x_test_copy)
             # Calculate the average of elements at each index position
             averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [x - y for x, y in zip(averages, y_pred_carbs_0)]
+            averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
 
     # Define the path to store the dataframe
@@ -520,19 +544,29 @@ def generate_evaluation_pdf(results_file):
     c.showPage()
 
     def round_to_nearest_5(number, divisor):
+        if number <= 5:
+            return 5
         result = number / divisor
         rounded_result = 5 * round(result / 5)
         return rounded_result
 
     prediction_horizon = generate_report.get_ph(df)
-    ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+    if prediction_horizon < 20:
+        ph_subparts_list = list(range(5, prediction_horizon + 5, 5))
+    else:
+        ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+        ph_subparts_list = [ph_quarter, ph_quarter * 2, ph_quarter * 3, prediction_horizon]
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
-    c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
+
+    c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[0], 100, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[1], 380, 360)
+
+    if len(ph_subparts_list) > 2:
+        c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[2], 100, 120)
+    if len(ph_subparts_list) > 3:
+        c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -553,10 +587,13 @@ def generate_evaluation_pdf(results_file):
     # Plot confusion matrixes
     classes = ['Hypo', 'Target', 'Hyper']
 
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
-    c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[0], 50, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[1], 320, 450)
+
+    if len(ph_subparts_list) > 2:
+        c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[2], 50, 150)
+    if len(ph_subparts_list) > 3:
+        c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
 
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -627,7 +664,7 @@ def generate_comparison_pdf(results_files):
     # MODEL ACCURACY
     c = generate_report.set_title(c, f'Model Accuracy')
     c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'rmse', 700 - 20 * len(dfs))
-    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20 * len(dfs))
+    #c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20 * len(dfs))
     c = generate_report.plot_rmse_across_prediction_horizons(c, dfs, y_placement=200)
     c = generate_report.set_bottom_text(c)
     c.showPage()
@@ -674,7 +711,7 @@ cli = click.Group(commands={
     'parse': parse,
     'generate_config': generate_config,
     'train_model': train_model,
-    'test_model': test_model,
+    'evaluate_model': evaluate_model,
     'draw_plots': draw_plots,
     'generate_evaluation_pdf': generate_evaluation_pdf,
     'generate_comparison_pdf': generate_comparison_pdf,

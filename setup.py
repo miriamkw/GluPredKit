@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 project_name = "GluPredKit"
-version = "1.0.0"
+version = "1.0.10"
 author = "Miriam K. Wolff"
 author_email = "miriamkwolff@outlook.com"
 package_name = "glupredkit"  # The package name on pip install
@@ -28,6 +28,7 @@ setup(
         "pandas",
         "scikit-learn",
         "tidepool-data-science-project",
+        "reportlab",
         "numpy",
         "aiohttp",
         "click",
@@ -37,7 +38,7 @@ setup(
     ],
     extras_require={
         'heavy': [
-            "tensorflow",
+            "tensorflow==2.14.0",
             "keras-tcn",
             "torch",
             "opsb-pyloopkit==0.1.0",

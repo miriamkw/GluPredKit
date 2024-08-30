@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import shutil
 from click.testing import CliRunner
-from glupredkit.cli import setup_directories, generate_config, train_model, test_model, generate_evaluation_pdf, generate_comparison_pdf
+from glupredkit.cli import (setup_directories, generate_config, train_model, evaluate_model, generate_evaluation_pdf,
+                            generate_comparison_pdf)
 
 
 @pytest.fixture(scope="session")
@@ -146,7 +147,7 @@ def test_train_model(runner, temp_dir):
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
-def test_test_model(runner, temp_dir):
+def test_evaluate_model(runner, temp_dir):
     runner = CliRunner()
 
     config = 'my_config_1'
@@ -154,7 +155,7 @@ def test_test_model(runner, temp_dir):
 
     for model in models:
 
-        result = runner.invoke(test_model, [f'{model}__{config}__60.pkl', '--max-samples', '100'])
+        result = runner.invoke(evaluate_model, [f'{model}__{config}__60.pkl', '--max-samples', '100'])
         assert result.exit_code == 0
 
         # Check if the model test file was created

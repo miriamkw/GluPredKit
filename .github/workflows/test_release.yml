@@ -1,0 +1,56 @@
+name: Test PyPi Release
+
+on:
+  workflow_dispatch:  # Allows manual trigger
+  #pull_request: # Workaround to get the action to show up before merge to main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine bump2version
+
+      - name: Set up Git user
+        run: |
+          git config --local user.name "github-actions"
+          git config --local user.email "github-actions@github.com"
+
+      - name: Checkout the PR branch
+        run: |
+          git fetch origin pull/${{ github.event.pull_request.number }}/head:${{ github.head_ref }}
+          git checkout ${{ github.head_ref }}
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          bump2version patch  # Automatically bumps, commits, and tags
+
+      - name: Push changes
+        run: |
+          git push --set-upstream origin joss_review
+          git push --tags
+
+      - name: Clean up old builds
+        run: |
+          rm -rf dist build *.egg-info
+
+      - name: Build and upload package to Test PyPI
+        run: |
+          python setup.py sdist bdist_wheel
+          twine upload --repository testpypi dist/*
+        env:
+          TWINE_USERNAME: ${{ secrets.TEST_PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_PASSWORD }}
+

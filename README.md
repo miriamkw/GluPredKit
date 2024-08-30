@@ -53,8 +53,7 @@ Choose which one is relevant for you, and follow the instructions below.
 ### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
-Creating a virtual environment is optional, but recommended. Python version 3.7, 3.8 or 3.9 is required. Create a 
-virtual environment with the command `python -m venv glupredkit_venv`, and activate it with `source glupredkit_venv/bin/activate` (Mac) 
+Creating a virtual environment is optional, but recommended. We recommend using Python version 3.8 or 3.9 if relying on the dependencies Tensorflow or Replay BG. A virtual environment for Python 3.9 can for example be created with the following command: `python3.9 -m venv glupredkit_venv`. Activate it with `source glupredkit_venv/bin/activate` (Mac) 
 or `.glupredkit_venv\Scripts\activate` (Windows).
 
 To set up the CLI, simply run the following command:
@@ -62,7 +61,10 @@ To set up the CLI, simply run the following command:
 ```
 pip install glupredkit
 ```
-
+If you need the optional heavy dependencies (listed in `setup.py`), run:
+```
+pip install glupredkit[heavy]
+```
 
 ----
 ### Developers: Install using the cloned repository
@@ -87,6 +89,7 @@ The following figure is an overview over all the CLI commands and how they inter
 ![img.png](https://miriamkw.folk.ntnu.no/figures/CLI%20Overview.png)
 
 ### Getting started
+
 1) First, follow the instructions above in "Setup and Installation". 
 2) Then, navigate to a desired folder in your command line. 
 This is the folder where the datasets, models and results will be stored.
@@ -121,8 +124,10 @@ In the examples below we will use `glupredkit`.
 
 
 ### Parsing Data
-**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you have an existing dataset, you can store it in `data/raw`, skip this step and go directly to preprocessing. 
-If you provide your own dataset, make sure that the dataset and all datatypes are resampled into 5-minute intervals.
+
+> **Synthetic Data:** If you want to test the software with a synthetic dataset, you can skip to the next step.
+
+**Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you provide your own dataset, store it in `data/raw`, and make sure that the dataset adheres to the format defined in the output format of [Parsers](#parsers). 
 
 ```
 glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
@@ -164,6 +169,8 @@ glupredkit parse --parser ohio_t1dm --file-path data/raw/
 ### Generate Model Training Configuration
 **Description**: This command generates a configuration with a given raw dataset, and various settings for training blood glucose predictions. These configurations will be stored in `data/configurations/`, enabling their reuse for different model approaches and evaluations.
 
+**Example data**: If you write `synthetic_data.csv` in the `--data` argument, the synthetic dataset will be copied into your `data/raw/` folder, and you can use it for experimentation of the software.
+
 ```
 glupredkit generate_config 
 ```
@@ -171,22 +178,28 @@ glupredkit generate_config
 - `--data`: Name of the input CSV file containing the data. Note that this file needs to be located in `data/raw/`. 
 - `--subject-ids` (optional): List of subject ids from the dataset that shall be used in model training and testing. Default is None, which will include the whole dataset.
 - `--preprocessor` (optional): The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
-    - basic (default)
-    - standardscaler
-- `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes).  
+    - **basic (default)**: Linear interpolation of missing samples, and one-hot-encoding of categorical features.
+    - **standardscaler**: Akima interpolation of missing samples, standard scaling of numerical features and one-hot-encoding of categorical features.
+- `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes). Must be at least 10, and should be dividable by 5. 
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
-- `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
+- `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is "CGM".
 - `--cat-features` (optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
+- `--what-if-features` (optional): List of what-if features, separated by comma. What-if events are scenarios where we have prior knowledge of future information. Note that the feature names must be identical to column names in the input file. Default is empty.
 
 #### Examples 
 
+Example using the synthetic dataset:
+```
+glupredkit generate_config --file-name my_config_1 --data synthetic_data.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs --cat-features hour
+```
+
 Example using only the required inputs:
 ```
-glupredkit generate_config --file-name my_config_1 --data df.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
+glupredkit generate_config --file-name my_config_2 --data df.csv --prediction-horizon 60 --num-lagged-features 12 --num-features CGM,insulin,carbs
 ```
 Example using all inputs:
 ```
-glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 540,544 --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 18 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs
+glupredkit generate_config --file-name my_config_3 --data df.csv --subject-ids 540,544 --preprocessor standardscaler --prediction-horizon 180 --num-lagged-features 18 --num-features CGM,insulin,carbs --cat-features hour --what-if-features insulin,carbs
 ```
 
 ---
@@ -197,18 +210,19 @@ glupredkit generate_config --file-name my_config_2 --data df.csv --subject-ids 5
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
-    - double_lstm: A double long short-term memory recurrent neural network (http://smarthealth.cs.ohio.edu/nih.html). 
-    - loop: The model used in Tidepool Loop (https://github.com/tidepool-org/PyLoopKit).
+    - double_lstm: A double long short-term memory recurrent neural network ([LSTMs and Neural Attention Models for Blood Glucose Prediction: Comparative Experiments on Real and Synthetic Data
+](https://ieeexplore.ieee.org/document/8856940)). 
+    - loop: The model used in Tidepool Loop ([PyLoopKit](https://github.com/tidepool-org/PyLoopKit)). This is a physiological model that requires CGM, carbohydrates, bolus and basal as features.
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
-    - mtl: Multitask learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
+    - mtl: Multitask learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
     - random_forest: An off-the-shelf implementation of a random forest regressor.
     - ridge: An off-the-shelf implementation of a linear regressor with ridge regularization. 
-    - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) (https://gitlab.com/Hoda-Nemat/data-fusion-stacking).
-    - stl: Single-task learning, convolutional recurrent neural network (https://github.com/jsmdaniels/ecai-bglp-challenge).
+    - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) ([Data Fusion Stacking](https://gitlab.com/Hoda-Nemat/data-fusion-stacking)).
+    - stl: Single-task learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
-    - tcn: (https://github.com/locuslab/TCN/tree/master)
-    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation (https://github.com/gcappon/py_replay_bg?tab=readme-ov-file), and particle filter for prediction (https://github.com/checoisback/phy-predict).
+    - tcn: [TCN](https://github.com/locuslab/TCN/tree/master).
+    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation ([py_replay_bg](https://github.com/gcappon/py_replay_bg?tab=readme-ov-file)), and particle filter for prediction ([phy-predict](https://github.com/checoisback/phy-predict)). This model requires CGM, carbohydrates, bolus and basal as features.
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).
@@ -250,17 +264,17 @@ All the implemented metrics are the following:
 - **rmse**: Root mean squared error
 
 ```
-glupredkit test_model MODEL_FILE 
+glupredkit evaluate_model MODEL_FILE 
 ```
 - `model-file`: Name of the model file (with .pkl) to be tested. The file name must exist in `data/trained_models/`.
 - `--max-samples` (optional): Set an upper limit for the number of test samples to reduce the run time. Default is all the test samples in the dataset.
 
 #### Examples
 ```
-glupredkit test_model ridge__my_config__180.pkl
+glupredkit evaluate_model ridge__my_config__180.pkl
 ```
 ```
-glupredkit test_model ridge__my_config__180.pkl --max-samples 1000
+glupredkit evaluate_model ridge__my_config__180.pkl --max-samples 1000
 ```
 ---
 
@@ -302,14 +316,15 @@ glupredkit draw_plots
 ```
 - `--results-files`: File names from `data/tested_models/` of the models that you want to plot, comma separated without space.
 - `--plots` (optional): Define the type of plots to be generated. Input the names of the plots separated by commas. If not specified, a scatter plot will be the default. The available plots are:
-    - scatter_plot
-    - trajectories
+    - **scatter_plot**
+    - **trajectories** (providing start- and end- date for up to 48 hours is recommended for readability)
 - `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
 - `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
+- `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot.
 
 #### Example
 ```
-glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45 --prediction-horizons 30,60
 ```
 
 ---

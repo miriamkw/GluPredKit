@@ -18,12 +18,12 @@ class Model(BaseModel):
         self.carb_ratio = []
 
     def _fit_model(self, x_train, y_train, n_cross_val_samples=1000, *args):
-        # TODO: Make a way to separate 'insulin' input into basal and bolus if not already done
         required_columns = ['CGM', 'carbs', 'basal', 'bolus']
         missing_columns = [col for col in required_columns if col not in x_train.columns]
         if missing_columns:
             raise ValueError(
-                f"The input DataFrame is missing the following required columns: {', '.join(missing_columns)}")
+                f"The Loop model requires the following features from the data input: {', '.join(missing_columns)}. "
+                f"Please ensure that your dataset and configurations include these features. ")
 
         self.subject_ids = x_train['id'].unique()
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)

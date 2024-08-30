@@ -1,10 +1,11 @@
-matplotlib
+matplotlib>=2.1.0
 reportlab
 svglib
-seaborn
+seaborn>=0.9.0
 pandas
 scikit-learn
 tidepool-data-science-project
+reportlab
 numpy
 aiohttp
 click
@@ -12,7 +13,7 @@ dill
 python-nightscout
 error-grids
 # Optional heavy dependencies
-# tensorflow
+# tensorflow==2.14.0
 # keras-tcn
 # torch
 # opsb-pyloopkit==0.1.0 # This is the original pyloopkit with linear meal model
