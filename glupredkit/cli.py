@@ -2,6 +2,7 @@
 import click
 import dill
 import requests
+import warnings
 import os
 import ast
 import importlib
@@ -169,7 +170,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 
     if data == 'synthetic_data':
         cwd = os.getcwd()
-        url = 'https://github.com/miriamkw/GluPredKit/blob/main/example_data/synthetic_data.csv'
+        url = 'https://raw.githubusercontent.com/miriamkw/GluPredKit/main/example_data/synthetic_data.csv'
         save_folder = 'data/raw/'
         save_path = os.path.join(cwd, save_folder, 'synthetic_data.csv')
 
@@ -212,6 +213,12 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
     1) Process data using the given configurations
     2) Train the given models for the given prediction horizons in the configuration
     """
+    # Filtering out UserWarning because we are using an old Keras file format on purpose
+    warnings.filterwarnings(
+        "ignore",
+        message=".*You are saving your model as an HDF5 file.*"
+    )
+
     click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
     model_config_manager = ModelConfigurationManager(config_file_name)
 
