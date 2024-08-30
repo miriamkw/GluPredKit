@@ -196,8 +196,8 @@ def validate_subject_ids(ctx, param, value):
 def validate_prediction_horizon(ctx, param, value):
     try:
         value = int(value)
-        if value < 0:
-            raise ValueError
+        if value < 10:
+            raise ValueError("The prediction horizon must be greater than or equal to 10. Current value: {}".format(value))
     except ValueError:
         raise click.BadParameter('Prediction horizon must be a positive integer.')
     return value

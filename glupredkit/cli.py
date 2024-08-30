@@ -550,20 +550,22 @@ def generate_evaluation_pdf(results_file):
         rounded_result = 5 * round(result / 5)
         return rounded_result
 
-    # TODO: IF PH < 20, handle differently, create just a list
-
     prediction_horizon = generate_report.get_ph(df)
-    ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+    if prediction_horizon < 20:
+        ph_subparts_list = list(range(5, prediction_horizon + 5, 5))
+    else:
+        ph_quarter = round_to_nearest_5(prediction_horizon, 4)
+        ph_subparts_list = [ph_quarter, ph_quarter * 2, ph_quarter * 3, prediction_horizon]
 
     c = generate_report.set_title(c, f'Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
 
-    c = generate_report.draw_scatter_plot(c, df, ph_quarter, 100, 360)
-    if ph_quarter * 2 >= 10 and ph_quarter * 2 <= prediction_horizon:
-        c = generate_report.draw_scatter_plot(c, df, ph_quarter * 2, 380, 360)
-    if ph_quarter * 3 >= 15 and ph_quarter * 3 <= prediction_horizon:
-        c = generate_report.draw_scatter_plot(c, df, ph_quarter * 3, 100, 120)
-    if ph_quarter * 4 <= prediction_horizon:
+    c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[0], 100, 360)
+    c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[1], 380, 360)
+
+    if len(ph_subparts_list) > 2:
+        c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[2], 100, 120)
+    if len(ph_subparts_list) > 3:
         c = generate_report.draw_scatter_plot(c, df, prediction_horizon, 380, 120)
 
     c = generate_report.set_bottom_text(c)
@@ -585,12 +587,12 @@ def generate_evaluation_pdf(results_file):
     # Plot confusion matrixes
     classes = ['Hypo', 'Target', 'Hyper']
 
-    c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter, 50, 450)
-    if ph_quarter * 2 >= 10 and ph_quarter * 2 <= prediction_horizon:
-        c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 2, 320, 450)
-    if ph_quarter * 3 >= 15 and ph_quarter * 2 <= prediction_horizon:
-        c = generate_report.plot_confusion_matrix(c, df, classes, ph_quarter * 3, 50, 150)
-    if ph_quarter * 4 <= prediction_horizon:
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[0], 50, 450)
+    c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[1], 320, 450)
+
+    if len(ph_subparts_list) > 2:
+        c = generate_report.plot_confusion_matrix(c, df, classes, ph_subparts_list[2], 50, 150)
+    if len(ph_subparts_list) > 3:
         c = generate_report.plot_confusion_matrix(c, df, classes, prediction_horizon, 320, 150)
 
     c = generate_report.set_bottom_text(c)
@@ -662,7 +664,7 @@ def generate_comparison_pdf(results_files):
     # MODEL ACCURACY
     c = generate_report.set_title(c, f'Model Accuracy')
     c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'rmse', 700 - 20 * len(dfs))
-    c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20 * len(dfs))
+    #c = generate_report.draw_model_comparison_accuracy_table(c, dfs, 'me', 550 - 20 * len(dfs))
     c = generate_report.plot_rmse_across_prediction_horizons(c, dfs, y_placement=200)
     c = generate_report.set_bottom_text(c)
     c.showPage()

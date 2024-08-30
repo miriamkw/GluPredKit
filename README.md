@@ -180,7 +180,7 @@ glupredkit generate_config
 - `--preprocessor` (optional): The name of the preprocessor that shall be used. The preprocessor must be implemented in `glupredkit/preprocessors/`. The available preprocessors are:
     - **basic (default)**: Linear interpolation of missing samples, and one-hot-encoding of categorical features.
     - **standardscaler**: Akima interpolation of missing samples, standard scaling of numerical features and one-hot-encoding of categorical features.
-- `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes).  
+- `--prediction-horizon`: The prediction horizon for the predictions (integer, in minutes). Must be at least 10, and should be dividable by 5. 
 - `--num-lagged-features`: The number of samples to use as time-lagged features. CGM values are sampled in 5-minute intervals, so 12 samples equals one hour.
 - `--num-features` (optional): List of numerical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is "CGM".
 - `--cat-features` (optional): List of categorical features, separated by comma. Note that the feature names must be identical to column names in the input file. Default is empty.
@@ -212,7 +212,7 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 - `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
     - double_lstm: A double long short-term memory recurrent neural network ([LSTMs and Neural Attention Models for Blood Glucose Prediction: Comparative Experiments on Real and Synthetic Data
 ](https://ieeexplore.ieee.org/document/8856940)). 
-    - loop: The model used in Tidepool Loop ([PyLoopKit](https://github.com/tidepool-org/PyLoopKit)).
+    - loop: The model used in Tidepool Loop ([PyLoopKit](https://github.com/tidepool-org/PyLoopKit)). This is a physiological model that requires CGM, carbohydrates, bolus and basal as features.
     - lstm: An off-the-shelf implementation of a long short-term memory recurrent neural network.
     - mtl: Multitask learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - naive_linear_regressor: A naive model using only the three last CGM inputs for prediction (used for benchmark).
@@ -221,8 +221,8 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
     - stacked_plsr: Stacking of three base regressions (MLP, LSTM and PLSR) ([Data Fusion Stacking](https://gitlab.com/Hoda-Nemat/data-fusion-stacking)).
     - stl: Single-task learning, convolutional recurrent neural network ([ECAI](https://github.com/jsmdaniels/ecai-bglp-challenge)).
     - svr: An off-the-shelf implementation of a support vector regressor with rbf kernel.
-    - tcn: [TCN](https://github.com/locuslab/TCN/tree/master)
-    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation ([py_replay_bg](https://github.com/gcappon/py_replay_bg?tab=readme-ov-file)), and particle filter for prediction ([phy-predict](https://github.com/checoisback/phy-predict)).
+    - tcn: [TCN](https://github.com/locuslab/TCN/tree/master).
+    - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation ([py_replay_bg](https://github.com/gcappon/py_replay_bg?tab=readme-ov-file)), and particle filter for prediction ([phy-predict](https://github.com/checoisback/phy-predict)). This model requires CGM, carbohydrates, bolus and basal as features.
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).

@@ -34,6 +34,7 @@ class Model(BaseModel):
         dropout_conv = 0.1
         dropout_lstm = 0.2
         dropout_fc = 0.5
+
         out_dim = targets.shape[1]
         input_shape = (sequences.shape[1], sequences.shape[2])
 
