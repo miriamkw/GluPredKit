@@ -21,6 +21,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt     
           pip install flake8 pytest
+          pip install .[heavy]  # Install the package with [heavy] dependencies
       - name: Lint code with flake8
         run: |
           flake8 glupredkit tests --count --select=E9,F63,F7,F82 --show-source --statistics --max-complexity=10 --max-line-length=127 --exit-zero

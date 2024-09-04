@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import shutil
+from pathlib import Path
 from click.testing import CliRunner
 from glupredkit.cli import (setup_directories, generate_config, train_model, evaluate_model, generate_evaluation_pdf,
                             generate_comparison_pdf)
@@ -15,6 +16,7 @@ def runner():
 
 @pytest.fixture(scope="session")
 def temp_dir(runner):
+    """
     test_data_dir = os.path.join('tests', 'test_data')
 
     # Create the test_data directory if it doesn't exist
@@ -26,6 +28,19 @@ def temp_dir(runner):
 
     # Clean up the directory after the test session
     shutil.rmtree(test_data_dir)
+    """
+    test_data_dir = Path('tests') / 'test_data'
+
+    # Create the test_data directory if it doesn't exist
+    if not test_data_dir.exists():
+        test_data_dir.mkdir(parents=True, exist_ok=True)
+
+    with runner.isolated_filesystem(temp_dir=str(test_data_dir)) as temp_dir:
+        yield temp_dir
+
+    # Clean up the directory after the test session
+    shutil.rmtree(test_data_dir)
+
 
 
 def sample_data():
