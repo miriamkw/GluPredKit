@@ -17,7 +17,7 @@ setup(
     packages=find_packages(include=[package_name, f"{package_name}.*"]),
     long_description=readme,
     long_description_content_type="text/markdown",
-    python_requires='>=3.7',
+    python_requires='>=3.9',
     license='MIT',
     include_package_data=True,
     install_requires=[

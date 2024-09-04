@@ -53,7 +53,7 @@ Choose which one is relevant for you, and follow the instructions below.
 ### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
-Creating a virtual environment is optional, but recommended. We recommend using Python version 3.8 or 3.9 if relying on the dependencies Tensorflow or Replay BG. A virtual environment for Python 3.9 can for example be created with the following command: `python3.9 -m venv glupredkit_venv`. Activate it with `source glupredkit_venv/bin/activate` (Mac) 
+Creating a virtual environment is optional, but recommended. We recommend using Python version 3.9 if relying on Tensorflow. A virtual environment for Python 3.9 can for example be created with the following command: `python3.9 -m venv glupredkit_venv`. Activate it with `source glupredkit_venv/bin/activate` (Mac) 
 or `.glupredkit_venv\Scripts\activate` (Windows).
 
 To set up the CLI, simply run the following command:
