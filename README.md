@@ -65,6 +65,11 @@ If you need the optional heavy dependencies (listed in `setup.py`), run:
 ```
 pip install glupredkit[heavy]
 ```
+**Note for Zsh Users:** If you are using Zsh and encounter issues due to its interpretation of square brackets, use the following command instead:
+```
+noglob pip install glupredkit[heavy]
+```
+The `noglob` command prevents Zsh from treating the square brackets as globbing characters.
 
 ----
 ### Developers: Install using the cloned repository
