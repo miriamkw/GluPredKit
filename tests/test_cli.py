@@ -75,15 +75,16 @@ def test_setup_directories(runner, temp_dir):
 
     # Verify that the directories were created
     expected_dirs = [
-        'data/raw',
-        'data/configurations',
-        'data/trained_models',
-        'data/tested_models',
-        'data/figures',
-        'data/reports'
+        'raw',
+        'configurations',
+        'trained_models',
+        'tested_models',
+        'figures',
+        'reports'
     ]
     for directory in expected_dirs:
-        assert os.path.exists(directory)
+        file_path = Path('data') / directory
+        assert os.path.exists(file_path)
 
 
 # TODO: Parse data
@@ -157,8 +158,8 @@ def test_train_model(runner, temp_dir):
         assert "Training model..." in result.output
 
         # Check if the model file was created
-        output_path = "data/trained_models/"
         output_file_name = f'{args[0]}__{config_file_name}__60.pkl'
+        output_path = Path('data') / 'trained_models' / output_file_name
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
@@ -174,8 +175,8 @@ def test_evaluate_model(runner, temp_dir):
         assert result.exit_code == 0
 
         # Check if the model test file was created
-        output_path = "data/tested_models/"
-        output_file_name = f'{model}__{config}__60.csv'
+        output_file_name = f'{model}__{config}__60.pdf'
+        output_path = Path('data') / 'tested_models' / output_file_name
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
@@ -190,8 +191,8 @@ def test_generate_evaluation_pdf(runner, temp_dir):
         assert result.exit_code == 0
 
         # Check if reports were generated
-        output_path = "data/reports/"
         output_file_name = f'{model}__{config}__60.pdf'
+        output_path = Path('data') / 'reports' / output_file_name
         assert os.path.exists(os.path.join(output_path, output_file_name))
 
 
