@@ -2,10 +2,9 @@
 This file defines the schema and provides get methods for the configuration files describing the properties of the
 models before preprocessing and training.
 """
-
 import json
-import os
 import warnings
+from pathlib import Path
 
 
 def generate_model_configuration(file_name, data, subject_ids, preprocessor, prediction_horizon, num_lagged_features,
@@ -33,13 +32,20 @@ def generate_model_configuration(file_name, data, subject_ids, preprocessor, pre
         "what_if_features": what_if_features
     }
     # Save the generated config to a JSON file
-    with open(f'data/configurations/{file_name}.json', 'w') as f:
+    config_dir = Path('data') / 'configurations'
+    config_dir.mkdir(parents=True, exist_ok=True)  # Create the directory if it doesn't exist
+
+    file_path = config_dir / f'{file_name}.json'
+
+    # Save the generated config to a JSON file
+    with open(file_path, 'w') as f:
         json.dump(config, f, indent=4)
 
 
 class ModelConfigurationManager:
     def __init__(self, config_file):
-        self.config_file = 'data/configurations/' + config_file + '.json'
+        file_name = config_file + '.json'
+        self.config_file = Path('data') / 'configurations' / file_name
         self.schema = {
             "data": str,
             "subject_ids": list,
