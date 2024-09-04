@@ -7,6 +7,7 @@ import os
 import ast
 import importlib
 import pandas as pd
+from pathlib import Path
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -255,16 +256,22 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
     click.echo(f"Model {model} with prediction horizon {prediction_horizon} minutes trained successfully!")
 
     # Assuming model_instance is your class instance
-    output_path = "data/trained_models/"
+    output_dir = Path("data") / "trained_models"
     output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    output_path = output_dir / output_file_name
 
     try:
-        with open(f'{output_path}{output_file_name}', 'wb') as f:
-            click.echo(f"Saving model {model} to {output_path}{output_file_name}...")
+        # Ensure the output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save the model to a file
+        with open(output_path, 'wb') as f:
+            click.echo(f"Saving model {model} to {output_path}...")
             dill.dump(model_instance, f)
     except Exception as e:
         click.echo(f"Error saving model {model}: {e}")
 
+    # Optionally print model hyperparameters if they exist
     if hasattr(model_instance, 'best_params'):
         click.echo(f"Model hyperparameters: {model_instance.best_params()}")
 

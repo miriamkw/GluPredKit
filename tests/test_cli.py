@@ -89,7 +89,8 @@ def test_setup_directories(runner, temp_dir):
 
 # TODO: Parse data
 def test_generate_config(runner, temp_dir):
-    sample_data().to_csv('data/raw/df.csv')
+    file_path = Path('data') / 'raw' / 'df.csv'
+    sample_data().to_csv(file_path)
 
     # Define input values for the prompts
     inputs_1 = [
