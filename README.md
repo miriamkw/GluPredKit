@@ -72,6 +72,22 @@ noglob pip install glupredkit[heavy]
 The `noglob` command prevents Zsh from treating the square brackets as globbing characters.
 
 ----
+### System-Wide Dependencies for MPI
+
+The mpi4py dependency requires system-wide Message Passing Interface libraries. If you encounter issues with installing mpi4py, make sure you have the necessary system packages installed:
+
+- On macOS: Install mpich using Homebrew:
+
+```
+brew install mpich
+```
+- On Debian/Ubuntu Linux: Install libopenmpi-dev using apt-get:
+```
+sudo apt-get update
+sudo apt-get install -y libopenmpi-dev
+```
+
+----
 ### Developers: Install using the cloned repository
 
 First, clone the repository and make sure you are located in the root of the directory in your command line.
@@ -81,7 +97,7 @@ To set up the repository with all requirements, simply run the following command
 ./install.sh
 ```
 
-Make sure that the virtual environment `bgp-evaluation` is activated before you proceed. If not, call `source bgp-evaluation/bin/activate`.
+Make sure that the virtual environment `glupredkit_venv` is activated before you proceed. If not, call `source glupredkit_venv/bin/activate`.
 
 
 

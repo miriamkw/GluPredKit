@@ -135,7 +135,7 @@ def test_train_model(runner, temp_dir):
 
     args_list = [
         # ['blstm', config_file_name, '--epochs', epochs],
-        # ['loop', config_file_name, '--n-cross-val-samples', 10],
+        ['loop', config_file_name, '--n-cross-val-samples', 10],
         ['lstm', config_file_name, '--epochs', epochs],
         # ['mtl', config_file_name, '--epochs', epochs],
         ['naive_linear_regressor', config_file_name],
@@ -143,7 +143,7 @@ def test_train_model(runner, temp_dir):
         ['ridge', config_file_name],
         # ['stl', config_file_name, '--epochs', epochs],
         # ['tcn', config_file_name, '--epochs', epochs],
-        # ['uva_padova', config_file_name, '--n-steps', 100],
+        ['uva_padova', config_file_name, '--n-steps', 100, '--training-samples-per-subject', 100],
         ['zero_order', config_file_name]
     ]
 
@@ -168,7 +168,7 @@ def test_evaluate_model(runner, temp_dir):
     runner = CliRunner()
 
     config = 'my_config_1'
-    models = ['lstm', 'naive_linear_regressor', 'ridge', 'zero_order']
+    models = ['loop', 'lstm', 'naive_linear_regressor', 'ridge', 'zero_order']
 
     for model in models:
 
@@ -185,7 +185,7 @@ def test_generate_evaluation_pdf(runner, temp_dir):
     runner = CliRunner()
 
     config = 'my_config_1'
-    models = ['lstm', 'naive_linear_regressor', 'ridge', 'zero_order']
+    models = ['loop', 'lstm', 'naive_linear_regressor', 'ridge', 'zero_order']
 
     for model in models:
         result = runner.invoke(generate_evaluation_pdf, ['--results-file', f'{model}__{config}__60.csv'])

@@ -208,7 +208,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
+@click.option('--training-samples-per-subject', type=int, required=False)
+def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -248,8 +249,8 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps):
         model_instance = chosen_model.fit(x_train, y_train, epochs)
     elif model in ['loop'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
-    elif model in ['uva_padova'] and n_steps:
-        model_instance = chosen_model.fit(x_train, y_train, n_steps)
+    elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
+        model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
     else:
         model_instance = chosen_model.fit(x_train, y_train)
 

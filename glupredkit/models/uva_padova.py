@@ -14,7 +14,7 @@ class Model(BaseModel):
         self.models = []
         self.subject_ids = []
 
-    def _fit_model(self, x_train, y_train, n_steps=100000, *args):
+    def _fit_model(self, x_train, y_train, n_steps=100000, training_samples_per_subject=4000, *args):
         # n_steps is the number of steps that will be used for identification
         # (for multi-meal it should be at least 100k)
         # Note that this class will not work if the dataset does not have five-minute intervals between measurements
@@ -31,9 +31,6 @@ class Model(BaseModel):
         bw = 80  # Placeholder body weight
         scenario = 'multi-meal'
         cgm_model = 'CGM'
-        # training_samples_per_subject = 12 * 24 * 90
-        training_samples_per_subject = 4000
-
         self.subject_ids = x_train['id'].unique()
 
         for subject_id in self.subject_ids:
