@@ -177,7 +177,7 @@ def test_evaluate_model(runner, temp_dir):
         assert result.exit_code == 0
 
         # Check if the model test file was created
-        output_file_name = f'{model}__{config}__60.pdf'
+        output_file_name = f'{model}__{config}__60.csv'
         output_path = Path('data') / 'tested_models' / output_file_name
         #assert os.path.exists(os.path.join(output_path, output_file_name))
         assert output_path.exists(), f"Expected file {output_path} was not created"
