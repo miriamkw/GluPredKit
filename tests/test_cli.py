@@ -161,7 +161,8 @@ def test_train_model(runner, temp_dir):
         # Check if the model file was created
         output_file_name = f'{args[0]}__{config_file_name}__60.pkl'
         output_path = Path('data') / 'trained_models' / output_file_name
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        #assert os.path.exists(os.path.join(output_path, output_file_name))
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_evaluate_model(runner, temp_dir):
@@ -178,7 +179,8 @@ def test_evaluate_model(runner, temp_dir):
         # Check if the model test file was created
         output_file_name = f'{model}__{config}__60.pdf'
         output_path = Path('data') / 'tested_models' / output_file_name
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        #assert os.path.exists(os.path.join(output_path, output_file_name))
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_generate_evaluation_pdf(runner, temp_dir):
@@ -194,7 +196,8 @@ def test_generate_evaluation_pdf(runner, temp_dir):
         # Check if reports were generated
         output_file_name = f'{model}__{config}__60.pdf'
         output_path = Path('data') / 'reports' / output_file_name
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        #assert os.path.exists(os.path.join(output_path, output_file_name))
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_generate_comparison_pdf(runner, temp_dir):
