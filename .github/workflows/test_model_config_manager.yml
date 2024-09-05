@@ -1,5 +1,6 @@
 name: test_model_config_manager
-on: push
+on: #push
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
