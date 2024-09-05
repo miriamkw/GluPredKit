@@ -1,5 +1,6 @@
 import pytest
 import json
+from pathlib import Path
 from unittest.mock import patch, mock_open
 from glupredkit.helpers.model_config_manager import generate_model_configuration, ModelConfigurationManager
 
@@ -9,7 +10,7 @@ def test_generate_model_configuration_success():
          patch('builtins.open', mock_open()) as mocked_file, \
          patch('builtins.__import__'):
         generate_model_configuration('test_config', 'data1', [1, 2, 3], 'standard', 30, 5, [10, 20], [], [])
-        mocked_file.assert_called_once_with('data/configurations/test_config.json', 'w')
+        mocked_file.assert_called_once_with(Path('data/configurations/test_config.json'), 'w')
 
 
 def test_generate_model_configuration_preprocessor_missing():
