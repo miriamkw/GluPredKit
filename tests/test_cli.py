@@ -3,9 +3,13 @@ import pytest
 import numpy as np
 import pandas as pd
 import shutil
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
+
+from pathlib import Path
 from click.testing import CliRunner
 from glupredkit.cli import (setup_directories, generate_config, train_model, evaluate_model, generate_evaluation_pdf,
-                            generate_comparison_pdf)
+                            generate_comparison_pdf, draw_plots)
 
 
 @pytest.fixture(scope="session")
@@ -15,6 +19,7 @@ def runner():
 
 @pytest.fixture(scope="session")
 def temp_dir(runner):
+    """
     test_data_dir = os.path.join('tests', 'test_data')
 
     # Create the test_data directory if it doesn't exist
@@ -26,6 +31,19 @@ def temp_dir(runner):
 
     # Clean up the directory after the test session
     shutil.rmtree(test_data_dir)
+    """
+    test_data_dir = Path('tests') / 'test_data'
+
+    # Create the test_data directory if it doesn't exist
+    if not test_data_dir.exists():
+        test_data_dir.mkdir(parents=True, exist_ok=True)
+
+    with runner.isolated_filesystem(temp_dir=str(test_data_dir)) as temp_dir:
+        yield temp_dir
+
+    # Clean up the directory after the test session
+    shutil.rmtree(test_data_dir)
+
 
 
 def sample_data():
@@ -60,20 +78,22 @@ def test_setup_directories(runner, temp_dir):
 
     # Verify that the directories were created
     expected_dirs = [
-        'data/raw',
-        'data/configurations',
-        'data/trained_models',
-        'data/tested_models',
-        'data/figures',
-        'data/reports'
+        'raw',
+        'configurations',
+        'trained_models',
+        'tested_models',
+        'figures',
+        'reports'
     ]
     for directory in expected_dirs:
-        assert os.path.exists(directory)
+        file_path = Path('data') / directory
+        assert os.path.exists(file_path)
 
 
 # TODO: Parse data
 def test_generate_config(runner, temp_dir):
-    sample_data().to_csv('data/raw/df.csv')
+    file_path = Path('data') / 'raw' / 'df.csv'
+    sample_data().to_csv(file_path)
 
     # Define input values for the prompts
     inputs_1 = [
@@ -126,7 +146,7 @@ def test_train_model(runner, temp_dir):
         ['ridge', config_file_name],
         # ['stl', config_file_name, '--epochs', epochs],
         # ['tcn', config_file_name, '--epochs', epochs],
-        # ['uva_padova', config_file_name, '--n-steps', 100],
+        # ['uva_padova', config_file_name, '--n-steps', 100, '--training-samples-per-subject', 100],
         ['zero_order', config_file_name]
     ]
 
@@ -142,9 +162,9 @@ def test_train_model(runner, temp_dir):
         assert "Training model..." in result.output
 
         # Check if the model file was created
-        output_path = "data/trained_models/"
         output_file_name = f'{args[0]}__{config_file_name}__60.pkl'
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        output_path = Path('data') / 'trained_models' / output_file_name
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_evaluate_model(runner, temp_dir):
@@ -159,9 +179,9 @@ def test_evaluate_model(runner, temp_dir):
         assert result.exit_code == 0
 
         # Check if the model test file was created
-        output_path = "data/tested_models/"
         output_file_name = f'{model}__{config}__60.csv'
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        output_path = Path('data') / 'tested_models' / output_file_name
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_generate_evaluation_pdf(runner, temp_dir):
@@ -175,9 +195,9 @@ def test_generate_evaluation_pdf(runner, temp_dir):
         assert result.exit_code == 0
 
         # Check if reports were generated
-        output_path = "data/reports/"
         output_file_name = f'{model}__{config}__60.pdf'
-        assert os.path.exists(os.path.join(output_path, output_file_name))
+        output_path = Path('data') / 'reports' / output_file_name
+        assert output_path.exists(), f"Expected file {output_path} was not created"
 
 
 def test_generate_comparison_pdf(runner, temp_dir):
@@ -186,4 +206,13 @@ def test_generate_comparison_pdf(runner, temp_dir):
     result = runner.invoke(generate_comparison_pdf)
     assert result.exit_code == 0
 
+
+def test_draw_plots(runner, temp_dir):
+    runner = CliRunner()
+
+    config = 'my_config_1'
+    results_files = f'naive_linear_regressor__{config}__60.csv,ridge__{config}__60.csv'
+
+    result = runner.invoke(draw_plots, ['--results-files', results_files, '--plots', 'scatter_plot', '--prediction-horizons', '30'])
+    assert result.exit_code == 0
 

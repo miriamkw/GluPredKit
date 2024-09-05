@@ -53,7 +53,7 @@ Choose which one is relevant for you, and follow the instructions below.
 ### Regular users: Install using pip
 Open your terminal and go to an empty folder in your command line.  Note that all the data storage, trained models and results will be stored in this folder.
 
-Creating a virtual environment is optional, but recommended. We recommend using Python version 3.8 or 3.9 if relying on the dependencies Tensorflow or Replay BG. A virtual environment for Python 3.9 can for example be created with the following command: `python3.9 -m venv glupredkit_venv`. Activate it with `source glupredkit_venv/bin/activate` (Mac) 
+Creating a virtual environment is optional, but recommended. We recommend using Python version 3.9 if relying on Tensorflow. A virtual environment for Python 3.9 can for example be created with the following command: `python3.9 -m venv glupredkit_venv`. Activate it with `source glupredkit_venv/bin/activate` (Mac) 
 or `.glupredkit_venv\Scripts\activate` (Windows).
 
 To set up the CLI, simply run the following command:
@@ -64,6 +64,27 @@ pip install glupredkit
 If you need the optional heavy dependencies (listed in `setup.py`), run:
 ```
 pip install glupredkit[heavy]
+```
+**Note for Zsh Users:** If you are using Zsh and encounter issues due to its interpretation of square brackets, use the following command instead:
+```
+noglob pip install glupredkit[heavy]
+```
+The `noglob` command prevents Zsh from treating the square brackets as globbing characters.
+
+----
+### System-Wide Dependencies for MPI
+
+The mpi4py dependency requires system-wide Message Passing Interface libraries. If you encounter issues with installing mpi4py, make sure you have the necessary system packages installed:
+
+- On macOS: Install mpich using Homebrew:
+
+```
+brew install mpich
+```
+- On Debian/Ubuntu Linux: Install libopenmpi-dev using apt-get:
+```
+sudo apt-get update
+sudo apt-get install -y libopenmpi-dev
 ```
 
 ----
@@ -76,7 +97,7 @@ To set up the repository with all requirements, simply run the following command
 ./install.sh
 ```
 
-Make sure that the virtual environment `bgp-evaluation` is activated before you proceed. If not, call `source bgp-evaluation/bin/activate`.
+Make sure that the virtual environment `glupredkit_venv` is activated before you proceed. If not, call `source glupredkit_venv/bin/activate`.
 
 
 
@@ -228,6 +249,7 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).
 - `--n-cross-val-samples` (optional): Number of samples to use in tuning therapy settings for the Loop model
 - `--n-steps` (optional): The number of steps that will be used for identification in the UvA/Padova model. It should be at least 100k.
+- `--training-samples-per-subject` (optional): The number of training samples that will be included for identification in the UvA/Padova model. Default is 4320, corresponding to two weeks of data. 
 
 #### Examples
 ```
@@ -240,7 +262,7 @@ glupredkit train_model lstm my_config --epochs 10
 glupredkit train_model loop my_config --n-cross-val-samples 100
 ```
 ```
-glupredkit train_model uva_padova my_config --n-steps 1000
+glupredkit train_model uva_padova my_config --n-steps 1000 --training-samples-per-subject 8640
 ```
 ---
 
