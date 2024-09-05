@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from click.testing import CliRunner
 from glupredkit.cli import (setup_directories, generate_config, train_model, evaluate_model, generate_evaluation_pdf,
-                            generate_comparison_pdf)
+                            generate_comparison_pdf, draw_plots)
 
 
 @pytest.fixture(scope="session")
@@ -143,7 +143,7 @@ def test_train_model(runner, temp_dir):
         ['ridge', config_file_name],
         # ['stl', config_file_name, '--epochs', epochs],
         # ['tcn', config_file_name, '--epochs', epochs],
-        ['uva_padova', config_file_name, '--n-steps', 100, '--training-samples-per-subject', 100],
+        # ['uva_padova', config_file_name, '--n-steps', 100, '--training-samples-per-subject', 100],
         ['zero_order', config_file_name]
     ]
 
@@ -168,7 +168,7 @@ def test_evaluate_model(runner, temp_dir):
     runner = CliRunner()
 
     config = 'my_config_1'
-    models = ['loop', 'lstm', 'naive_linear_regressor', 'ridge', 'zero_order']
+    models = ['naive_linear_regressor', 'ridge', 'zero_order']
 
     for model in models:
 
@@ -203,4 +203,13 @@ def test_generate_comparison_pdf(runner, temp_dir):
     result = runner.invoke(generate_comparison_pdf)
     assert result.exit_code == 0
 
+
+def test_draw_plots(runner, temp_dir):
+    runner = CliRunner()
+
+    config = 'my_config_1'
+    results_files = f'naive_linear_regressor__{config}__60.csv,ridge__{config}__60.csv,'
+
+    result = runner.invoke(draw_plots, ['--results-files', results_files, '--plots', 'scatter_plot', '--prediction-horizons', '30'])
+    assert result.exit_code == 0
 

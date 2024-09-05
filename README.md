@@ -249,6 +249,7 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).
 - `--n-cross-val-samples` (optional): Number of samples to use in tuning therapy settings for the Loop model
 - `--n-steps` (optional): The number of steps that will be used for identification in the UvA/Padova model. It should be at least 100k.
+- `--training-samples-per-subject` (optional): The number of training samples that will be included for identification in the UvA/Padova model. Default is 4320, corresponding to two weeks of data. 
 
 #### Examples
 ```
@@ -261,7 +262,7 @@ glupredkit train_model lstm my_config --epochs 10
 glupredkit train_model loop my_config --n-cross-val-samples 100
 ```
 ```
-glupredkit train_model uva_padova my_config --n-steps 1000
+glupredkit train_model uva_padova my_config --n-steps 1000 --training-samples-per-subject 8640
 ```
 ---
 
