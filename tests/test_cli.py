@@ -3,6 +3,9 @@ import pytest
 import numpy as np
 import pandas as pd
 import shutil
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
+
 from pathlib import Path
 from click.testing import CliRunner
 from glupredkit.cli import (setup_directories, generate_config, train_model, evaluate_model, generate_evaluation_pdf,
