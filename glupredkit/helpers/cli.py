@@ -146,8 +146,12 @@ def list_files_in_directory(directory_path):
 def list_files_in_package(directory):
     package = __import__('glupredkit')
     package_path = Path(resources.files(package) / directory)
+    # file_paths = [str(file) for file in package_path.iterdir() if file.is_file()]
+    # file_names = [path.split('/')[-1] for path in file_paths]
+
     file_paths = [str(file) for file in package_path.iterdir() if file.is_file()]
-    file_names = [path.split('/')[-1] for path in file_paths]
+    file_names = [os.path.basename(path) for path in file_paths]
+
     return file_names
 
 
