@@ -23,7 +23,7 @@ class Plot(BasePlot):
                     if contains:
                         hover_line.set_alpha(1.0)
                     else:
-                        hover_line.set_alpha(0.2)
+                        hover_line.set_alpha(1.0)
                 fig.canvas.draw_idle()
 
         if unit_config_manager.use_mgdl:
@@ -67,29 +67,47 @@ class Plot(BasePlot):
             t = np.arange(0, total_time, 5)
 
             # Use correct unit
+            """
             if unit_config_manager.use_mgdl:
                 ax.axhspan(70, 180, facecolor='blue', alpha=0.2)
             else:
                 y_true = [unit_config_manager.convert_value(val) for val in y_true]
                 ax.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
                            facecolor='blue', alpha=0.2)
+            
+
+            plt.rcParams.update({
+                'font.size': 20,  # General font size
+                'xtick.labelsize': 20,  # Font size for x-axis tick labels
+                'ytick.labelsize': 20,  # Font size for y-axis tick labels
+                'axes.titlesize': 20,  # Font size for axes titles
+                'axes.labelsize': 20  # Font size for axes labels
+            })"""
 
             ax.set_title('Blood glucose predicted trajectories')
-            ax.set_xlabel('Time (minutes)')
-            ax.set_ylabel(f'Blood glucose [{unit}]')
-            ax.scatter(t[:len(y_true)], y_true, label='Blood glucose measurements', color='black')
+            ax.set_xlabel('Time (minutes)', fontsize=20)
+            ax.set_ylabel(f'Blood glucose [{unit}]', fontsize=20)
+            ax.scatter(t[:len(y_true)], y_true, label='Measurements', color='black')
+
+            # Manually set font size for axis ticks
+            plt.xticks(fontsize=20)
+            plt.yticks(fontsize=20)
 
             prediction_horizons = range(0, ph + 1, 5)
             lines = []
             # Add predicted trajectories
             for i in range(len(y_pred_lists)):
-                # Adding the true measurement to the trajectory
-                trajectory = np.insert(y_pred_lists[i], 0, y_true[i])
-                line, = ax.plot([val + i*5 for val in prediction_horizons], trajectory, linestyle='--')
-                lines.append(line)
+                if i % 3 == 0:
+                    # Adding the true measurement to the trajectory
+                    trajectory = np.insert(y_pred_lists[i], 0, y_true[i])
+                    if i < 3:
+                        line, = ax.plot([val + i*5 for val in prediction_horizons], trajectory, linestyle='--', label='Predictions', color='#26B0F1')
+                    else:
+                        line, = ax.plot([val + i * 5 for val in prediction_horizons], trajectory, linestyle='--', color='#26B0F1')
+                    lines.append(line)
 
             fig.canvas.mpl_connect('motion_notify_event', on_hover)
-            ax.legend()
+            ax.legend(fontsize=20)
             plt.title(f'Predicted trajectories for {model_name}')
             file_path = "data/figures/"
 
