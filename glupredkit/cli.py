@@ -192,6 +192,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.argument('model', type=click.Choice([
     'double_lstm',
     'loop',
+    'loop_v2',
     'lstm',
     'mtl',
     'naive_linear_regressor',
