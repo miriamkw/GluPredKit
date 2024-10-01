@@ -329,6 +329,13 @@ def evaluate_model(model_file, max_samples):
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
+    # Add test data input for numerical features
+    for feature in num_features:
+        results_df['test_input_' + feature] = [processed_data[feature].tolist()]
+
+    # Add test data dates
+    results_df['test_input_date'] = [processed_data.index.tolist()]
+
     metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
@@ -368,7 +375,7 @@ def evaluate_model(model_file, max_samples):
     subset_size = x_test.shape[0]
 
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova'):
+    if (model_name == 'loop') | (model_name == 'loop_v2') | (model_name == 'uva_padova'):
         subset_size = 1000
     subset_df_x = x_test[-subset_size:]
 
@@ -507,6 +514,9 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
                 chosen_plot(dfs, prediction_horizon)
 
         elif plot == 'trajectories':
+            chosen_plot(dfs)
+
+        elif plot == 'trajectories_with_events':
             chosen_plot(dfs)
 
         else:

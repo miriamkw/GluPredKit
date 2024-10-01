@@ -74,10 +74,6 @@ class Model(BaseModel):
                 # Skipping first predicted sample because it is repeating the reference value
                 y_pred += [predictions[1:n_predictions + 1]]
 
-        print(y_pred)
-        print(len(y_pred))
-        print(len(y_pred[0]))
-
         return y_pred
 
     def best_params(self):
