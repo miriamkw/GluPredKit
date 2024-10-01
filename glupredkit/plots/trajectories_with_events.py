@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*6, n_samples=12*12, trajectory_interval=12, *args):
+    def __call__(self, dfs, start_index=12*12*8, n_samples=12*12, trajectory_interval=12, *args):
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
@@ -25,7 +25,7 @@ class Plot(BasePlot):
                     if contains:
                         hover_line.set_alpha(1.0)
                     else:
-                        hover_line.set_alpha(1.0)
+                        hover_line.set_alpha(0.5)
                 fig.canvas.draw_idle()
 
         if unit_config_manager.use_mgdl:
@@ -38,71 +38,55 @@ class Plot(BasePlot):
 
             model_name = df['Model Name'][0]
             ph = int(df['prediction_horizon'][0])
-
             prediction_horizons = range(5, ph + 1, 5)
 
             # TODO: Add time intervals and openings if there are no CGM values
             # TODO: you can do this by creating a resampled dataframe, with nan values for openings, and then plot those values
             dates_string_list = df['test_input_date'][0]
-            #print(dates_string_list)
-            # Use regex to extract all datetime strings from the list
             datetime_strings = re.findall(r"'(.*?)'", dates_string_list)
             timestamp_list = [pd.Timestamp(ts) for ts in datetime_strings]
-            #print(timestamp_list)
-
-
-
-
-
-            y_true = get_list_from_string(df, 'CGM')
-
-
-
 
             # Create a DataFrame
-            model_input_df = pd.DataFrame({
+            model_df = pd.DataFrame({
                 'date': timestamp_list,
-                'CGM': y_true,
-                'basal': get_list_from_string(df, 'basal'),
-                'bolus': get_list_from_string(df, 'bolus'),
-                'carbs': get_list_from_string(df, 'carbs'),
-                'exercise': get_list_from_string(df, 'exercise'),
+                'CGM': get_list_from_string(df, 'test_input_CGM'),
+                'basal': get_list_from_string(df, 'test_input_basal'),
+                'bolus': get_list_from_string(df, 'test_input_bolus'),
+                'carbs': get_list_from_string(df, 'test_input_carbs'),
+                'exercise': get_list_from_string(df, 'test_input_exercise'),
             })
-            model_input_df.set_index('date', inplace=True)
-            full_time_range = pd.date_range(start=model_input_df.index.min(), end=model_input_df.index.max(), freq='5T')
-            df_reindexed = model_input_df.reindex(full_time_range)
-            print(df_reindexed)
 
+            pred_cols = [col for col in df.columns if col.startswith('y_pred_')]
+            for col in pred_cols:
+                model_df[col] = get_list_from_string(df, col)
 
+            model_df.set_index('date', inplace=True)
+            full_time_range = pd.date_range(start=model_df.index.min(), end=model_df.index.max(), freq='5T')
+            model_df = model_df.reindex(full_time_range)
 
-
-
-
-            n_samples = 12 * 12
+            n_samples = 12 * 24
 
             if start_index:
-                if len(y_true) - start_index > len(y_true):
-                    print(f"Start index too high. Should be below {len(y_true) - n_samples}. Setting start index to 0...")
+                if start_index > model_df.shape[0] - n_samples:
+                    print(f"Start index too high. Should be below {model_df.shape[0] - n_samples}. Setting start index to 0...")
                     start_index = 0
-            elif len(y_true) - n_samples > len(y_true):
-                start_index = random.randint(0, len(y_true) - n_samples)
+            elif model_df.shape[0] > n_samples:
+                start_index = random.randint(0, model_df.shape[0] - n_samples)
             else:
                 start_index = 0
 
-            y_pred_lists = []
-            for ph in prediction_horizons:
-                y_pred = df[f'y_pred_{ph}'][0]
-                y_pred = y_pred.replace("nan", "None")
-                y_pred = ast.literal_eval(y_pred)
-                y_pred = [np.nan if val is None else val for val in y_pred]
+            # Filter model df based on start index and num samples
+            model_df = model_df.iloc[start_index:start_index + n_samples]
 
+            y_pred_lists = []
+            for prediction_horizon in prediction_horizons:
+                y_pred = model_df[f'y_pred_{prediction_horizon}'].tolist()
                 y_pred_lists += [y_pred]
 
-            y_true = np.array(y_true)[start_index:start_index + n_samples + ph // 5]
             y_pred_lists = np.array(y_pred_lists)
-            y_pred_lists = np.transpose(y_pred_lists)[start_index:start_index + n_samples]
+            y_pred_lists = np.transpose(y_pred_lists)
 
-            total_time = (start_index + n_samples) * 5 + ph
+            total_time = n_samples * 5
             t = np.arange(0, total_time, 5)
 
             # First plot (ax1)
@@ -125,14 +109,10 @@ class Plot(BasePlot):
             })
             """
 
-            # TODO: Refactor so the plots use the datetimes
-            # TODO: Refactor so we use the new df
-
-            ax1.set_title(f'Predicted trajectories for {model_name}')
+            ax1.set_title(f'Predicted trajectories for {model_name}', fontsize=16)
             ax1.set_ylabel(f'Blood glucose [{unit}]')
-            ax1.scatter(t[:len(y_true)], y_true, label='Measurements', color='black')
-            #ax1.scatter(t[:len(y_true)], df_reindexed['CGM'].tolist()[start_index: start_index + n_samples + ph // 5], label='Measurements', color='black')
-
+            ax1.scatter(t, model_df['CGM'].tolist(), label='Measurements', color='black')
+            ax1.set_xlim(0, n_samples * 5)
 
             # Manually set font size for axis ticks
             #plt.xticks(fontsize=12)
@@ -141,18 +121,21 @@ class Plot(BasePlot):
             prediction_horizons = range(0, ph + 1, 5)
             lines = []
 
-            # TODO: If measurement not there, skip prediction
             # Add predicted trajectories
             for i in range(len(y_pred_lists)):
                 if i % trajectory_interval == 0:
-                    # Adding the true measurement to the trajectory
-                    trajectory = np.insert(y_pred_lists[i], 0, y_true[i])
-                    if i < 3:
-                        line, = ax1.plot([val + i * 5 for val in prediction_horizons], trajectory, linestyle='--',
-                                        label='Predictions', color='#26B0F1')
+                    # Cut off the last predicted trajectories
+                    end_index = n_samples - i
+
+                    # Adding the true measurement to the beginning of the trajectory
+                    trajectory = np.insert(y_pred_lists[i], 0, model_df['CGM'].tolist()[i])[:end_index]
+                    x_vals = [val + i * 5 for val in prediction_horizons][:end_index]
+
+                    # Only adding label to the first prediction to avoid duplicates
+                    if i < trajectory_interval:
+                        line, = ax1.plot(x_vals, trajectory, linestyle='--', label='Predictions', color='#26B0F1')
                     else:
-                        line, = ax1.plot([val + i * 5 for val in prediction_horizons], trajectory, linestyle='--',
-                                        color='#26B0F1')
+                        line, = ax1.plot(x_vals, trajectory, linestyle='--', color='#26B0F1')
                     lines.append(line)
 
             # Second plot
@@ -160,32 +143,24 @@ class Plot(BasePlot):
 
             for col in [col for col in df.columns if col.startswith('test_input')]:
                 if 'basal' in col:
-                    string_values = df[col][0]
-                    values = ast.literal_eval(string_values)[start_index:start_index + n_samples + ph // 5]
-                    ax3.step(t[:len(y_true)], values, label='Basal', where='mid')
+                    ax3.step(t, model_df['basal'].tolist(), label='Basal', where='mid')
                     ax3.set_ylabel('Basal Rate [U/hr]')
+                    ax3.set_xlim(0, n_samples * 5)
 
                 elif 'bolus' in col:
-                    string_values = df[col][0]
-                    values = ast.literal_eval(string_values)[start_index:start_index + n_samples + ph // 5]
-
                     bolus = ax3.twinx()
-                    bolus.bar(t[:len(y_true)], values, label='Bolus Doses', color='pink', width=5)
+                    bolus.bar(t, model_df['bolus'].tolist(), label='Bolus Doses', color='pink', width=5)
                     bolus.set_ylabel('Bolus Doses [IU]', fontsize=11)
 
                 elif 'exercise' in col:
-                    string_values = df[col][0]
-                    values = ast.literal_eval(string_values)[start_index:start_index + n_samples + ph // 5]
-                    ax2.bar(t[:len(y_true)], values, label='Exercise', width=5)
+                    ax2.bar(t, model_df['exercise'].tolist(), label='Exercise', width=5)
                     ax2.set_ylabel('Exercise [1-10]')
                     ax2.set_ylim(0, 10)  # Force the y-axis scale to be between 0 and 10
+                    ax2.set_xlim(0, n_samples * 5)
 
                 elif 'carbs' in col:
-                    string_values = df[col][0]
-                    values = ast.literal_eval(string_values)[start_index:start_index + n_samples + ph // 5]
-
                     carbs = ax2.twinx()
-                    carbs.bar(t[:len(y_true)], values, label='Carbohydrates', color='green', width=5)
+                    carbs.bar(t, model_df['carbs'].tolist(), label='Carbohydrates', color='green', width=5)
                     carbs.set_ylabel('Carbohydrates [grams]', fontsize=11)
 
             # Third plot
@@ -210,8 +185,7 @@ class Plot(BasePlot):
             plt.show()
 
 
-
-
 def get_list_from_string(df, col):
-    string_values = df[f'test_input_{col}'][0]
+    string_values = df[col][0]
     return ast.literal_eval(string_values)
+
