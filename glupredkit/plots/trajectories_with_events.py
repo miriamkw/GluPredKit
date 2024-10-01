@@ -50,8 +50,33 @@ class Plot(BasePlot):
             timestamp_list = [pd.Timestamp(ts) for ts in datetime_strings]
             #print(timestamp_list)
 
-            y_true = df['test_input_CGM'][0]
-            y_true = ast.literal_eval(y_true)
+
+
+
+
+            y_true = get_list_from_string(df, 'CGM')
+
+
+
+
+            # Create a DataFrame
+            model_input_df = pd.DataFrame({
+                'date': timestamp_list,
+                'CGM': y_true,
+                'basal': get_list_from_string(df, 'basal'),
+                'bolus': get_list_from_string(df, 'bolus'),
+                'carbs': get_list_from_string(df, 'carbs'),
+                'exercise': get_list_from_string(df, 'exercise'),
+            })
+            model_input_df.set_index('date', inplace=True)
+            full_time_range = pd.date_range(start=model_input_df.index.min(), end=model_input_df.index.max(), freq='5T')
+            df_reindexed = model_input_df.reindex(full_time_range)
+            print(df_reindexed)
+
+
+
+
+
 
             n_samples = 12 * 12
 
@@ -100,9 +125,14 @@ class Plot(BasePlot):
             })
             """
 
+            # TODO: Refactor so the plots use the datetimes
+            # TODO: Refactor so we use the new df
+
             ax1.set_title(f'Predicted trajectories for {model_name}')
             ax1.set_ylabel(f'Blood glucose [{unit}]')
             ax1.scatter(t[:len(y_true)], y_true, label='Measurements', color='black')
+            #ax1.scatter(t[:len(y_true)], df_reindexed['CGM'].tolist()[start_index: start_index + n_samples + ph // 5], label='Measurements', color='black')
+
 
             # Manually set font size for axis ticks
             #plt.xticks(fontsize=12)
@@ -110,6 +140,8 @@ class Plot(BasePlot):
 
             prediction_horizons = range(0, ph + 1, 5)
             lines = []
+
+            # TODO: If measurement not there, skip prediction
             # Add predicted trajectories
             for i in range(len(y_pred_lists)):
                 if i % trajectory_interval == 0:
@@ -180,4 +212,6 @@ class Plot(BasePlot):
 
 
 
-
+def get_list_from_string(df, col):
+    string_values = df[f'test_input_{col}'][0]
+    return ast.literal_eval(string_values)
