@@ -12,7 +12,8 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*8, n_samples=12*12, trajectory_interval=12, *args):
+    def __call__(self, dfs, start_index=12*12*8, n_samples=12*12, trajectory_interval=6, *args):
+        # TODO: Add these input options to the cli
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
@@ -40,8 +41,6 @@ class Plot(BasePlot):
             ph = int(df['prediction_horizon'][0])
             prediction_horizons = range(5, ph + 1, 5)
 
-            # TODO: Add time intervals and openings if there are no CGM values
-            # TODO: you can do this by creating a resampled dataframe, with nan values for openings, and then plot those values
             dates_string_list = df['test_input_date'][0]
             datetime_strings = re.findall(r"'(.*?)'", dates_string_list)
             timestamp_list = [pd.Timestamp(ts) for ts in datetime_strings]
@@ -123,7 +122,7 @@ class Plot(BasePlot):
 
             # Add predicted trajectories
             for i in range(len(y_pred_lists)):
-                if i % trajectory_interval == 0:
+                if (i + trajectory_interval - 1) % trajectory_interval == 0:
                     # Cut off the last predicted trajectories
                     end_index = n_samples - i
 
@@ -132,7 +131,7 @@ class Plot(BasePlot):
                     x_vals = [val + i * 5 for val in prediction_horizons][:end_index]
 
                     # Only adding label to the first prediction to avoid duplicates
-                    if i < trajectory_interval:
+                    if i == 0:
                         line, = ax1.plot(x_vals, trajectory, linestyle='--', label='Predictions', color='#26B0F1')
                     else:
                         line, = ax1.plot(x_vals, trajectory, linestyle='--', color='#26B0F1')

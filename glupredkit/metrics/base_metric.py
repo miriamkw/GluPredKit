@@ -13,8 +13,11 @@ class BaseMetric(ABC):
             raise ValueError("y_true and y_pred must have the same length")
 
         # Check for NaN values and issue a warning if found
-        if any(np.isnan(y) for y in y_true) or any(np.isnan(y) for y in y_pred):
-            warnings.warn("NaN values detected in metric input", UserWarning)
+        if any(np.isnan(y) for y in y_pred):
+            warnings.warn("NaN values detected in metric input predicted values", UserWarning)
+        if any(np.isnan(y) for y in y_true):
+            warnings.warn("NaN values detected in metric input true values", UserWarning)
+
 
         # Check for zero or negative values in y_true
         if any(y <= 0 for y in y_true):

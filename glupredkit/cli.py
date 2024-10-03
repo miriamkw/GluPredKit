@@ -248,7 +248,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
     # Ensure that the optional params match the parser
     if model in ['double_lstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
         model_instance = chosen_model.fit(x_train, y_train, epochs)
-    elif model in ['loop'] and n_cross_val_samples:
+    elif model in ['loop', 'loop_v2'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
         model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)

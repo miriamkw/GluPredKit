@@ -1,5 +1,6 @@
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
+from glupredkit.metrics.grmse import Metric
 from loop_to_python_api.api import get_prediction_values_and_dates
 
 import datetime
@@ -15,7 +16,7 @@ class Model(BaseModel):
         self.insulin_sensitivites = []
         self.carb_ratios = []
 
-    def _fit_model(self, x_train, y_train, n_cross_val_samples=1000, *args):
+    def _fit_model(self, x_train, y_train, n_cross_val_samples=8000, *args):
         required_columns = ['CGM', 'carbs', 'basal', 'bolus']
         missing_columns = [col for col in required_columns if col not in x_train.columns]
         if missing_columns:
@@ -27,6 +28,8 @@ class Model(BaseModel):
 
         x_train['insulin'] = x_train['bolus'] + (x_train['basal'] / 12)
 
+        grmse = Metric()
+
         for subject_id in self.subject_ids:
 
             x_train_filtered = x_train[x_train['id'] == subject_id]
@@ -35,40 +38,76 @@ class Model(BaseModel):
             subset_df_x = x_train_filtered.tail(n_cross_val_samples)
             subset_df_y = y_train_filtered.tail(n_cross_val_samples)
 
-            daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
-            print("daily average basal: ", daily_avg_basal)
+            # daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
+            # print("daily average basal: ", daily_avg_basal)
 
             # Calculate total daily insulin
             daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
             print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
 
-            basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
-            print("Basal 45%: ", basal)
+            def iterative_search_rmse():
+                # Generate multipliers from 0.5 to 1.5 in steps of 0.1
+                multipliers = np.arange(0.5, 1.6, 0.1)
 
-            isf = 1800 / daily_avg_insulin
-            print("1800 rule isf: ", isf)
+                # Store RMSE results
+                rmse_results = {}
+                rmse_values = []
 
-            carb_ratio = 500 / daily_avg_insulin
-            print("500 rule: ", carb_ratio)
+                # Calculate RMSE for each multiplier, or reuse if already computed
+                for m in multipliers:
+                    print(f"\nIteration for multiplier: {m}")
+
+                    y_true = subset_df_y
+                    y_pred = self._predict_model(subset_df_x,
+                                                 basal=m * daily_avg_insulin * 0.45 / 24,
+                                                 isf=1800 / (m * daily_avg_insulin),
+                                                 cr=500 / (m * daily_avg_insulin))
+
+                    # Flatten lists
+                    y_true = y_true.to_numpy().ravel().tolist()
+                    if isinstance(y_pred, list) and any(isinstance(i, list) for i in y_pred):
+                        y_pred = [item for sublist in y_pred for item in sublist]  # Flattening y_pred
+                    else:
+                        y_pred = y_pred  # Use as is if it's already flat
+
+                    rmse = grmse(y_true, y_pred)
+                    rmse_results[m] = rmse  # Cache the result
+                    print(f"Result for {m}: {rmse}")
+
+                    # Append the RMSE for this multiplier to the list
+                    rmse_values.append(rmse_results[m])
+
+                # Find the index of the minimum RMSE
+                min_idx = np.argmin(rmse_values)
+                best_multiplier = multipliers[min_idx]
+                best_rmse = rmse_values[min_idx]
+
+                # Return the best multiplier and the stored RMSE results
+                print(f"Returning best multiplier: {best_multiplier}")
+                return best_multiplier, rmse_results
+
+            # Get the best TDD from binary search, and set the new therapy settings
+            best_multiplier, rmse_results = iterative_search_rmse()
+            print(f"Best Multiplier: {best_multiplier}")
+            print(f"RMSE Results: {rmse_results}")
+
+            basal = best_multiplier * daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+            isf = 1800 / (daily_avg_insulin * best_multiplier)
+            carb_ratio = 500 / (daily_avg_insulin * best_multiplier)
 
             self.basal_rates += [basal]
             self.carb_ratios += [carb_ratio]
             self.insulin_sensitivites += [isf]
 
-            # TODO: Tune the therapy settings (create linear combination of basal, cr and isf by multiplying a factor to daily avg insulin and use binary search)
-            # With that, we just create one parameter to decide the "agressiveness" of the algorithm
-            # We use that to minimize the grmse
-            #self._predict_model(subset_df_x)
-
         return self
 
-    def _predict_model(self, x_test):
+    def _predict_model(self, x_test, basal=None, isf=None, cr=None):
         n_predictions = self.prediction_horizon // 5
         y_pred = []
 
         for i in range(len(self.subject_ids)):
             for _, row in x_test.iterrows():
-                json_data = self.get_json_from_df(row, i)
+                json_data = self.get_json_from_df(row, i, basal=basal, isf=isf, cr=cr)
                 predictions, dates = get_prediction_values_and_dates(json_data)
 
                 # Skipping first predicted sample because it is repeating the reference value
@@ -89,7 +128,7 @@ class Model(BaseModel):
         return process_data(df, model_config_manager, real_time)
 
 
-    def get_json_from_df(self, data, id_index):
+    def get_json_from_df(self, data, id_index, basal=None, isf=None, cr=None):
 
         def get_dates_and_values(column, data):
             relevant_columns = [val for val in data.index if val.startswith(column)]
@@ -170,10 +209,6 @@ class Model(BaseModel):
             carbs_json_list.append(entry)
         carbs_json_list.sort(key=lambda x: x['date'])
 
-        #print("DATES", dates)
-        #print("VALUES", values)
-        #print("DATA", data[[col for col in data.index if col.startswith('basal')]])
-
         # It is important that the setting dates encompass the data to avoid a code crash
         start_date_settings = datetime.datetime.fromisoformat(bg_json_list[0]['date'].replace('Z', '+00:00')) - datetime.timedelta(hours=999)
         end_date_settings = datetime.datetime.fromisoformat(bg_json_list[-1]['date'].replace('Z', '+00:00')) + datetime.timedelta(hours=999)
@@ -184,19 +219,19 @@ class Model(BaseModel):
         basal = [{
             "startDate": start_date_str,
             "endDate": end_date_str,
-            "value": self.basal_rates[id_index]
+            "value": basal if basal is not None else self.basal_rates[id_index]
         }]
 
         isf = [{
             "startDate": start_date_str,
             "endDate": end_date_str,
-            "value": self.insulin_sensitivites[id_index]
+            "value": isf if isf is not None else self.insulin_sensitivites[id_index]
         }]
 
         cr = [{
             "startDate": start_date_str,
             "endDate": end_date_str,
-            "value": self.carb_ratios[id_index]
+            "value": cr if cr is not None else self.carb_ratios[id_index]
         }]
 
         json_data = {
@@ -208,20 +243,6 @@ class Model(BaseModel):
             "sensitivity": isf,
         }
         return json_data
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
