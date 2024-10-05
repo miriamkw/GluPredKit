@@ -14,9 +14,9 @@ class Model(BaseModel):
         self.models = []
         self.subject_ids = []
 
-    def _fit_model(self, x_train, y_train, n_steps=100000, training_samples_per_subject=4320, *args):
+    def _fit_model(self, x_train, y_train, n_steps=10000, training_samples_per_subject=8000, *args):
         # n_steps is the number of steps that will be used for identification
-        # (for multi-meal it should be at least 100k)
+        # (for multi-meal it should be at least 100k, for single-meal 10k is default)
         # Note that this class will not work if the dataset does not have five-minute intervals between measurements
         required_columns = ['CGM', 'carbs', 'basal', 'bolus']
         missing_columns = [col for col in required_columns if col not in x_train.columns]
@@ -27,10 +27,9 @@ class Model(BaseModel):
         x_train = self.process_input_data(x_train)
 
         # Fit parameters of ReplayBG object
-        modality = 'identification'  # set modality as 'identification'
+        modality = 'identification'
         bw = 80  # Placeholder body weight
-        scenario = 'multi-meal'
-        cgm_model = 'CGM'
+        scenario = 'single-meal'
         self.subject_ids = x_train['id'].unique()
 
         for subject_id in self.subject_ids:
@@ -39,7 +38,6 @@ class Model(BaseModel):
 
             rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario,
                            save_name='', save_folder='', n_steps=n_steps,
-                           cgm_model=cgm_model,
                            seed=1,
                            plot_mode=False,
                            verbose=True,  # Turn of when training in server

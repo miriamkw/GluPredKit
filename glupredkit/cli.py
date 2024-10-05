@@ -191,6 +191,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.command()
 @click.argument('model', type=click.Choice([
     'double_lstm',
+    'hybrid_model',
     'loop',
     'loop_v2',
     'lstm',
@@ -210,7 +211,10 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
+@click.option('--loop-model', type=str, required=False)
+@click.option('--recursion-samples', type=int, required=False)
+def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject,
+                loop_model, recursion_samples):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -250,6 +254,11 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
         model_instance = chosen_model.fit(x_train, y_train, epochs)
     elif model in ['loop', 'loop_v2'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
+    elif model in ['hybrid_model'] and loop_model:
+        if recursion_samples:
+            model_instance = chosen_model.fit(x_train, y_train, loop_model=loop_model, recursion_samples=recursion_samples)
+        else:
+            model_instance = chosen_model.fit(x_train, y_train, loop_model=loop_model)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
         model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
     else:
@@ -517,6 +526,9 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             chosen_plot(dfs)
 
         elif plot == 'trajectories_with_events':
+            chosen_plot(dfs)
+
+        elif plot == 'confusion_matrix':
             chosen_plot(dfs)
 
         else:

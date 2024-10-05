@@ -16,7 +16,7 @@ class Model(BaseModel):
         self.insulin_sensitivites = []
         self.carb_ratios = []
 
-    def _fit_model(self, x_train, y_train, n_cross_val_samples=8000, *args):
+    def _fit_model(self, x_train, y_train, n_cross_val_samples=200, *args):
         required_columns = ['CGM', 'carbs', 'basal', 'bolus']
         missing_columns = [col for col in required_columns if col not in x_train.columns]
         if missing_columns:
@@ -38,13 +38,10 @@ class Model(BaseModel):
             subset_df_x = x_train_filtered.tail(n_cross_val_samples)
             subset_df_y = y_train_filtered.tail(n_cross_val_samples)
 
-            # daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
-            # print("daily average basal: ", daily_avg_basal)
+            # Flattened list of measured values across trajectory
+            y_true = subset_df_y.to_numpy().ravel().tolist()
 
-            # Calculate total daily insulin
-            daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-            print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
-
+            """
             def iterative_search_rmse():
                 # Generate multipliers from 0.5 to 1.5 in steps of 0.1
                 multipliers = np.arange(0.5, 1.6, 0.1)
@@ -98,6 +95,53 @@ class Model(BaseModel):
             self.basal_rates += [basal]
             self.carb_ratios += [carb_ratio]
             self.insulin_sensitivites += [isf]
+            """
+            # Calculate total daily insulin
+            daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+            print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
+
+            daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
+            computed_basal = daily_avg_insulin * 0.45 / 24  # Basal 45% of TDI
+            print(f"daily average basal is {daily_avg_basal}, while 45% of TDD is {computed_basal}")
+
+            basal = (daily_avg_basal + computed_basal) / 2  # Average between 45% and their original setting
+            self.basal_rates += [basal]  # Basal average of the daily basal rate of the person
+            print(f"Basal for subject {subject_id}: ", basal)
+
+            isf = 1800 / daily_avg_insulin  # ISF 1800 rule
+            cr = 500 / daily_avg_insulin  # CR 500 rule
+
+            """
+            mult_factors = [0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]
+
+            best_grmse = np.inf
+            best_isf = isf
+            best_cr = cr
+            for i in mult_factors:
+                for j in mult_factors:
+                    y_pred = self._predict_model(subset_df_x, basal=basal, isf=isf*i, cr=cr*j)
+
+                    # Flatten y_pred
+                    if isinstance(y_pred, list) and any(isinstance(i, list) for i in y_pred):
+                        y_pred = [item for sublist in y_pred for item in sublist]  # Flattening y_pred
+                    else:
+                        y_pred = y_pred  # Use as is if it's already flat
+
+                    print(f'Factors {i} and {j}')
+
+                    iteration_result = grmse(y_true, y_pred)
+                    print("gRMSE: ", iteration_result)
+                    # print("Distribution difference: ", int(np.std(last_y_pred) - std_target))
+                    if iteration_result < best_grmse:
+                        best_isf = isf*i
+                        best_cr = cr*j
+                        best_grmse = iteration_result
+
+            self.insulin_sensitivites += [best_isf]
+            self.carb_ratios += [best_cr]
+            """
+            self.insulin_sensitivites += [isf]
+            self.carb_ratios += [cr]
 
         return self
 
@@ -105,9 +149,11 @@ class Model(BaseModel):
         n_predictions = self.prediction_horizon // 5
         y_pred = []
 
-        for i in range(len(self.subject_ids)):
-            for _, row in x_test.iterrows():
-                json_data = self.get_json_from_df(row, i, basal=basal, isf=isf, cr=cr)
+        for subject_idx, subject_id in enumerate(self.subject_ids):
+            df_subset = x_test[x_test['id'] == subject_id]
+
+            for _, row in df_subset.iterrows():
+                json_data = self.get_json_from_df(row, subject_idx, basal=basal, isf=isf, cr=cr)
                 predictions, dates = get_prediction_values_and_dates(json_data)
 
                 # Skipping first predicted sample because it is repeating the reference value
