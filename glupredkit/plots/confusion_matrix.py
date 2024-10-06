@@ -32,12 +32,8 @@ class Plot(BasePlot):
                 percentages = ast.literal_eval(percentages)
                 results += [percentages]
 
-            print("RESULTS", results)
-            # TODO: Calculate the average for each element
-
             matrix_array = np.array(results)
             average_matrix = np.mean(matrix_array, axis=0)
-            print("AVG ", average_matrix)
 
             plt.figure(figsize=(8, 6))
             sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.2%', xticklabels=classes, yticklabels=classes)

@@ -48,8 +48,11 @@ class Model(BaseModel):
 
             # Initialize some default model parameters that for some reason are commented out in ReplayBG
             rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
-            mp = rbg.model.model_parameters
-            rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
+
+            # When using multi-meal
+            # mp = rbg.model.model_parameters
+            # rbg.model.model_parameters.beta = (mp.beta_B + mp.beta_L + mp.beta_D) / 3
+
             self.models += [rbg]
 
         # Delete the automatically stored draws after run
