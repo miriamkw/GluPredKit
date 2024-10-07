@@ -1,7 +1,9 @@
 from glupredkit.models.base_model import BaseModel
 from py_replay_bg.py_replay_bg import ReplayBG
 from scipy.stats import norm
+from datetime import datetime
 import copy
+import os
 import numpy as np
 import pandas as pd
 import shutil
@@ -26,6 +28,16 @@ class Model(BaseModel):
 
         x_train = self.process_input_data(x_train)
 
+        now = datetime.now()
+        safe_file_string = now.strftime("%d%m%Y_%H%M")
+        print(safe_file_string)
+
+        cwd = os.getcwd()
+        print("Creating results directory...")
+        path = os.path.join(cwd, safe_file_string)
+        os.makedirs(path, exist_ok=True)
+        print(f"Created directory {path}.")
+
         # Fit parameters of ReplayBG object
         modality = 'identification'
         bw = 80  # Placeholder body weight
@@ -38,7 +50,7 @@ class Model(BaseModel):
             subset_df = x_train_filtered[-training_samples_per_subject:].reset_index()
 
             rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario,
-                           save_name='', save_folder='', n_steps=n_steps,
+                           save_name=safe_file_string, save_folder=safe_file_string, n_steps=n_steps,
                            seed=1,
                            plot_mode=False,
                            verbose=False,  # Turn of when training in server
