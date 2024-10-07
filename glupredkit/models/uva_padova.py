@@ -33,6 +33,7 @@ class Model(BaseModel):
         self.subject_ids = x_train['id'].unique()
 
         for subject_id in self.subject_ids:
+
             x_train_filtered = x_train[x_train['id'] == subject_id].copy()
             subset_df = x_train_filtered[-training_samples_per_subject:].reset_index()
 
@@ -40,7 +41,7 @@ class Model(BaseModel):
                            save_name='', save_folder='', n_steps=n_steps,
                            seed=1,
                            plot_mode=False,
-                           verbose=True,  # Turn of when training in server
+                           verbose=False,  # Turn of when training in server
                            analyze_results=False,)
 
             # Run identification
@@ -56,7 +57,7 @@ class Model(BaseModel):
             self.models += [rbg]
 
         # Delete the automatically stored draws after run
-        shutil.rmtree('results')
+        # shutil.rmtree('results')
 
         return self
 
@@ -71,7 +72,10 @@ class Model(BaseModel):
                 print(f'No test samples for subject {subject_id}, proceeding to next subject...')
             else:
                 model_parameters = self.models[index].model.model_parameters
+                model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
                 prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon)
+
+        print("PREDICTIONS", prediction_result)
 
         return prediction_result
 
@@ -157,7 +161,7 @@ class Model(BaseModel):
 
         # TODO: Use what-if events to add samples in the end to get all predictions
         # TODO: Make an opportunity to choose between what-if and agnostic predictions
-        # What-if predictions can be achieved by inputing the next cho and insulin state directly in the state
+        # What-if predictions can be achieved by imputing the next cho and insulin state directly in the state
         # transition function. The predictions here are step wise / recursive, and given the (estimate) of the
         # previous state. Hence, we could just use the true state instead.
 
@@ -347,9 +351,15 @@ class Model(BaseModel):
         return x_df
 
     def process_data(self, df, model_config_manager, real_time):
-        df = df.dropna()
+        # df = df.dropna()
 
+        # Fill nan values with 0 as per instructions: https://github.com/gcappon/py_replay_bg/tree/master/docs/src/data_requirements
+        columns_to_fill = ['basal', 'bolus', 'carbs']
+        df[columns_to_fill] = df[columns_to_fill].fillna(0)
+
+        # TODO: How to handle target nans in between here? Maybe we can delete nans here, add nans again in the input dataset, but then delete those indexed predictions after prediction?
         # TODO: Add what if features here, so that we can avoid the predicted nan values
+        # TODO: Add nan instead of imputed BG values
 
         return df
 
@@ -417,6 +427,8 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     Ipb = (mP.ka1 / mP.ke) * (mP.u2ss) / (mP.ka1 + mP.kd) + (mP.ka2 / mP.ke) * (mP.kd / mP.ka2) * (mP.u2ss) / (
             mP.ka1 + mP.kd)
 
+    """
+    # If multi-meal
     # Calculate state derivatives
     if time < 4 or time >= 17:
         SI = mP.SI_D
@@ -427,6 +439,9 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     else:
         SI = mP.SI_L
         kabs = mP.kabs_L
+    """
+    SI = mP.SI
+    kabs = mP.kabs
 
     risk = compute_hypoglycemic_risk(x[7], mP)  # Assuming G is x[7]
 
