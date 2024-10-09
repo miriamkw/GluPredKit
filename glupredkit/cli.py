@@ -206,7 +206,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'uva_padova',
     'zero_order'
 ]))
-@click.option('--file-name-suffix', type=str)
+@click.argument('config-file-name', type=str, required=False)
+@click.option('--file-name-suffix', type=str, required=False)
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
