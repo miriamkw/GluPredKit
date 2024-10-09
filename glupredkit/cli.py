@@ -206,15 +206,16 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'uva_padova',
     'zero_order'
 ]))
-@click.argument('config-file-name', type=str)
+@click.option('--file-name-suffix', type=str)
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-@click.option('--loop-model', type=str, required=False)
+@click.option('--base-model', type=str, required=False)
 @click.option('--recursion-samples', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject,
-                loop_model, recursion_samples):
+@click.option('--ml-model', type=str, required=False)
+def train_model(model, config_file_name, file_name_suffix, epochs, n_cross_val_samples, n_steps,
+                training_samples_per_subject, base_model, recursion_samples, ml_model):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -254,11 +255,13 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
         model_instance = chosen_model.fit(x_train, y_train, epochs)
     elif model in ['loop', 'loop_v2'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
-    elif model in ['hybrid_model'] and loop_model:
-        if recursion_samples:
-            model_instance = chosen_model.fit(x_train, y_train, loop_model=loop_model, recursion_samples=recursion_samples)
-        else:
-            model_instance = chosen_model.fit(x_train, y_train, loop_model=loop_model)
+    elif model in ['hybrid_model'] and base_model:
+        if not recursion_samples:
+            recursion_samples = 6
+        if not ml_model:
+            ml_model = 'ridge'
+        model_instance = chosen_model.fit(x_train, y_train, base_model=base_model, recursion_samples=recursion_samples,
+                                          ml_model=ml_model)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
         model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
     else:
@@ -268,7 +271,10 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 
     # Assuming model_instance is your class instance
     output_dir = Path("data") / "trained_models"
-    output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    if file_name_suffix:
+        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}__{file_name_suffix}.pkl'
+    else:
+        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
     output_path = output_dir / output_file_name
 
     try:
@@ -340,10 +346,10 @@ def evaluate_model(model_file, max_samples):
 
     # Add test data input for numerical features
     for feature in num_features:
-        results_df['test_input_' + feature] = [processed_data[feature].tolist()]
+        results_df['test_input_' + feature] = [x_test[feature].tolist()]
 
     # Add test data dates
-    results_df['test_input_date'] = [processed_data.index.tolist()]
+    results_df['test_input_date'] = [x_test.index.tolist()]
 
     metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
@@ -383,6 +389,7 @@ def evaluate_model(model_file, max_samples):
 
     subset_size = x_test.shape[0]
 
+    """
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
     if (model_name == 'loop') | (model_name == 'loop_v2') | (model_name == 'uva_padova'):
         subset_size = 1000
@@ -465,13 +472,14 @@ def evaluate_model(model_file, max_samples):
             averages = [np.nanmean(x) for x in zip(*y_pred)]
             averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+    """
 
     # Define the path to store the dataframe
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
+    output_file = f"{tested_models_path}/{model_file.split('.')[0]}.csv"
 
     # Store the dataframe in a file
     results_df.to_csv(output_file, index=False)
-    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
+    click.echo(f"Model {model_file} is finished testing. Results are stored in {tested_models_path}")
 
 
 @click.command()
@@ -629,6 +637,7 @@ def generate_evaluation_pdf(results_file):
     c = generate_report.set_bottom_text(c)
     c.showPage()
 
+    """
     # PHYSIOLOGICAL ALIGNMENT PAGE
     c = generate_report.set_title(c, f'Physiological Alignment')
     c = generate_report.set_subtitle(c, f'Physiological Alignment for insulin', 720)
@@ -641,6 +650,7 @@ def generate_evaluation_pdf(results_file):
 
     c = generate_report.set_bottom_text(c)
     c.showPage()
+    """
 
     # PREDICTION DISTRIBUTION PAGE
     c = generate_report.set_title(c, f'Distribution of Predictions')

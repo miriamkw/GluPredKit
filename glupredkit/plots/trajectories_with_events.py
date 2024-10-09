@@ -12,8 +12,9 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*8, n_samples=12*12, trajectory_interval=6, *args):
+    def __call__(self, dfs, start_index=12*12*9, n_samples=12*12, trajectory_interval=6, *args):
         # TODO: Add these input options to the cli
+        # TODO: Fix the plot when using max samples in evaluate model
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
@@ -65,6 +66,9 @@ class Plot(BasePlot):
 
             n_samples = 12 * 24
 
+            if n_samples > model_df.shape[0]:
+                n_samples = model_df.shape[0]
+
             if start_index:
                 if start_index > model_df.shape[0] - n_samples:
                     print(f"Start index too high. Should be below {model_df.shape[0] - n_samples}. Setting start index to 0...")
@@ -110,6 +114,7 @@ class Plot(BasePlot):
 
             ax1.set_title(f'Predicted trajectories for {model_name}', fontsize=16)
             ax1.set_ylabel(f'Blood glucose [{unit}]')
+
             ax1.scatter(t, model_df['CGM'].tolist(), label='Measurements', color='black')
             ax1.set_xlim(0, n_samples * 5)
 

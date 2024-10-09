@@ -3,6 +3,7 @@ The Ohio T1DM parser is processing the raw .xml data from the Ohio T1DM datasets
 the same time grid in a dataframe.
 """
 from .base_parser import BaseParser
+from loop_to_python_api.api import get_active_insulin, get_active_carbs
 import xml.etree.ElementTree as ET
 import pandas as pd
 import os
@@ -133,6 +134,10 @@ class Parser(BaseParser):
                 mask = (df.index >= row['start_date']) & (df.index <= row['end_date'])
                 df.loc[mask, 'exercise'] = row['exercise']
 
+        # Active insulin and carbohydrates
+        df['active_insulin'] = df.apply(lambda row: get_active_insulin(get_json_from_df(df, row.name)), axis=1)
+        df['active_carbs'] = df.apply(lambda row: get_active_carbs(get_json_from_df(df, row.name)), axis=1)
+
         df['is_test'] = is_test
         return df.sort_index()
 
@@ -159,3 +164,126 @@ def merge_data_type_into_dataframe(df, data, type_name, value_name):
         return pd.merge(df, df_data_type, on="date", how='outer')
     else:
         return df
+
+
+def get_json_from_df(df, prediction_date):
+    def get_dates_and_values(column, data):
+        start_date = prediction_date - datetime.timedelta(hours=24)
+
+        data_copy = data.copy()
+        filtered_df = data_copy[(data_copy.index <= prediction_date) & (df.index >= start_date)]
+        data_clean = filtered_df.dropna(subset=[column])
+
+        if data_clean.empty:
+            return [], []
+
+        # Extract dates and values
+        dates = data_clean.index
+        values = data_clean[column]
+
+        # Sort by dates
+        combined = list(zip(dates, values))
+        combined.sort(key=lambda x: x[0])
+
+        # Separate into individual lists
+        dates, values = zip(*combined)
+
+        return dates, values
+
+    bolus_dates, bolus_values = get_dates_and_values('bolus', df)
+    basal_dates, basal_values = get_dates_and_values('basal', df)
+
+    insulin_json_list = []
+    for date, value in zip(bolus_dates, bolus_values):
+        entry = {
+            "startDate": date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "endDate": (date + datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "type": 'bolus',
+            "volume": value
+        }
+        insulin_json_list.append(entry)
+
+    for date, value in zip(basal_dates, basal_values):
+        entry = {
+            "startDate": date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "endDate": (date + datetime.timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "type": 'basal',
+            "volume": value / 12  # Converting from U/hr to delivered units in 5 minutes
+        }
+        insulin_json_list.append(entry)
+    insulin_json_list.sort(key=lambda x: x['startDate'])
+
+    bg_dates, bg_values = get_dates_and_values('CGM', df)
+    bg_json_list = []
+    for date, value in zip(bg_dates, bg_values):
+        entry = {
+            "date": date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "value": value
+        }
+        bg_json_list.append(entry)
+    bg_json_list.sort(key=lambda x: x['date'])
+
+    carbs_dates, carbs_values = get_dates_and_values('carbs', df)
+    carbs_json_list = []
+    for date, value in zip(carbs_dates, carbs_values):
+        entry = {
+            "date": date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            "grams": value,
+            "absorptionTime": 10800,
+        }
+        carbs_json_list.append(entry)
+    carbs_json_list.sort(key=lambda x: x['date'])
+
+    # It is important that the setting dates encompass the data to avoid a code crash
+    start_date_settings = prediction_date - datetime.timedelta(hours=999)
+    end_date_settings = prediction_date + datetime.timedelta(hours=999)
+
+    start_date_str = start_date_settings.strftime('%Y-%m-%dT%H:%M:%SZ')
+    end_date_str = end_date_settings.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    basal = [{
+        "startDate": start_date_str,
+        "endDate": end_date_str,
+        "value": 0.0
+    }]
+
+    # For active insulin and carbs, the settings are arbitraty
+    isf = [{
+        "startDate": start_date_str,
+        "endDate": end_date_str,
+        "value": 60
+    }]
+
+    cr = [{
+        "startDate": start_date_str,
+        "endDate": end_date_str,
+        "value": 10
+    }]
+
+    json_data = {
+        "carbEntries": carbs_json_list,
+        "doses": insulin_json_list,
+        "glucoseHistory": bg_json_list,
+        "basal": basal,
+        "carbRatio": cr,
+        "sensitivity": isf,
+        "predictionStart": prediction_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+
+        # These settings are required but do not impact the iob and cob calculation
+        "maxBasalRate": 4.1,
+        "maxBolus": 9,
+        "recommendationInsulinType": "novolog",
+        "recommendationType": "automaticBolus",
+        "suspendThreshold": 78,
+        "target": [
+            {
+                "endDate": end_date_str,
+                "lowerBound": 101,
+                "startDate": start_date_str,
+                "upperBound": 115
+            }
+        ],
+    }
+    return json_data
+
+

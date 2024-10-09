@@ -76,6 +76,8 @@ class Model(BaseModel):
     def _predict_model(self, x_test):
         x_test = self.process_input_data(x_test)
 
+        # TODO: Should implement a version without the particle filter as well. How does it perform in comparison?
+
         prediction_result = []
         for index, subject_id in enumerate(self.subject_ids):
             x_test_filtered = x_test[x_test['id'] == subject_id].copy().reset_index()
