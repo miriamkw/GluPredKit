@@ -93,6 +93,74 @@ class Model(BaseModel):
 
         return prediction_result
 
+    def simple_glucose_prediction(self, model_parameters, data, prediction_horizon):
+        """
+        Computes the glucose predicted profiles using a simplified glucose-insulin dynamic model without particle filtering.
+
+        Inputs:
+        - model_parameters: a dictionary containing the identified model parameters.
+        - data: a DataFrame containing the following columns: Time, glucose, CHO, bolus_insulin, and basal_insulin.
+        - prediction_horizon: the prediction horizon (in minutes).
+
+        Output:
+        - predicted_glucose: list of predicted glucose values over the prediction horizon.
+        """
+        Ts = 5  # minutes, time step
+        end_time = data['t'].iloc[0] + pd.Timedelta(minutes=prediction_horizon)
+        time_data = pd.date_range(start=data['t'].iloc[0], end=end_time, freq=f'{Ts}min')
+
+        # Initialize model states
+        glucose = data['glucose'].iloc[0]  # Initial glucose value
+        interstitial_glucose = glucose  # Initial interstitial glucose value
+
+        # set physiological model environment
+        model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
+        model['TIDSTEPS'] = int(model['TID'] / model['TS'])  # integration steps
+        model['TIDYSTEPS'] = int(model['TID'] / model['YTS'])  # total identification simulation time [sample steps]
+        model_parameters.TS = model['TS']
+
+        # Model states: [Qsto1, Qsto2, Qgut, Isc1, Isc2, Ip, X, G, IG]
+        x0 = np.array([
+            0,  # Qsto1(0)
+            0,  # Qsto2(0)
+            0,  # Qgut(0)
+            model_parameters.u2ss / (model_parameters.ka1 + model_parameters.kd),  # Isc1(0)
+            (model_parameters.kd / model_parameters.ka2) * model_parameters.u2ss / (
+                        model_parameters.ka1 + model_parameters.kd),  # Isc2(0)
+            (model_parameters.ka1 / model_parameters.ke) * model_parameters.u2ss / (
+                        model_parameters.ka1 + model_parameters.kd) +
+            (model_parameters.ka2 / model_parameters.ke) * (
+                        model_parameters.kd / model_parameters.ka2) * model_parameters.u2ss /
+            (model_parameters.ka1 + model_parameters.kd),  # Ip(0)
+            model_parameters.Xpb,  # X(0)
+            glucose,  # G(0)
+            interstitial_glucose  # IG(0)
+        ])
+
+        # Set insulin and CHO data
+        bolus, basal, bolusDelayed, basalDelayed = self.insulin_setup_pf(data, model, model_parameters)
+        cho, choDelayed = self.meal_setup_pf(data, model, model_parameters)
+
+        # Simulation loop
+        predicted_glucose = []
+        for t in range(len(time_data)):
+            # Update state based on insulin and meal input
+            total_insulin = bolusDelayed[t] + basalDelayed[t]
+            meal = choDelayed[t]
+
+            # Simplified model equations (adjust based on your specific dynamics)
+            insulin_effect = (total_insulin * model_parameters.ka1)  # Example insulin effect
+            glucose_dynamics = glucose + (meal - insulin_effect) * Ts / 60  # Example glucose dynamics
+
+            # Update glucose state
+            glucose = max(0, glucose_dynamics)  # Ensure glucose doesn't go negative
+            interstitial_glucose = glucose  # Assume IG follows G directly
+
+            # Store predictions
+            predicted_glucose.append(glucose)
+
+        return predicted_glucose
+
     def get_phy_prediction(self, model_parameters, data, prediction_horizon):
         """
         This function is translated from MatLab: https://github.com/checoisback/phy-predict/blob/main/getPhyPrediction.m.
