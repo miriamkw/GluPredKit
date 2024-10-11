@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*9, n_samples=12*12, trajectory_interval=6, *args):
+    def __call__(self, dfs, start_index=12*12*0, n_samples=12*12, trajectory_interval=6, *args):
         # TODO: Add these input options to the cli
         # TODO: Fix the plot when using max samples in evaluate model
         """
@@ -69,7 +69,8 @@ class Plot(BasePlot):
             if n_samples > model_df.shape[0]:
                 n_samples = model_df.shape[0]
 
-            if start_index:
+            if start_index is not None:
+                print("start index true")
                 if start_index > model_df.shape[0] - n_samples:
                     print(f"Start index too high. Should be below {model_df.shape[0] - n_samples}. Setting start index to 0...")
                     start_index = 0
@@ -191,5 +192,8 @@ class Plot(BasePlot):
 
 def get_list_from_string(df, col):
     string_values = df[col][0]
-    return ast.literal_eval(string_values)
+    string_values = string_values.replace("nan", "None")
+    list_values = ast.literal_eval(string_values)
+    list_values = [np.nan if x is None else x for x in list_values]
+    return list_values
 

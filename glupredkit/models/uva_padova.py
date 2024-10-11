@@ -73,95 +73,25 @@ class Model(BaseModel):
 
         return self
 
-    def _predict_model(self, x_test):
-        x_test = self.process_input_data(x_test)
-
-        # TODO: Should implement a version without the particle filter as well. How does it perform in comparison?
+    def _predict_model(self, x_test, use_particle_filter=False):
+        df = self.process_input_data(x_test)
 
         prediction_result = []
         for index, subject_id in enumerate(self.subject_ids):
-            x_test_filtered = x_test[x_test['id'] == subject_id].copy().reset_index()
+            x_test_filtered = df[df['id'] == subject_id].copy().reset_index()
 
             if x_test_filtered.shape[0] == 0:
                 print(f'No test samples for subject {subject_id}, proceeding to next subject...')
             else:
                 model_parameters = self.models[index].model.model_parameters
                 model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
-                prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon)
-
-        print("PREDICTIONS", prediction_result)
+                prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon,
+                                                             use_particle_filter)
 
         return prediction_result
 
-    def simple_glucose_prediction(self, model_parameters, data, prediction_horizon):
-        """
-        Computes the glucose predicted profiles using a simplified glucose-insulin dynamic model without particle filtering.
 
-        Inputs:
-        - model_parameters: a dictionary containing the identified model parameters.
-        - data: a DataFrame containing the following columns: Time, glucose, CHO, bolus_insulin, and basal_insulin.
-        - prediction_horizon: the prediction horizon (in minutes).
-
-        Output:
-        - predicted_glucose: list of predicted glucose values over the prediction horizon.
-        """
-        Ts = 5  # minutes, time step
-        end_time = data['t'].iloc[0] + pd.Timedelta(minutes=prediction_horizon)
-        time_data = pd.date_range(start=data['t'].iloc[0], end=end_time, freq=f'{Ts}min')
-
-        # Initialize model states
-        glucose = data['glucose'].iloc[0]  # Initial glucose value
-        interstitial_glucose = glucose  # Initial interstitial glucose value
-
-        # set physiological model environment
-        model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
-        model['TIDSTEPS'] = int(model['TID'] / model['TS'])  # integration steps
-        model['TIDYSTEPS'] = int(model['TID'] / model['YTS'])  # total identification simulation time [sample steps]
-        model_parameters.TS = model['TS']
-
-        # Model states: [Qsto1, Qsto2, Qgut, Isc1, Isc2, Ip, X, G, IG]
-        x0 = np.array([
-            0,  # Qsto1(0)
-            0,  # Qsto2(0)
-            0,  # Qgut(0)
-            model_parameters.u2ss / (model_parameters.ka1 + model_parameters.kd),  # Isc1(0)
-            (model_parameters.kd / model_parameters.ka2) * model_parameters.u2ss / (
-                        model_parameters.ka1 + model_parameters.kd),  # Isc2(0)
-            (model_parameters.ka1 / model_parameters.ke) * model_parameters.u2ss / (
-                        model_parameters.ka1 + model_parameters.kd) +
-            (model_parameters.ka2 / model_parameters.ke) * (
-                        model_parameters.kd / model_parameters.ka2) * model_parameters.u2ss /
-            (model_parameters.ka1 + model_parameters.kd),  # Ip(0)
-            model_parameters.Xpb,  # X(0)
-            glucose,  # G(0)
-            interstitial_glucose  # IG(0)
-        ])
-
-        # Set insulin and CHO data
-        bolus, basal, bolusDelayed, basalDelayed = self.insulin_setup_pf(data, model, model_parameters)
-        cho, choDelayed = self.meal_setup_pf(data, model, model_parameters)
-
-        # Simulation loop
-        predicted_glucose = []
-        for t in range(len(time_data)):
-            # Update state based on insulin and meal input
-            total_insulin = bolusDelayed[t] + basalDelayed[t]
-            meal = choDelayed[t]
-
-            # Simplified model equations (adjust based on your specific dynamics)
-            insulin_effect = (total_insulin * model_parameters.ka1)  # Example insulin effect
-            glucose_dynamics = glucose + (meal - insulin_effect) * Ts / 60  # Example glucose dynamics
-
-            # Update glucose state
-            glucose = max(0, glucose_dynamics)  # Ensure glucose doesn't go negative
-            interstitial_glucose = glucose  # Assume IG follows G directly
-
-            # Store predictions
-            predicted_glucose.append(glucose)
-
-        return predicted_glucose
-
-    def get_phy_prediction(self, model_parameters, data, prediction_horizon):
+    def get_phy_prediction(self, model_parameters, data, prediction_horizon, use_particle_filter):
         """
         This function is translated from MatLab: https://github.com/checoisback/phy-predict/blob/main/getPhyPrediction.m.
 
@@ -173,15 +103,23 @@ class Model(BaseModel):
         - test_data: a DataFrame containing the following columns: Time, glucose, CHO, bolus_insulin, and basal_insulin.
         The measurement units must be consistent with the ones described in the provided link.
         - PH: the prediction horizon (in minutes).
+        - use_particle_filter: whether to use the deterministic physiological model, or a particle filter for online learning.
 
         Output:
         - prediction_results: a dictionary containing the test data (prediction_results['data']) and the predicted profile
         (prediction_results['ighat']).
         """
         Ts = 5  # minutes
-        n_particles = 5000  # number of particles
-        sigma_v = 25  # measurements noise variance
-        sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
+
+        # Parameters configuration based on whether to use a particle filter or not
+        if use_particle_filter:
+            n_particles = 5000  # number of particles
+            sigma_v = 25  # measurements noise variance
+            sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
+        else:
+            n_particles = 100  # Minimal particles when not using particle filtering, conceptually equivalent to using the deterministic prediction
+            sigma_v = 0
+            sigma_u0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
 
         # set physiological model environment
         model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
@@ -359,9 +297,6 @@ class Model(BaseModel):
         VarIG_hat = np.zeros((len(noisy_measure), prediction_horizon))
         VarG_hat = np.zeros((len(noisy_measure), prediction_horizon))
 
-        state_corrected = np.zeros(len(x0))
-        cov_corrected = np.zeros((len(x0), len(x0)))
-
         print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
 
         for k in range(len(time)):
@@ -371,9 +306,9 @@ class Model(BaseModel):
             # Prediction step
             state_pred, cov_pred = pf.predict(meal[k], total_ins[k], time[k].hour, sigma_u, model_parameters)
 
+            index_measure = int(k / (5 / model_parameters.TS))
             # Measurement checking based on index
             if k % int(5 / model_parameters.TS) == 0:
-                index_measure = int(k / (5 / model_parameters.TS))
                 CGM_measure = noisy_measure[index_measure]
             else:
                 CGM_measure = np.nan
@@ -390,14 +325,14 @@ class Model(BaseModel):
                 lastBestGuess[:, index_measure] = state_corrected[:len(x0)]
                 lastBestCov[:, index_measure] = np.diag(cov_corrected)
 
-            # k-step ahead prediction
+            # k-step ahead prediction, every interval of a given sampling rate for the output
             if (k + prediction_horizon <= len(time)) and ((k % int(5 / model_parameters.TS)) == 0):
                 pf_pred = copy.deepcopy(pf)
                 mP_pred = copy.deepcopy(model_parameters)
 
                 for p in range(prediction_horizon):
                     # This function assumes that future meals and insulin injections are known
-                    # Alternatively, we could use estimates of what these future values probably will be
+                    # Alternatively, we could use estimates or assumptions of what these future values probably will be
                     step_ahead_prediction, cov_ahead_prediction = pf_pred.predict(meal[k + p], total_ins[k + p],
                                                                                   time[k + p].hour, sigma_u, mP_pred)
 
@@ -411,28 +346,25 @@ class Model(BaseModel):
         return lastBestGuess, lastBestCov, G_hat, IG_hat, VarG_hat, VarIG_hat
 
     def best_params(self):
-        # Return the best parameters found by GridSearchCV
-        # You need to fill this method with your logic
-        # For example:
-        # return self.model.best_params_
+        self.print_model_parameters()
         return
 
     def process_input_data(self, x_df):
-        x_df = x_df.copy()
-        x_df.rename(columns={'CGM': 'glucose', 'carbs': 'cho'}, inplace=True)
-        x_df['SMBG'] = np.nan
-        x_df['CR'] = np.nan
-        x_df['CF'] = np.nan
-        x_df['cho'] = x_df['cho'] / 5  # Carbs needs to be in grams/min and not grams
-        x_df['bolus'] = x_df['bolus'] / 5  # Bolus needs to be in U/min and not U
-        x_df['basal'] = x_df['basal'] / 60  # Basal needs to be in U/min and not U/hr
-        x_df['cho_label'] = np.nan
-        x_df['bolus_label'] = np.nan
-        x_df['exercise'] = 0
-        x_df['t'] = x_df.index
-        x_df.reset_index(inplace=True)
+        processed_df = x_df.copy()
+        processed_df.rename(columns={'CGM': 'glucose', 'carbs': 'cho'}, inplace=True)
+        processed_df['SMBG'] = np.nan
+        processed_df['CR'] = np.nan
+        processed_df['CF'] = np.nan
+        processed_df['cho'] = processed_df['cho'] / 5  # Carbs needs to be in grams/min and not grams
+        processed_df['bolus'] = processed_df['bolus'] / 5  # Bolus needs to be in U/min and not U
+        processed_df['basal'] = processed_df['basal'] / 60  # Basal needs to be in U/min and not U/hr
+        processed_df['cho_label'] = np.nan
+        processed_df['bolus_label'] = np.nan
+        processed_df['exercise'] = 0
+        processed_df['t'] = processed_df.index
+        processed_df.reset_index(inplace=True)
 
-        return x_df
+        return processed_df
 
     def process_data(self, df, model_config_manager, real_time):
         # df = df.dropna()
@@ -482,7 +414,11 @@ class Model(BaseModel):
 def gi_measurement_likelihood_function(predicted_measurement, measurement, sigma_v):
     # The measurement is the ninth state. Extract all measurement hypotheses from particles
     # Calculate the likelihood of each predicted measurement
+
     likelihood = norm.pdf(predicted_measurement, measurement, sigma_v)
+
+    if likelihood < 1e-300:
+        return 1e-300  # Avoid returning zero, which would break the particle filter
 
     return likelihood
 
@@ -573,9 +509,10 @@ class ParticleFilter:
 
         # Initialize particles uniformly within the bounds
         self.particles = np.random.uniform(low=lower_bound, high=upper_bound, size=(num_particles, len(x0)))
-        self.weights = np.ones(num_particles) / num_particles * 1000
+        self.weights = np.ones(num_particles) / num_particles
         self.state_transition_fn = state_transition_fn  # gi_particle_filter_state_function
         self.measurement_fn = measurement_fn  # gi_measurement_likelihood_function
+
 
     def predict(self, carbs, insulin, time, sigma_u, model_parameters):
         """Predict the next state of the particles."""
