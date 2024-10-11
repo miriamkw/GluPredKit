@@ -46,6 +46,7 @@ class Plot(BasePlot):
             datetime_strings = re.findall(r"'(.*?)'", dates_string_list)
             timestamp_list = [pd.Timestamp(ts) for ts in datetime_strings]
 
+            # TODO: Only use the types that are present in the input
             # Create a DataFrame
             model_df = pd.DataFrame({
                 'date': timestamp_list,
@@ -96,6 +97,7 @@ class Plot(BasePlot):
             # First plot (ax1)
             # Use correct unit
             # TODO: Make sure that both units works for this plot
+            y_true = model_df['CGM'].tolist()
             if unit_config_manager.use_mgdl:
                 ax1.axhspan(70, 180, facecolor='blue', alpha=0.2)
             else:
@@ -116,7 +118,7 @@ class Plot(BasePlot):
             ax1.set_title(f'Predicted trajectories for {model_name}', fontsize=16)
             ax1.set_ylabel(f'Blood glucose [{unit}]')
 
-            ax1.scatter(t, model_df['CGM'].tolist(), label='Measurements', color='black')
+            ax1.scatter(t, y_true, label='Measurements', color='black')
             ax1.set_xlim(0, n_samples * 5)
 
             # Manually set font size for axis ticks
@@ -135,6 +137,9 @@ class Plot(BasePlot):
                     # Adding the true measurement to the beginning of the trajectory
                     trajectory = np.insert(y_pred_lists[i], 0, model_df['CGM'].tolist()[i])[:end_index]
                     x_vals = [val + i * 5 for val in prediction_horizons][:end_index]
+
+                    if not unit_config_manager.use_mgdl:
+                        trajectory = [unit_config_manager.convert_value(val) for val in trajectory]
 
                     # Only adding label to the first prediction to avoid duplicates
                     if i == 0:

@@ -40,7 +40,9 @@ class Plot(BasePlot):
             prediction_horizons = range(5, ph + 1, 5)
 
             y_true = df[f'target_5'][0]
-            y_true = ast.literal_eval(y_true)
+            string_values = y_true.replace("nan", "None")
+            y_true = ast.literal_eval(string_values)
+            y_true = [np.nan if x is None else x for x in y_true]
 
             n_samples = 12*24
 
@@ -57,6 +59,9 @@ class Plot(BasePlot):
                 y_pred = ast.literal_eval(y_pred)
                 y_pred = [np.nan if val is None else val for val in y_pred]
 
+                if not unit_config_manager.use_mgdl:
+                    y_pred = [unit_config_manager.convert_value(val) for val in y_pred]
+
                 y_pred_lists += [y_pred]
 
             y_true = np.array(y_true)[start_index:start_index + n_samples]
@@ -71,6 +76,7 @@ class Plot(BasePlot):
                 ax.axhspan(70, 180, facecolor='blue', alpha=0.2)
             else:
                 y_true = [unit_config_manager.convert_value(val) for val in y_true]
+
                 ax.axhspan(unit_config_manager.convert_value(70), unit_config_manager.convert_value(180),
                            facecolor='blue', alpha=0.2)
 
@@ -85,6 +91,7 @@ class Plot(BasePlot):
             for i in range(len(y_pred_lists)):
                 # Adding the true measurement to the trajectory
                 trajectory = np.insert(y_pred_lists[i], 0, y_true[i])
+
                 line, = ax.plot([val + i*5 for val in prediction_horizons], trajectory, linestyle='--')
                 lines.append(line)
 
@@ -99,3 +106,7 @@ class Plot(BasePlot):
             file_name = f"trajectories_{model_name}_{safe_timestamp}.png"
             plt.savefig(file_path + file_name)
             plt.show()
+
+
+
+
