@@ -355,7 +355,9 @@ class Model(BaseModel):
         x_df['SMBG'] = np.nan
         x_df['CR'] = np.nan
         x_df['CF'] = np.nan
-        x_df['basal'] = x_df['basal'] / 60  # Basal needs to be in U and not U/hr
+        x_df['cho'] = x_df['cho'] / 5  # Carbs needs to be in grams/min and not grams
+        x_df['bolus'] = x_df['bolus'] / 5  # Bolus needs to be in U/min and not U
+        x_df['basal'] = x_df['basal'] / 60  # Basal needs to be in U/min and not U/hr
         x_df['cho_label'] = np.nan
         x_df['bolus_label'] = np.nan
         x_df['exercise'] = 0

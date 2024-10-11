@@ -261,6 +261,8 @@ def train_model(model, config_file_name, file_name_suffix, epochs, n_cross_val_s
             recursion_samples = 6
         if not ml_model:
             ml_model = 'ridge'
+        if not file_name_suffix:
+            file_name_suffix = f'rec_{recursion_samples}_ml_model_{ml_model}'
         model_instance = chosen_model.fit(x_train, y_train, base_model=base_model, recursion_samples=recursion_samples,
                                           ml_model=ml_model)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:

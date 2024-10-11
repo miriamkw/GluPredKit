@@ -739,6 +739,7 @@ def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     y_test = df[f'target_{ph}'][0]
     y_pred = df[f'y_pred_{ph}'][0]
 
+    y_test = y_test.replace("nan", "None")
     y_test = ast.literal_eval(y_test)
     y_pred = y_pred.replace("nan", "None")
     y_pred = ast.literal_eval(y_pred)
@@ -781,7 +782,9 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
     for ph in x_values:
         y_test = df[f'target_{ph}'][0]
         y_pred = df[f'y_pred_{ph}'][0]
+        y_test = y_test.replace("nan", "None")
         y_test = ast.literal_eval(y_test)
+        y_test = [np.nan if x is None else x for x in y_test]
         y_pred = y_pred.replace("nan", "None")
         y_pred = ast.literal_eval(y_pred)
         y_pred = [np.nan if x is None else x for x in y_pred]

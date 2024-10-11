@@ -127,7 +127,7 @@ class Model(BaseModel):
 
             self.models = self.models + [model_pipeline]
 
-        self.print_coefficients()
+        #self.print_coefficients()
         return self
 
     def _predict_model(self, x_test):
@@ -221,7 +221,7 @@ class Model(BaseModel):
         for model in self.models:
             # Access the best estimator from GridSearchCV
             best_regressor = model.named_steps['model'].best_estimator_
-            best_params = best_params + [best_regressor.alpha]
+            best_params = best_params + [best_regressor]
 
         # Return the best parameters found by GridSearchCV
         return best_params
