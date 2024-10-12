@@ -76,6 +76,9 @@ class Model(BaseModel):
     def _predict_model(self, x_test, use_particle_filter=False):
         df = self.process_input_data(x_test)
 
+        df.to_csv('ohio_570_example.csv', index=False)
+        print(df.head(10))
+
         prediction_result = []
         for index, subject_id in enumerate(self.subject_ids):
             x_test_filtered = df[df['id'] == subject_id].copy().reset_index()
@@ -87,6 +90,8 @@ class Model(BaseModel):
                 model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
                 prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon,
                                                              use_particle_filter)
+
+        # Currently, the amount of predictions are equal to samples-prediction lenght, so for 80 samples, and 72 prediction steps, we get 8 predictions
 
         return prediction_result
 
@@ -117,9 +122,9 @@ class Model(BaseModel):
             sigma_v = 25  # measurements noise variance
             sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
         else:
-            n_particles = 100  # Minimal particles when not using particle filtering, conceptually equivalent to using the deterministic prediction
-            sigma_v = 0
-            sigma_u0 = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+            n_particles = 5  # Minimal particles when not using particle filtering, conceptually equivalent to using the deterministic prediction
+            sigma_v = 0.5
+            sigma_u0 = np.array([1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6])
 
         # set physiological model environment
         model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
@@ -164,18 +169,19 @@ class Model(BaseModel):
         pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0,
                                np.diag(sigma0))
 
-        last_best_guess, last_best_cov, G_hat, IG_hat, VarG_hat, VarIG_hat = self.apply_pf(pf_v0, time_data,
-                                                                                           data['glucose'], meal,
-                                                                                           total_ins, x0, sigma_u0,
-                                                                                           sigma_v, model_parameters,
-                                                                                           prediction_horizon)
+        if use_particle_filter:
+            _, _, _, IG_hat, _, _ = self.apply_pf(pf_v0, time_data, data['glucose'], meal, total_ins, x0, sigma_u0,
+                                                  sigma_v, model_parameters, prediction_horizon)
+        else:
+            _, _, _, IG_hat, _, _ = self.predict_without_pf(time_data, data['glucose'], meal, total_ins, x0,
+                                                            model_parameters, prediction_horizon)
 
         # Get all the predicted values in 5-minute intervals
         predicted_trajectories = IG_hat[:, Ts - 1::Ts]
 
         # Convert all zeros in a sublist to np.nan if ALL are zeros
         predicted_trajectories = [
-            [np.nan if num == 0 else num for num in sublist] if all(num == 0 for num in sublist) else sublist
+            [np.nan if num == 0 else num for num in sublist] if all(num == 0 for num in sublist) else sublist.tolist()
             for sublist in predicted_trajectories
         ]
 
@@ -299,6 +305,8 @@ class Model(BaseModel):
 
         print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
 
+        print("INITAL STATE", x0)
+
         for k in range(len(time)):
             if k % 50 == 0:
                 print_progress_bar(k + 1, len(time), prefix='Progress:', suffix='Complete', length=50)
@@ -343,7 +351,55 @@ class Model(BaseModel):
                     VarG_hat[index_measure, p] = pred_variance[7]  # Variance for glucose
                     VarIG_hat[index_measure, p] = pred_variance[8]  # Variance for interstitial glucose
 
+                print(f"K {k}")
+                print("measured", CGM_measure)
+                print("pred", IG_hat[index_measure, :10])
+
         return lastBestGuess, lastBestCov, G_hat, IG_hat, VarG_hat, VarIG_hat
+
+
+    def predict_without_pf(self, time, noisy_measure, meal, total_ins, x0, model_parameters, prediction_horizon):
+
+        print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
+
+        IG_hat = np.zeros((len(noisy_measure), prediction_horizon))
+        G_hat = np.zeros((len(noisy_measure), prediction_horizon))
+
+        print("INITAL STATE", x0)
+        new_state = copy.deepcopy(x0)
+
+        for k in range(len(time)):
+            if k % 50 == 0:
+                print_progress_bar(k + 1, len(time), prefix='Progress:', suffix='Complete', length=50)
+
+            index_measure = int(k / (5 / model_parameters.TS))
+            # Measurement checking based on index
+            if k % int(5 / model_parameters.TS) == 0:
+                CGM_measure = noisy_measure[index_measure]
+                new_state[8] = CGM_measure
+                new_state = predict_without_particle_filter(new_state, meal[k], total_ins[k], time[k].hour, model_parameters)
+            else:
+                CGM_measure = np.nan
+
+            # k-step ahead prediction, every interval of a given sampling rate for the output
+            if (k + prediction_horizon <= len(time)) and ((k % int(5 / model_parameters.TS)) == 0):
+                mP_pred = copy.deepcopy(model_parameters)
+
+                for p in range(prediction_horizon):
+                    # This function assumes that future meals and insulin injections are known
+                    # Alternatively, we could use estimates or assumptions of what these future values probably will be
+                    new_state = predict_without_particle_filter(new_state, meal[k + p], total_ins[k + p],
+                                                                time[k + p].hour, mP_pred)
+
+                    G_hat[index_measure, p] = new_state[7]  # Glucose
+                    IG_hat[index_measure, p] = new_state[8]  # Interstitial glucose
+
+                print(f"K {k}")
+                print("measured", CGM_measure)
+                print("pred", IG_hat[index_measure, :10])
+
+        return [], [], G_hat, IG_hat, [], []
+
 
     def best_params(self):
         self.print_model_parameters()
@@ -352,7 +408,7 @@ class Model(BaseModel):
     def process_input_data(self, x_df):
         processed_df = x_df.copy()
         processed_df.rename(columns={'CGM': 'glucose', 'carbs': 'cho'}, inplace=True)
-        processed_df['SMBG'] = np.nan
+        #processed_df['SMBG'] = np.nan
         processed_df['CR'] = np.nan
         processed_df['CF'] = np.nan
         processed_df['cho'] = processed_df['cho'] / 5  # Carbs needs to be in grams/min and not grams
@@ -381,23 +437,28 @@ class Model(BaseModel):
 
     def print_model_parameters(self):
         for i in range(len(self.models)):
-            mp = self.models[i].model_parameters
+            mp = self.models[i].model.model_parameters
+
             print("bw:", mp.bw)  # Body weight
-            print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
-            print("beta_L", mp.beta_L)
-            print("beta_D", mp.beta_D)
+            #print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
+            #print("beta_L", mp.beta_L)
+            #print("beta_D", mp.beta_D)
+            print("beta", mp.beta)
             print("tau:", mp.tau)  # General time delay
             print("u2ss:", mp.u2ss)  # Basal insulin rate
             print("ka1:", mp.ka1)  # Absorption Rates
             print("ka2:", mp.ka2)
             print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
-            print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
-            print("kabs_B", mp.kabs_B)
-            print("kabs_L", mp.kabs_L)
+            #print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
+            #print("kabs_B", mp.kabs_B)
+            #print("kabs_L", mp.kabs_L)
+            print("kabs", mp.kabs)
+
             print("Xpb:", mp.Xpb)  # Initial insulin action?
-            print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
-            print("SI_B", mp.SI_B)
-            print("SI_L", mp.SI_L)
+            #print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
+            #print("SI_B", mp.SI_B)
+            #print("SI_L", mp.SI_L)
+            print("SI", mp.SI)
             print("Gb:", mp.Gb)  # Baseline glucose level
             print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
             print("ke:", mp.ke)  # Elimination rate constant, how quickly a substance is removed from the bloodstream
@@ -437,6 +498,21 @@ def gi_particle_filter_state_function(particles, CHO, INS, time, sigma_u, mP):
     particles += noise
 
     return particles
+
+
+def predict_without_particle_filter(current_state, carbs, insulin, time, model_parameters):
+    """Predict the next state of the particles."""
+
+    new_state = state_function(current_state, carbs, insulin, time, model_parameters)
+    return new_state
+
+
+def state_function(current_state, CHO, INS, time, mP):
+
+    dt = mP.TS  # Sample time
+    new_state = current_state + gi_state_function_continuous(current_state, CHO, INS, time, mP) * dt
+
+    return new_state
 
 
 def gi_state_function_continuous(x, CHO, INS, time, mP):

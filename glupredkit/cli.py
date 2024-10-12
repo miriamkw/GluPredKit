@@ -320,8 +320,8 @@ def evaluate_model(model_file, max_samples):
     target_cols = [col for col in processed_data if col.startswith('target')]
 
     if max_samples:
-        x_test = processed_data.drop(target_cols, axis=1)[-max_samples:]
-        y_test = processed_data[target_cols][-max_samples:]
+        x_test = processed_data.drop(target_cols, axis=1)[:max_samples]
+        y_test = processed_data[target_cols][:max_samples]
     else:
         x_test = processed_data.drop(target_cols, axis=1)
         y_test = processed_data[target_cols]

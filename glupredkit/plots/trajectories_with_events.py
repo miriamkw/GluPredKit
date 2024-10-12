@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*0, n_samples=12*12, trajectory_interval=6, *args):
+    def __call__(self, dfs, start_index=12*12*0, n_samples=12*24, trajectory_interval=6, *args):
         # TODO: Add these input options to the cli
         # TODO: Fix the plot when using max samples in evaluate model
         """
@@ -64,8 +64,6 @@ class Plot(BasePlot):
             model_df.set_index('date', inplace=True)
             full_time_range = pd.date_range(start=model_df.index.min(), end=model_df.index.max(), freq='5T')
             model_df = model_df.reindex(full_time_range)
-
-            n_samples = 12 * 24
 
             if n_samples > model_df.shape[0]:
                 n_samples = model_df.shape[0]
