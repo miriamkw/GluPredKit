@@ -1,7 +1,8 @@
 from glupredkit.models.base_model import BaseModel
 from py_replay_bg.py_replay_bg import ReplayBG
+from glupredkit.helpers.scikit_learn import process_data
 from scipy.stats import norm
-from datetime import datetime
+import datetime
 import copy
 import os
 import numpy as np
@@ -15,8 +16,11 @@ class Model(BaseModel):
 
         self.models = []
         self.subject_ids = []
+        self.bw = None
+        self.scenario = None
+        self.safe_file_string = None
 
-    def _fit_model(self, x_train, y_train, n_steps=10000, training_samples_per_subject=8000, *args):
+    def _fit_model(self, x_train, y_train, n_steps=10000, training_samples_per_subject=8000, scenario='multi-meal', *args):
         # n_steps is the number of steps that will be used for identification
         # (for multi-meal it should be at least 100k, for single-meal 10k is default)
         # Note that this class will not work if the dataset does not have five-minute intervals between measurements
@@ -28,20 +32,24 @@ class Model(BaseModel):
 
         x_train = self.process_input_data(x_train)
 
-        now = datetime.now()
-        safe_file_string = now.strftime("%d%m%Y_%H%M")
-        print(safe_file_string)
+        relevant_columns = ['id', 'bolus', 'basal', 'glucose', 'cho', 'cho_label', 'bolus_label', 'exercise', 't', 'CR', 'CF']
+        x_train = x_train[relevant_columns]
+
+        now = datetime.datetime.now()
+        self.safe_file_string = now.strftime("%d%m%Y_%H%M")
+        print(self.safe_file_string)
 
         cwd = os.getcwd()
         print("Creating results directory...")
-        path = os.path.join(cwd, safe_file_string)
+        # TODO: make the results be stored in the data folder, and in a hidden folder like DNNs
+        path = os.path.join(cwd, self.safe_file_string)
         os.makedirs(path, exist_ok=True)
         print(f"Created directory {path}.")
 
         # Fit parameters of ReplayBG object
         modality = 'identification'
-        bw = 80  # Placeholder body weight
-        scenario = 'single-meal'
+        self.bw = 80  # Placeholder body weight
+        self.scenario = scenario
         self.subject_ids = x_train['id'].unique()
 
         for subject_id in self.subject_ids:
@@ -49,15 +57,21 @@ class Model(BaseModel):
             x_train_filtered = x_train[x_train['id'] == subject_id].copy()
             subset_df = x_train_filtered[-training_samples_per_subject:].reset_index()
 
-            rbg = ReplayBG(modality=modality, data=subset_df, bw=bw, scenario=scenario,
-                           save_name=safe_file_string, save_folder=safe_file_string, n_steps=n_steps,
-                           seed=1,
-                           plot_mode=False,
-                           verbose=False,  # Turn of when training in server
-                           analyze_results=False,)
+            # Ensure a date range with 5-minute frequency covering the full range of the DataFrame
+            subset_df.set_index('t', inplace=True)
+            full_range = pd.date_range(start=subset_df.index.min(), end=subset_df.index.max(), freq='5min')
+            subset_df = subset_df.reindex(full_range)
+            subset_df = subset_df.reset_index().rename(columns={'level_0': 't'})
+            columns_to_fill = ['basal', 'bolus', 'cho']
+            subset_df[columns_to_fill] = subset_df[columns_to_fill].fillna(0)
+
+            rbg = ReplayBG(modality=modality, data=subset_df, bw=self.bw, scenario=self.scenario,
+                           save_name=self.safe_file_string, save_folder=self.safe_file_string, n_steps=n_steps,
+                           seed=1, plot_mode=False, verbose=True,  # Turn of when training in server
+                           analyze_results=False)
 
             # Run identification
-            rbg.run(data=subset_df, bw=bw)
+            rbg.run(data=subset_df, bw=self.bw)
 
             # Initialize some default model parameters that for some reason are commented out in ReplayBG
             rbg.model.model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
@@ -74,11 +88,39 @@ class Model(BaseModel):
         return self
 
     def _predict_model(self, x_test, use_particle_filter=False):
-        df = self.process_input_data(x_test)
+        #df = self.process_input_data(x_test)
+        n_pred = self.prediction_horizon // 5
 
-        df.to_csv('ohio_570_example.csv', index=False)
-        print(df.head(10))
+        prediction_result = []
+        for index, subject_id in enumerate(self.subject_ids):
+            # Find parameters for the subject
+            model_parameters = self.models[index].model.model_parameters
+            model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
 
+            x_test_filtered = x_test[x_test['id'] == subject_id].copy()
+
+            for _, row in x_test_filtered.iterrows():
+                # First, transform the row to a df that is at replay_bg defined format
+                data = self.get_df_from_row(row).iloc[-n_pred - n_pred:].reset_index()
+
+                # Then, use replay to get the results
+                rbg = ReplayBG(modality='replay', data=data, bw=self.bw, scenario=self.scenario,
+                               save_name=self.safe_file_string, save_folder=self.safe_file_string, plot_mode=False,
+                               verbose=False, analyze_results=False)
+
+                # Run it
+                results = rbg.run(data=data, bw=self.bw)
+                result = results['cgm']['median']
+
+                # The simulation drifts from the CGM values (as expected), hence, we calibrate it with the measurement
+                difference = row['CGM'] - result[-n_pred - 1]
+                prediction = result[-n_pred:].tolist()
+                prediction = [val + difference for val in prediction]
+                prediction_result += [prediction]
+
+        """
+        # TODO: For this code to work, we need to add samples (with nan or 0) in each gap where there are time gaps
+        # TODO: and then remove those predictions before returning result
         prediction_result = []
         for index, subject_id in enumerate(self.subject_ids):
             x_test_filtered = df[df['id'] == subject_id].copy().reset_index()
@@ -90,13 +132,75 @@ class Model(BaseModel):
                 model_parameters.ka1 = 0.0034  # 1/min (virtually 0 in 77% of the cases)
                 prediction_result += self.get_phy_prediction(model_parameters, x_test_filtered, self.prediction_horizon,
                                                              use_particle_filter)
+        """
 
         # Currently, the amount of predictions are equal to samples-prediction lenght, so for 80 samples, and 72 prediction steps, we get 8 predictions
-
         return prediction_result
 
+    def get_df_from_row(self, row):
+        def get_dates_and_values(column, data):
+            relevant_columns = [val for val in data.index if val.startswith(column)]
+            dates = []
+            values = []
 
-    def get_phy_prediction(self, model_parameters, data, prediction_horizon, use_particle_filter):
+            date = data.name
+            if isinstance(date, np.int64):
+                date = datetime.datetime.now()
+
+            for col in relevant_columns:
+                if col == column:
+                    values.append(data[col])
+                    dates.append(date)
+                elif "what_if" in col:
+                    values.append(data[col])
+                    new_date = date + datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
+                elif "label" in col:
+                    pass
+                else:
+                    values.append(data[col])
+                    new_date = date - datetime.timedelta(minutes=int(col.split("_")[-1]))
+                    dates.append(new_date)
+
+            if not dates or not values:
+                # Handle the case where one or both lists are empty
+                pass
+            else:
+                # Sorting
+                combined = list(zip(dates, values))
+                # Sort by the dates (first element of each tuple)
+                combined.sort(key=lambda x: x[0])
+                # Separate into individual lists
+                dates, values = zip(*combined)
+
+            return dates, values
+
+        bolus_dates, bolus_values = get_dates_and_values('bolus', row)
+        basal_dates, basal_values = get_dates_and_values('basal', row)
+        bg_dates, bg_values = get_dates_and_values('CGM', row)
+        carbs_dates, carbs_values = get_dates_and_values('carbs', row)
+
+        date = row.name
+        for time in range(5, self.prediction_horizon + 1, 5):
+            bg_values = bg_values + (np.nan,)
+            new_date = date + datetime.timedelta(minutes=time)
+            bg_dates = bg_dates + (new_date,)
+
+        df_bolus = pd.DataFrame({'date': bolus_dates, 'bolus': bolus_values})
+        df_basal = pd.DataFrame({'date': basal_dates, 'basal': basal_values})
+        df_bg = pd.DataFrame({'date': bg_dates, 'CGM': bg_values})  # CGM as glucose
+        df_carbs = pd.DataFrame({'date': carbs_dates, 'carbs': carbs_values})  # carbs as cho
+
+        df = pd.merge(df_bolus, df_basal, on='date', how='outer')
+        df = pd.merge(df, df_bg, on='date', how='outer')
+        df = pd.merge(df, df_carbs, on='date', how='outer')
+
+        df.set_index('date', inplace=True)
+        df = self.process_input_data(df)
+        df = df.sort_values(by='t')
+        return df
+
+    def get_phy_prediction(self, model_parameters, data, prediction_horizon):
         """
         This function is translated from MatLab: https://github.com/checoisback/phy-predict/blob/main/getPhyPrediction.m.
 
@@ -117,14 +221,9 @@ class Model(BaseModel):
         Ts = 5  # minutes
 
         # Parameters configuration based on whether to use a particle filter or not
-        if use_particle_filter:
-            n_particles = 5000  # number of particles
-            sigma_v = 25  # measurements noise variance
-            sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
-        else:
-            n_particles = 5  # Minimal particles when not using particle filtering, conceptually equivalent to using the deterministic prediction
-            sigma_v = 0.5
-            sigma_u0 = np.array([1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6])
+        n_particles = 5000  # number of particles
+        sigma_v = 25  # measurements noise variance
+        sigma_u0 = np.array([10, 10, 10, 0.6, 0.6, 0.6, 1e-6, 10, 10])  # process noise variance
 
         # set physiological model environment
         model = {'TS': 1, 'YTS': 5, 'TID': (data['t'].iloc[-1] - data['t'].iloc[0]).total_seconds() / 60 + 1}
@@ -169,12 +268,8 @@ class Model(BaseModel):
         pf_v0 = ParticleFilter(gi_particle_filter_state_function, gi_measurement_likelihood_function, n_particles, x0,
                                np.diag(sigma0))
 
-        if use_particle_filter:
-            _, _, _, IG_hat, _, _ = self.apply_pf(pf_v0, time_data, data['glucose'], meal, total_ins, x0, sigma_u0,
-                                                  sigma_v, model_parameters, prediction_horizon)
-        else:
-            _, _, _, IG_hat, _, _ = self.predict_without_pf(time_data, data['glucose'], meal, total_ins, x0,
-                                                            model_parameters, prediction_horizon)
+        _, _, _, IG_hat, _, _ = self.apply_pf(pf_v0, time_data, data['glucose'], meal, total_ins, x0, sigma_u0,
+                                              sigma_v, model_parameters, prediction_horizon)
 
         # Get all the predicted values in 5-minute intervals
         predicted_trajectories = IG_hat[:, Ts - 1::Ts]
@@ -305,8 +400,6 @@ class Model(BaseModel):
 
         print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
 
-        print("INITAL STATE", x0)
-
         for k in range(len(time)):
             if k % 50 == 0:
                 print_progress_bar(k + 1, len(time), prefix='Progress:', suffix='Complete', length=50)
@@ -351,64 +444,16 @@ class Model(BaseModel):
                     VarG_hat[index_measure, p] = pred_variance[7]  # Variance for glucose
                     VarIG_hat[index_measure, p] = pred_variance[8]  # Variance for interstitial glucose
 
-                print(f"K {k}")
-                print("measured", CGM_measure)
-                print("pred", IG_hat[index_measure, :10])
-
         return lastBestGuess, lastBestCov, G_hat, IG_hat, VarG_hat, VarIG_hat
 
-
-    def predict_without_pf(self, time, noisy_measure, meal, total_ins, x0, model_parameters, prediction_horizon):
-
-        print_progress_bar(1, len(time), prefix='Progress:', suffix='Complete', length=50)
-
-        IG_hat = np.zeros((len(noisy_measure), prediction_horizon))
-        G_hat = np.zeros((len(noisy_measure), prediction_horizon))
-
-        print("INITAL STATE", x0)
-        new_state = copy.deepcopy(x0)
-
-        for k in range(len(time)):
-            if k % 50 == 0:
-                print_progress_bar(k + 1, len(time), prefix='Progress:', suffix='Complete', length=50)
-
-            index_measure = int(k / (5 / model_parameters.TS))
-            # Measurement checking based on index
-            if k % int(5 / model_parameters.TS) == 0:
-                CGM_measure = noisy_measure[index_measure]
-                new_state[8] = CGM_measure
-                new_state = predict_without_particle_filter(new_state, meal[k], total_ins[k], time[k].hour, model_parameters)
-            else:
-                CGM_measure = np.nan
-
-            # k-step ahead prediction, every interval of a given sampling rate for the output
-            if (k + prediction_horizon <= len(time)) and ((k % int(5 / model_parameters.TS)) == 0):
-                mP_pred = copy.deepcopy(model_parameters)
-
-                for p in range(prediction_horizon):
-                    # This function assumes that future meals and insulin injections are known
-                    # Alternatively, we could use estimates or assumptions of what these future values probably will be
-                    new_state = predict_without_particle_filter(new_state, meal[k + p], total_ins[k + p],
-                                                                time[k + p].hour, mP_pred)
-
-                    G_hat[index_measure, p] = new_state[7]  # Glucose
-                    IG_hat[index_measure, p] = new_state[8]  # Interstitial glucose
-
-                print(f"K {k}")
-                print("measured", CGM_measure)
-                print("pred", IG_hat[index_measure, :10])
-
-        return [], [], G_hat, IG_hat, [], []
-
-
     def best_params(self):
-        self.print_model_parameters()
+        #self.print_model_parameters()
         return
 
     def process_input_data(self, x_df):
         processed_df = x_df.copy()
-        processed_df.rename(columns={'CGM': 'glucose', 'carbs': 'cho'}, inplace=True)
-        #processed_df['SMBG'] = np.nan
+        processed_df['glucose'] = x_df['CGM']
+        processed_df['cho'] = x_df['carbs']
         processed_df['CR'] = np.nan
         processed_df['CF'] = np.nan
         processed_df['cho'] = processed_df['cho'] / 5  # Carbs needs to be in grams/min and not grams
@@ -420,18 +465,30 @@ class Model(BaseModel):
         processed_df['t'] = processed_df.index
         processed_df.reset_index(inplace=True)
 
+        def assign_label(row):
+            time_of_day = row['t'].hour
+            if time_of_day < 4 or time_of_day >= 17:
+                return 'D' # Dinner label
+            elif 4 <= time_of_day < 11:
+                return 'B' # Breakfast label
+            else:
+                return 'L' # Lunch label
+
+        processed_df['cho_label'] = processed_df['cho_label'].astype(object)
+        processed_df['bolus_label'] = processed_df['bolus_label'].astype(object)
+        processed_df.loc[processed_df['cho'] > 0, 'cho_label'] = processed_df[processed_df['cho'] > 0].apply(assign_label, axis=1)
+        processed_df.loc[processed_df['bolus'] > 0, 'bolus_label'] = processed_df[processed_df['bolus'] > 0].apply(assign_label, axis=1)
+
         return processed_df
 
     def process_data(self, df, model_config_manager, real_time):
         # df = df.dropna()
 
+        df = process_data(df, model_config_manager, real_time)
+
         # Fill nan values with 0 as per instructions: https://github.com/gcappon/py_replay_bg/tree/master/docs/src/data_requirements
         columns_to_fill = ['basal', 'bolus', 'carbs']
         df[columns_to_fill] = df[columns_to_fill].fillna(0)
-
-        # TODO: How to handle target nans in between here? Maybe we can delete nans here, add nans again in the input dataset, but then delete those indexed predictions after prediction?
-        # TODO: Add what if features here, so that we can avoid the predicted nan values
-        # TODO: Add nan instead of imputed BG values
 
         return df
 
@@ -439,26 +496,30 @@ class Model(BaseModel):
         for i in range(len(self.models)):
             mp = self.models[i].model.model_parameters
 
+            if self.scenario == 'multi-meal':
+                print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
+                print("beta_L", mp.beta_L)
+                print("beta_D", mp.beta_D)
+
+                print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
+                print("kabs_B", mp.kabs_B)
+                print("kabs_L", mp.kabs_L)
+
+                print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
+                print("SI_B", mp.SI_B)
+                print("SI_L", mp.SI_L)
+            else:
+                print("beta", mp.beta)
+                print("kabs", mp.kabs)
+                print("SI", mp.SI)
+
             print("bw:", mp.bw)  # Body weight
-            #print("beta_B", mp.beta_B)  # Time delays for meal Breakfast, Lunch and Dinner
-            #print("beta_L", mp.beta_L)
-            #print("beta_D", mp.beta_D)
-            print("beta", mp.beta)
             print("tau:", mp.tau)  # General time delay
             print("u2ss:", mp.u2ss)  # Basal insulin rate
             print("ka1:", mp.ka1)  # Absorption Rates
             print("ka2:", mp.ka2)
             print("kd:", mp.kd)  # Degradation Rate, the rate at which a substance degrades or is cleared from the system
-            #print("kabs_D", mp.kabs_D)  # Absorption specific kinetics
-            #print("kabs_B", mp.kabs_B)
-            #print("kabs_L", mp.kabs_L)
-            print("kabs", mp.kabs)
-
             print("Xpb:", mp.Xpb)  # Initial insulin action?
-            #print("SI_D", mp.SI_D)  # Insulin sensitivity indexes
-            #print("SI_B", mp.SI_B)
-            #print("SI_L", mp.SI_L)
-            print("SI", mp.SI)
             print("Gb:", mp.Gb)  # Baseline glucose level
             print("r2:", mp.r2)  # Parameter in Risk Model or Regression Coefficient
             print("ke:", mp.ke)  # Elimination rate constant, how quickly a substance is removed from the bloodstream
@@ -500,21 +561,6 @@ def gi_particle_filter_state_function(particles, CHO, INS, time, sigma_u, mP):
     return particles
 
 
-def predict_without_particle_filter(current_state, carbs, insulin, time, model_parameters):
-    """Predict the next state of the particles."""
-
-    new_state = state_function(current_state, carbs, insulin, time, model_parameters)
-    return new_state
-
-
-def state_function(current_state, CHO, INS, time, mP):
-
-    dt = mP.TS  # Sample time
-    new_state = current_state + gi_state_function_continuous(current_state, CHO, INS, time, mP) * dt
-
-    return new_state
-
-
 def gi_state_function_continuous(x, CHO, INS, time, mP):
     dxdt = np.zeros_like(x)
     Qsto1, Qsto2, Qgut, Isc1, Isc2, Ip, X, G, IG = x
@@ -523,21 +569,21 @@ def gi_state_function_continuous(x, CHO, INS, time, mP):
     Ipb = (mP.ka1 / mP.ke) * (mP.u2ss) / (mP.ka1 + mP.kd) + (mP.ka2 / mP.ke) * (mP.kd / mP.ka2) * (mP.u2ss) / (
             mP.ka1 + mP.kd)
 
-    """
-    # If multi-meal
-    # Calculate state derivatives
-    if time < 4 or time >= 17:
-        SI = mP.SI_D
-        kabs = mP.kabs_D
-    elif 4 <= time < 11:
-        SI = mP.SI_B
-        kabs = mP.kabs_B
+    if hasattr(mP, 'SI'):
+        SI = mP.SI
+        kabs = mP.kabs
     else:
-        SI = mP.SI_L
-        kabs = mP.kabs_L
-    """
-    SI = mP.SI
-    kabs = mP.kabs
+        # If multi-meal
+        # Calculate state derivatives
+        if time < 4 or time >= 17:
+            SI = mP.SI_D
+            kabs = mP.kabs_D
+        elif 4 <= time < 11:
+            SI = mP.SI_B
+            kabs = mP.kabs_B
+        else:
+            SI = mP.SI_L
+            kabs = mP.kabs_L
 
     risk = compute_hypoglycemic_risk(x[7], mP)  # Assuming G is x[7]
 

@@ -212,11 +212,12 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
+@click.option('--scenario', type=str, required=False)
 @click.option('--base-model', type=str, required=False)
 @click.option('--recursion-samples', type=int, required=False)
 @click.option('--ml-model', type=str, required=False)
 def train_model(model, config_file_name, file_name_suffix, epochs, n_cross_val_samples, n_steps,
-                training_samples_per_subject, base_model, recursion_samples, ml_model):
+                training_samples_per_subject, scenario, base_model, recursion_samples, ml_model):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -265,15 +266,17 @@ def train_model(model, config_file_name, file_name_suffix, epochs, n_cross_val_s
             file_name_suffix = f'rec_{recursion_samples}_ml_model_{ml_model}'
         model_instance = chosen_model.fit(x_train, y_train, base_model=base_model, recursion_samples=recursion_samples,
                                           ml_model=ml_model)
-    elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
+    elif model in ['uva_padova']:
         if not n_steps:
             n_steps = 10000
-        if not ml_model:
+        if not training_samples_per_subject:
             training_samples_per_subject = 8000
-        model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
+        if not scenario:
+            scenario = 'multi-meal'
+        model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject, scenario)
 
         if not file_name_suffix:
-            file_name_suffix = f'n_steps_{n_steps}'
+            file_name_suffix = f'n_steps_{n_steps}_training_samples_{training_samples_per_subject}_{scenario}'
     else:
         model_instance = chosen_model.fit(x_train, y_train)
 
