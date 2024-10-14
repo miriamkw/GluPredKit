@@ -67,7 +67,7 @@ class Model(BaseModel):
 
             rbg = ReplayBG(modality=modality, data=subset_df, bw=self.bw, scenario=self.scenario,
                            save_name=self.safe_file_string, save_folder=self.safe_file_string, n_steps=n_steps,
-                           seed=1, plot_mode=False, verbose=True,  # Turn of when training in server
+                           seed=1, plot_mode=False, verbose=False,  # Turn of when training in server
                            analyze_results=False)
 
             # Run identification
