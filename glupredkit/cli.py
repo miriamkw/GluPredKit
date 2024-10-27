@@ -43,7 +43,8 @@ def setup_directories():
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm']),
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm',
+                                             'open_aps']),
               help='Choose a parser', required=True)
 @click.option('--username', type=str, required=False)
 @click.option('--password', type=str, required=False)
@@ -127,6 +128,13 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
                 merged_df = pd.concat([parsed_data, merged_df], ignore_index=False)
             save_data(output_file_name="OhioT1DM", data=merged_df)
 
+            return
+    elif parser in ['open_aps']:
+        if file_path is None:
+            raise ValueError(f"{parser} parser requires that you provide --file-path")
+        else:
+            parsed_data = chosen_parser(file_path=file_path)
+            save_data(output_file_name="open_aps", data=parsed_data)
             return
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
