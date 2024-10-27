@@ -34,7 +34,8 @@ setup(
         "click",
         "dill",
         "python-nightscout",
-        "error-grids"
+        "error-grids",
+        "xport"
     ],
     extras_require={
         'heavy': [

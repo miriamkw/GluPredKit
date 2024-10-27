@@ -44,7 +44,7 @@ def setup_directories():
 
 @click.command()
 @click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm',
-                                             'open_aps']),
+                                             'open_aps', 't1dexi']),
               help='Choose a parser', required=True)
 @click.option('--username', type=str, required=False)
 @click.option('--password', type=str, required=False)
@@ -129,6 +129,18 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
             save_data(output_file_name="OhioT1DM", data=merged_df)
 
             return
+    elif parser in ['t1dexi']:
+        if file_path is None:
+            raise ValueError(f"{parser} parser requires that you provide --file-path")
+        else:
+            folder_1 = os.path.join(file_path, 'T1DEXI - DATA FOR UPLOAD')
+            parsed_data_1 = chosen_parser(file_path=folder_1)
+            save_data(output_file_name="T1DEXI", data=parsed_data_1)
+
+            folder_2 = os.path.join(file_path, 'T1DEXIP - DATA FOR UPLOAD')
+            parsed_data_2 = chosen_parser(file_path=folder_2)
+            save_data(output_file_name="T1DEXIP", data=parsed_data_2)
+            return
     elif parser in ['open_aps']:
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
@@ -141,6 +153,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
 
     # Train and test split
     # Adding a margin of 24 hours to the train and the test data to avoid memory leak
+    # TODO: This should maybe be for each subject instead?
     margin = int((12 * 24) / 2)
     split_index = int((len(parsed_data)) * (1 - test_size))
 
