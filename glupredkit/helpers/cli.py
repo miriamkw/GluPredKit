@@ -244,10 +244,12 @@ def validate_test_size(ctx, param, value):
 
 
 def add_is_test_column(parsed_data, test_size):
-    split_index = int((len(parsed_data)) * (1 - test_size))
     parsed_data['is_test'] = False
     subject_ids = parsed_data['id'].unique()
     for subject_id in subject_ids:
-        parsed_data[parsed_data['id'] == subject_id]['is_test'].iloc[split_index:] = True
+        subject_mask = parsed_data['id'] == subject_id
+        subject_data = parsed_data[subject_mask]
+        split_index = int(len(subject_data) * (1 - test_size))
+        parsed_data.loc[subject_data.index[split_index:], 'is_test'] = True
     return parsed_data
 

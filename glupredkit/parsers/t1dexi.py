@@ -126,6 +126,7 @@ class Parser(BaseParser):
             processed_dfs.append(df_subject)
 
         df_final = pd.concat(processed_dfs)
+
         return df_final
 
 
