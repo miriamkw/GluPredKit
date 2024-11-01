@@ -155,6 +155,9 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
         else:
             parsed_data = chosen_parser(file_path=file_path)
             output_file_name = "tidepool_dataset"
+            save_data(output_file_name=output_file_name, data=parsed_data)
+            # Already split into train and test data
+            return
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
 

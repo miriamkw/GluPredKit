@@ -17,36 +17,38 @@ class Parser(BaseParser):
         """
         file_path -- the file path to the T1DEXI dataset root folder.
         """
-        # TODO: Remove when done
-        n_files = 3
-
         # TODO: This of course has to be changed when we get the whole dataset
         HCL150_file_path = os.path.join(file_path, 'Tidepool-JDRF-HCL150-train', 'train-data')
         all_dfs = []
-        count = 0
+        all_ids = []
+
         for root, dirs, files in os.walk(HCL150_file_path):
-            if count >= n_files:
-                break
-            count += 1
-            print("COUNT", count)
             for file in files:
                 if file.endswith('.csv'):
                     subject_file_path = os.path.join(root, file)
                     df = pd.read_csv(subject_file_path, low_memory=False)
                     all_dfs.append(df)
 
+                    subject_id = file.split("_")[1].split(".")[0]
+                    all_ids.append(subject_id)
+
         processed_dfs = []
-        for df in all_dfs[:n_files]:
+        for index, df in enumerate(all_dfs):
             df_glucose, df_bolus, df_basal, df_carbs = self.get_dataframes(df)
             df_resampled = self.resample_data(df_glucose, df_bolus, df_basal, df_carbs)
+            df_resampled['id'] = all_ids[index]
             processed_dfs.append(df_resampled)
 
         df_final = pd.concat(processed_dfs)
+
+        # TODO: Update when you have all data
+        df_final['is_test'] = False
+
         return df_final
 
     def resample_data(self, df_glucose, df_bolus, df_basal, df_carbs):
         df = df_glucose.copy()
-        df = df.resample('5T', label='right').mean()
+        df = df['CGM'].resample('5T', label='right').mean()
 
         df_carbs = df_carbs.resample('5T', label='right').sum()
         df = pd.merge(df, df_carbs, on="date", how='outer')
