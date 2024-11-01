@@ -241,3 +241,13 @@ def validate_test_size(ctx, param, value):
         raise click.BadParameter('Test size must be a float between 0 and 1. Decimal values are represented using a '
                                  'period (dot).')
     return test_size
+
+
+def add_is_test_column(parsed_data, test_size):
+    split_index = int((len(parsed_data)) * (1 - test_size))
+    parsed_data['is_test'] = False
+    subject_ids = parsed_data['id'].unique()
+    for subject_id in subject_ids:
+        parsed_data[parsed_data['id'] == subject_id]['is_test'].iloc[split_index:] = True
+    return parsed_data
+

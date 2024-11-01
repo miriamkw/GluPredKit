@@ -18,21 +18,13 @@ class Parser(BaseParser):
         """
         file_path -- the file path to the T1DEXI dataset root folder.
         """
-        print("Start Date: ", datetime.datetime.now())
         df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict, df_device = self.get_dataframes(file_path)
-
-        # TODO: Add train-test split here?
         df_resampled = self.resample_data(df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict,
                                           df_device)
-        print("End Date: ", datetime.datetime.now())
 
         return df_resampled
 
     def resample_data(self, df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict, df_device):
-
-        # TODO: Remove when you are done
-        #n_subjects = 2
-
         # There are 88 subjects on MDI in the dataset --> 502 - 88 = 414. In the youth version: 261 - 37 = 224.
         # Total: 763 with, 638 without MDI
         # We use only the subjects not on MDI in this parser
@@ -40,13 +32,7 @@ class Parser(BaseParser):
 
         processed_dfs = []
 
-        # TODO: REMOVE COUNT!
-        count = 0
-        #for subject_id in subject_ids_not_on_mdi[:n_subjects]:
         for subject_id in subject_ids_not_on_mdi:
-            print(f"Processing subject number {count}...")
-            count += 1
-
             df_subject = df_glucose[df_glucose['id'] == subject_id].copy()
             df_subject = df_subject.resample('5min', label='left').last()
             df_subject['id'] = subject_id
@@ -58,21 +44,16 @@ class Parser(BaseParser):
                 df_subject_meal_grams = df_subject_meals[['meal_grams']].resample('5min', label='right').sum()
                 df_subject_meal_name = df_subject_meals[['meal_name']].resample('5min', label='right').agg(
                     lambda x: ', '.join(x))
-                #df_subject_meal_category = df_subject_meals[['meal_category']].resample('5min', label='right').agg(
-                #    lambda x: ', '.join(sorted(set(x))))
 
                 df_subject = pd.merge(df_subject, df_subject_meal_grams, on="date", how='outer')
                 df_subject = pd.merge(df_subject, df_subject_meal_name, on="date", how='outer')
-                #df_subject = pd.merge(df_subject, df_subject_meal_category, on="date", how='outer')
 
                 # Fill NaN where numbers were turned to 0 or strings were turned to ''
                 df_subject['meal_grams'] = df_subject['meal_grams'].replace(0, np.nan)
                 df_subject['meal_name'] = df_subject['meal_name'].replace('', np.nan)
-                #df_subject['meal_category'] = df_subject['meal_category'].replace('', np.nan)
             else:
                 df_subject['meal_grams'] = np.nan
                 df_subject['meal_name'] = np.nan
-                #df_subject['meal_category'] = np.nan
 
             df_subject_bolus = df_bolus[df_bolus['id'] == subject_id].copy()
             if not df_subject_bolus.empty:
@@ -81,6 +62,7 @@ class Parser(BaseParser):
             else:
                 df_subject['bolus'] = np.nan
 
+            # TODO: Double check that this is good!
             df_subject_basal = df_basal[df_basal['id'] == subject_id].copy()
             if not df_subject_basal.empty:
                 df_subject_basal = df_subject_basal[['basal']].resample('5min', label='right').last()
@@ -191,13 +173,6 @@ class Parser(BaseParser):
                 else:
                     # Otherwise, create a new DataFrame for this USUBJID
                     heartrate_dict[subject_id] = filtered_rows
-
-            print(f"Processed chunk with USUBJIDs: {df_heartrate['USUBJID'].unique()}")
-            # TODO: Remove this from the final script
-            #if row_count > 1:
-            #    break
-
-        print(f"Total unique USUBJIDs found: {len(heartrate_dict)}")
 
         # Open and read the relevant .xpt files
         with open(glucose_file_path, 'rb') as file:
