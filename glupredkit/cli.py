@@ -154,8 +154,7 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
             raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
             parsed_data = chosen_parser(file_path=file_path)
-            save_data(output_file_name="tidepool_dataset.csv", data=parsed_data)
-            return
+            output_file_name = "tidepool_dataset"
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
 
