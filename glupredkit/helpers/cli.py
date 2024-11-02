@@ -246,10 +246,15 @@ def validate_test_size(ctx, param, value):
 def add_is_test_column(parsed_data, test_size):
     parsed_data['is_test'] = False
     subject_ids = parsed_data['id'].unique()
+    processed_dfs = []
+
     for subject_id in subject_ids:
-        subject_mask = parsed_data['id'] == subject_id
-        subject_data = parsed_data[subject_mask]
+        subject_data = parsed_data[parsed_data['id'] == subject_id].copy()
         split_index = int(len(subject_data) * (1 - test_size))
-        parsed_data.loc[subject_data.index[split_index:], 'is_test'] = True
+        subject_data.iloc[split_index:, subject_data.columns.get_loc('is_test')] = True
+        subject_data.sort_index(inplace=True)
+        processed_dfs.append(subject_data)
+
+    parsed_data = pd.concat(processed_dfs)
     return parsed_data
 

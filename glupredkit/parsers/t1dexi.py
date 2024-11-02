@@ -29,7 +29,6 @@ class Parser(BaseParser):
         # Total: 763 with, 638 without MDI
         # We use only the subjects not on MDI in this parser
         subject_ids_not_on_mdi = df_device[df_device['DXTRT'] != 'MULTIPLE DAILY INJECTIONS']['USUBJID'].unique()
-
         processed_dfs = []
 
         for subject_id in subject_ids_not_on_mdi:
@@ -122,13 +121,12 @@ class Parser(BaseParser):
 
             # Some rows might have gotten added nan values for the subject id after resampling
             df_subject['id'] = subject_id
+            df_subject.sort_index(inplace=True)
 
             processed_dfs.append(df_subject)
 
         df_final = pd.concat(processed_dfs)
-
         return df_final
-
 
     def get_dataframes(self, file_path):
         """
