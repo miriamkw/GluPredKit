@@ -33,7 +33,7 @@ class Parser(BaseParser):
 
         for subject_id in subject_ids_not_on_mdi:
             df_subject = df_glucose[df_glucose['id'] == subject_id].copy()
-            df_subject = df_subject.resample('5min', label='left').last()
+            df_subject = df_subject.resample('5min', label='right').mean()
             df_subject['id'] = subject_id
             df_subject.sort_index(inplace=True)
 
@@ -41,7 +41,7 @@ class Parser(BaseParser):
             df_subject_meals = df_meals[df_meals['id'] == subject_id].copy()
             if not df_subject_meals.empty:
                 df_subject_meal_grams = df_subject_meals[['meal_grams']].resample('5min', label='right').sum()
-                df_subject_meal_name = df_subject_meals[['meal_name']].resample('5min', label='right').agg(
+                df_subject_meal_name = df_subject_meals[['meal_label']].resample('5min', label='right').agg(
                     lambda x: ', '.join(x))
 
                 df_subject = pd.merge(df_subject, df_subject_meal_grams, on="date", how='outer')
@@ -49,10 +49,10 @@ class Parser(BaseParser):
 
                 # Fill NaN where numbers were turned to 0 or strings were turned to ''
                 df_subject['meal_grams'] = df_subject['meal_grams'].replace(0, np.nan)
-                df_subject['meal_name'] = df_subject['meal_name'].replace('', np.nan)
+                df_subject['meal_label'] = df_subject['meal_label'].replace('', np.nan)
             else:
                 df_subject['meal_grams'] = np.nan
-                df_subject['meal_name'] = np.nan
+                df_subject['meal_label'] = np.nan
 
             df_subject_bolus = df_bolus[df_bolus['id'] == subject_id].copy()
             if not df_subject_bolus.empty:
@@ -73,11 +73,11 @@ class Parser(BaseParser):
 
             df_subject_exercise = df_exercise[df_exercise['id'] == subject_id].copy()
             if not df_subject_exercise.empty:
-                df_subject_exercise['workout'] = df_subject_exercise.apply(
+                df_subject_exercise['workout_label'] = df_subject_exercise.apply(
                     lambda row: row['workout'] if row['workout'].lower() == row['workout_description'].lower()
                     else f"{row['workout']} {row['workout_description']}", axis=1)
 
-                df_subject_exercise_workout = df_subject_exercise[['workout']].resample('5min', label='right').agg(
+                df_subject_exercise_workout = df_subject_exercise[['workout_label']].resample('5min', label='right').agg(
                     lambda x: ', '.join(sorted(set(x))))
                 df_subject_exercise_workout_intensity = df_subject_exercise[['workout_intensity']].resample('5min',
                                                                                                             label='right').mean()
@@ -100,15 +100,15 @@ class Parser(BaseParser):
                                     df.at[i + pd.Timedelta(minutes=j * 5), col] = row[col]
                     return df
 
-                df_subject = forward_fill_by_duration(df_subject, 'workout')
+                df_subject = forward_fill_by_duration(df_subject, 'workout_label')
                 df_subject = forward_fill_by_duration(df_subject, 'workout_intensity')
 
                 # Fill NaN where strings were turned to ''
-                df_subject['workout'] = df_subject['workout'].replace('', np.nan)
+                df_subject['workout_label'] = df_subject['workout_label'].replace('', np.nan)
 
-                df_subject.drop(columns=['workout_duration'])
+                df_subject.drop(columns=['workout', 'workout_duration'], inplace=True)
             else:
-                df_subject['workout'] = np.nan
+                df_subject['workout_label'] = np.nan
                 df_subject['workout_intensity'] = np.nan
 
             if subject_id in heartrate_dict and not heartrate_dict[subject_id].empty:
@@ -199,10 +199,10 @@ class Parser(BaseParser):
         df_meals['MLDTC'] = pd.to_datetime(df_meals['MLDTC'], unit='s')
         df_meals['MLDOSE'] = pd.to_numeric(df_meals['MLDOSE'], errors='coerce')
         df_meals.rename(
-            columns={'MLDOSE': 'meal_grams', 'MLTRT': 'meal_name', 'MLCAT': 'meal_category', 'MLDTC': 'date',
+            columns={'MLDOSE': 'meal_grams', 'MLTRT': 'meal_label', 'MLCAT': 'meal_category', 'MLDTC': 'date',
                      'USUBJID': 'id'}, inplace=True)
-        #df_meals = df_meals[['meal_grams', 'meal_name', 'meal_category', 'id', 'date']]
-        df_meals = df_meals[['meal_grams', 'meal_name', 'id', 'date']]
+        #df_meals = df_meals[['meal_grams', 'meal_label', 'meal_category', 'id', 'date']]
+        df_meals = df_meals[['meal_grams', 'meal_label', 'id', 'date']]
         df_meals.set_index('date', inplace=True)
 
         df_insulin['FADTC'] = pd.to_datetime(df_insulin['FADTC'], unit='s')
