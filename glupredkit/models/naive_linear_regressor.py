@@ -9,25 +9,39 @@ class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
 
-        self.columns = ['CGM', 'CGM_5', 'CGM_10']
+        self.columns = ['CGM_15', 'CGM_10', 'CGM_5', 'CGM']
         self.model = None
 
     def _fit_model(self, x_train, y_train, *args):
-        # Define the base regressor
-        base_regressor = LinearRegression()
-
-        # Wrap the base regressor with MultiOutputRegressor
-        multi_output_regressor = MultiOutputRegressor(base_regressor)
-
-        # Perform grid search to find the best parameters and fit the model
-        multi_output_regressor.fit(x_train[self.columns], y_train)
-
-        self.model = multi_output_regressor
         return self
 
     def _predict_model(self, x_test):
-        y_pred = self.model.predict(x_test[self.columns])
-        y_pred = np.array(y_pred)
+        interval = 5  # Interval between predictions in minutes
+        num_predictions = self.prediction_horizon // interval
+        y_pred = []
+
+        for index, row in x_test.iterrows():
+            # Extract data for the last 15 minutes (e.g., assuming rows are time-ordered)
+            recent_data = row[self.columns][::-1]  # Replace with appropriate logic for 15 min extraction
+            times = np.arange(len(recent_data))  # Use relative time indices (e.g., 0, 1, ..., n-1)
+
+            # Reshape data for regression model
+            X = times.reshape(-1, 1)
+            y = recent_data.values
+
+            # Fit a linear regression model
+            reg = LinearRegression()
+            reg.fit(X, y)
+
+            # Predict the value at the prediction horizon
+            future_times = np.arange(1, num_predictions + 1)
+            predictions = reg.predict(future_times.reshape(-1, 1))
+
+            predictions = [0 if val < 0 else 600 if val > 600 else val for val in predictions]
+
+            # Append prediction
+            y_pred.append(predictions)
+
         return y_pred
 
     def best_params(self):

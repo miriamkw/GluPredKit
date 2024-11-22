@@ -125,6 +125,7 @@ glupredkit_venv/
 .venv
 env/
 venv/
+replaybg_venv/
 ENV/
 env.bak/
 venv.bak/

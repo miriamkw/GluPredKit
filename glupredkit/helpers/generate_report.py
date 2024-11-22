@@ -508,13 +508,17 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
                         calculated_ratios += [-calculated_ISF]
                     prev_value = row[i]
 
-        percentage_below_zero = (correct_sign_values / total_values) * 100
-        percentage_persistant_values = (persistant_values / total_values) * 100
-        total = (percentage_below_zero + percentage_persistant_values) / 2
-        table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
-                        "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
-        c = draw_table(c, table_data, y_placement)
-        return c
+        if total_values == 0:
+            c = draw_table(c, table_data, y_placement)
+            return c
+        else:
+            percentage_below_zero = (correct_sign_values / total_values) * 100
+            percentage_persistant_values = (persistant_values / total_values) * 100
+            total = (percentage_below_zero + percentage_persistant_values) / 2
+            table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
+                            "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
+            c = draw_table(c, table_data, y_placement)
+            return c
     else:
         c.setFont("Helvetica-Bold", 12)
         c.drawString(100, y_placement, f'The model does not use {feature} as an input.')

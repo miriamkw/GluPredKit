@@ -192,6 +192,7 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.argument('model', type=click.Choice([
     'double_lstm',
     'loop',
+    'loop_v2',
     'lstm',
     'mtl',
     'naive_linear_regressor',
@@ -247,7 +248,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
     # Ensure that the optional params match the parser
     if model in ['double_lstm', 'lstm', 'mtl', 'stl', 'tcn'] and epochs:
         model_instance = chosen_model.fit(x_train, y_train, epochs)
-    elif model in ['loop'] and n_cross_val_samples:
+    elif model in ['loop', 'loop_v2'] and n_cross_val_samples:
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
         model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
@@ -294,8 +295,8 @@ def evaluate_model(model_file, max_samples):
     target_cols = [col for col in processed_data if col.startswith('target')]
 
     if max_samples:
-        x_test = processed_data.drop(target_cols, axis=1)[-max_samples:]
-        y_test = processed_data[target_cols][-max_samples:]
+        x_test = processed_data.drop(target_cols, axis=1)[:max_samples]
+        y_test = processed_data[target_cols][:max_samples]
     else:
         x_test = processed_data.drop(target_cols, axis=1)
         y_test = processed_data[target_cols]
@@ -328,6 +329,13 @@ def evaluate_model(model_file, max_samples):
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
+    # Add test data input for numerical features
+    for feature in num_features:
+        results_df['test_input_' + feature] = [x_test[feature].tolist()]
+
+    # Add test data dates
+    results_df['test_input_date'] = [x_test.index.tolist()]
+
     metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
@@ -347,7 +355,7 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(curr_y_test, curr_y_pred)
+                score = chosen_metric(curr_y_test, curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     else:
@@ -361,13 +369,14 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
+                score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     subset_size = x_test.shape[0]
 
+    """
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova'):
+    if (model_name == 'loop') | (model_name == 'loop_v2') | (model_name == 'uva_padova'):
         subset_size = 1000
     subset_df_x = x_test[-subset_size:]
 
@@ -448,13 +457,14 @@ def evaluate_model(model_file, max_samples):
             averages = [np.nanmean(x) for x in zip(*y_pred)]
             averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+    """
 
     # Define the path to store the dataframe
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
+    output_file = f"{tested_models_path}/{model_file.split('.')[0]}.csv"
 
     # Store the dataframe in a file
     results_df.to_csv(output_file, index=False)
-    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
+    click.echo(f"Model {model_file} is finished testing. Results are stored in {tested_models_path}")
 
 
 @click.command()
@@ -505,11 +515,13 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        elif plot == 'trajectories':
+        elif plot in ['trajectories', 'trajectories_with_events', 'confusion_matrix', 'metric_comparison_bar_plot',
+                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier']:
             chosen_plot(dfs)
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
+            return
 
     click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 
@@ -565,7 +577,7 @@ def generate_evaluation_pdf(results_file):
         ph_quarter = round_to_nearest_5(prediction_horizon, 4)
         ph_subparts_list = [ph_quarter, ph_quarter * 2, ph_quarter * 3, prediction_horizon]
 
-    c = generate_report.set_title(c, f'Error Grid Analysis')
+    c = generate_report.set_title(c, f'Parkes Error Grid Analysis')
     c = generate_report.draw_error_grid_table(c, df)
 
     c = generate_report.draw_scatter_plot(c, df, ph_subparts_list[0], 100, 360)
