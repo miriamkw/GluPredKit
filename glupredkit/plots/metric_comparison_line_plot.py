@@ -13,7 +13,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*3, n_samples=12*12, prediction_horizon=120, *args):
+    def __call__(self, dfs, start_index=12*12*2, n_samples=12*12, prediction_horizon=60, *args):
         # TODO: Add these input options to the cli
         # TODO: Fix the plot when using max samples in evaluate model
         """
@@ -98,15 +98,15 @@ class Plot(BasePlot):
             parkes_linear_metric = parkes_linear_metric_module.Metric()
             parkes_errors = [parkes_linear_metric([yt], [yp]) for yt, yp in zip(aligned_y_true, aligned_y_pred)]
 
-            seg_module = helpers.get_metric_module('seg')
-            seg_metric = seg_module.Metric()
-            seg_errors = [seg_metric([yt], [yp]) for yt, yp in zip(aligned_y_true, aligned_y_pred)]
+            #seg_module = helpers.get_metric_module('seg')
+            #seg_metric = seg_module.Metric()
+            #seg_errors = [seg_metric([yt], [yp]) for yt, yp in zip(aligned_y_true, aligned_y_pred)]
 
             def normalize(data):
                 return (data - np.min(data)) / (np.max(data) - np.min(data))
             ax2.plot(t[prediction_horizon // 5:], normalize(squared_errors), label='Squared Errors')
-            #ax2.step(t[prediction_horizon // 5:], normalize(parkes_errors), label='Parkes Linear Errors')
-            ax2.plot(t[prediction_horizon // 5:], normalize(seg_errors), label='Surveillance Error Grid Scores')
+            ax2.step(t[prediction_horizon // 5:], normalize(parkes_errors), label='Parkes Linear Errors')
+            #ax2.plot(t[prediction_horizon // 5:], normalize(seg_errors), label='Surveillance Error Grid Scores')
             ax2.set_xlim(0, n_samples * 5)
 
             # Third plot, adding cost function
@@ -119,11 +119,11 @@ class Plot(BasePlot):
 
             squared_errors_with_cost = [error * weight for error, weight in zip(squared_errors, severity_weights)]
             parkes_errors_with_cost = [error * weight for error, weight in zip(parkes_errors, severity_weights)]
-            seg_errors_with_cost = [error * weight for error, weight in zip(seg_errors, severity_weights)]
+            #seg_errors_with_cost = [error * weight for error, weight in zip(seg_errors, severity_weights)]
 
             ax3.plot(t[prediction_horizon // 5:], normalize(squared_errors_with_cost))
             #ax3.step(t[prediction_horizon // 5:], normalize(parkes_errors_with_cost))
-            ax3.plot(t[prediction_horizon // 5:], normalize(seg_errors_with_cost))
+            #ax3.plot(t[prediction_horizon // 5:], normalize(seg_errors_with_cost))
             ax3.set_xlim(0, n_samples * 5)
 
             # Remove ticks on first and second plot

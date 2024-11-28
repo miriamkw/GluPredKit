@@ -145,7 +145,7 @@ class Model(BaseModel):
             if isinstance(date, np.int64):
                 date = datetime.datetime.now()
 
-            for col in relevant_columns:
+            for col in [col for col in relevant_columns if "diff" not in col]:
                 if col == column:
                     values.append(data[col])
                     dates.append(date)

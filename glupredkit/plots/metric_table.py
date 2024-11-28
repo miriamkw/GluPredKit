@@ -16,7 +16,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, zone_weighting_mode=0, *args):
+    def __call__(self, dfs, prediction_horizon=60, zone_weighting_mode=0, *args):
         """
         Plots the confusion matrix for the given trained_models data.
 
@@ -28,7 +28,7 @@ class Plot(BasePlot):
         # TODO: Implement metrics as an input value
         #metrics = ['rmse', 'parkes_linear', 'temporal_gain', 'mcc', 'f1']
         #metrics = ['mcc', 'f1', 'g_mean']
-        metrics = ['rmse', 'temporal_gain', 'g_mean']
+        metrics = ['rmse', 'g_mean', 'temporal_gain', 'me']
         data = []
         prediction_horizons = []
 

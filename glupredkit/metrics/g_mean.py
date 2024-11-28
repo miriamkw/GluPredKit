@@ -19,14 +19,11 @@ class Metric(BaseMetric):
 
         recalls = recall_score(true_labels, predicted_labels, average=None)
 
-        # Check for any zero recalls
-        if np.any(recalls == 0):
-            raise ValueError(
-                f"One or more regions have zero recall. Recalls: {recalls}. "
-                "The error happens because the model completely missed predicting one or more categories (regions), "
-                "resulting in a recall of 0 for those categories. This might be due to imbalanced data, poor model "
-                "performance, or unsuitable thresholds."
-            )
+        # Replace zeros with a very small number instead of raising error
+        epsilon = 1e-10  # Small constant
+        recalls = np.where(recalls == 0, epsilon, recalls)
 
-        return np.sqrt(np.prod(recalls))
+        # Calculate geometric mean
+        g_mean_value = np.exp(np.mean(np.log(recalls)))
+        return g_mean_value
 

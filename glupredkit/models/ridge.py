@@ -2,6 +2,8 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import Ridge
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.multioutput import MultiOutputRegressor
 import json
 import numpy as np
@@ -18,19 +20,30 @@ class Model(BaseModel):
         self.subject_ids = x_train['id'].unique()
 
         # Define the parameter grid
+        alphas = np.logspace(-4, 4, 5)
+    
         param_grid = {
-            'estimator__alpha': [0.001, 0.01, 0.1, 1.0]
+            'regressor__estimator__alpha': alphas
         }
-        for _ in range(len(self.subject_ids)):
+        for subject_id in self.subject_ids:
             # Define the base regressor
-            base_regressor = Ridge(tol=1)
+            base_regressor = Ridge()
+
+            x_train_subject = x_train[x_train['id'] == subject_id]
+            y_train_subject = y_train[x_train['id'] == subject_id]
 
             # Wrap the base regressor with MultiOutputRegressor
             multi_output_regressor = MultiOutputRegressor(base_regressor)
 
+            # Create the pipeline
+            pipeline = Pipeline([
+                ('scaler', StandardScaler()),
+                ('regressor', multi_output_regressor)
+            ])
+
             # Perform grid search to find the best parameters and fit the model
-            model = GridSearchCV(multi_output_regressor, param_grid, cv=5, scoring='neg_mean_squared_error')
-            model.fit(x_train, y_train)
+            model = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_squared_error')
+            model.fit(x_train_subject, y_train_subject)
 
             self.models = self.models + [model]
         return self
@@ -51,6 +64,8 @@ class Model(BaseModel):
         return y_pred
 
     def best_params(self):
+        # TODO!
+        """
         best_params = []
 
         for model in self.models:
@@ -65,7 +80,8 @@ class Model(BaseModel):
                 best_params = best_params + [ridge_regressor.alpha]
 
         # Return the best parameters found by GridSearchCV
-        return best_params
+        """
+        return 
 
     def process_data(self, df, model_config_manager, real_time):
         return process_data(df, model_config_manager, real_time)

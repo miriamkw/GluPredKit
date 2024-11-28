@@ -191,6 +191,9 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.command()
 @click.argument('model', type=click.Choice([
     'double_lstm',
+    'hybrid_model',
+    'custom_objective',
+    'custom_random_forest',
     'loop',
     'loop_v2',
     'lstm',
@@ -206,11 +209,15 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'zero_order'
 ]))
 @click.argument('config-file-name', type=str)
+@click.option('--file-name-suffix', type=str, required=False)
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
+@click.option('--base-model', type=str, required=False)
+@click.option('--recursion-samples', type=int, required=False)
+@click.option('--ml-model', type=str, required=False)
+def train_model(model, config_file_name, file_name_suffix, epochs, n_cross_val_samples, n_steps, training_samples_per_subject, base_model, recursion_samples, ml_model):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -252,6 +259,15 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
         model_instance = chosen_model.fit(x_train, y_train, n_cross_val_samples)
     elif model in ['uva_padova'] and n_steps or training_samples_per_subject:
         model_instance = chosen_model.fit(x_train, y_train, n_steps, training_samples_per_subject)
+    elif model in ['hybrid_model'] and base_model:
+        if not recursion_samples:
+            recursion_samples = 6
+        if not ml_model:
+            ml_model = 'ridge'
+        if not file_name_suffix:
+            file_name_suffix = f'rec_{recursion_samples}_ml_model_{ml_model}'
+        model_instance = chosen_model.fit(x_train, y_train, base_model=base_model, recursion_samples=recursion_samples,
+                                          ml_model=ml_model)
     else:
         model_instance = chosen_model.fit(x_train, y_train)
 
@@ -259,7 +275,11 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 
     # Assuming model_instance is your class instance
     output_dir = Path("data") / "trained_models"
-    output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    if file_name_suffix:
+        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}__{file_name_suffix}.pkl'
+    else:
+        output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    
     output_path = output_dir / output_file_name
 
     try:
@@ -516,7 +536,7 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
                 chosen_plot(dfs, prediction_horizon)
 
         elif plot in ['trajectories', 'trajectories_with_events', 'confusion_matrix', 'metric_comparison_bar_plot',
-                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier']:
+                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier', 'metrics_across_prediction_horizons']:
             chosen_plot(dfs)
 
         else:

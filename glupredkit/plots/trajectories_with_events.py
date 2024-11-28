@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*8, n_samples=12*12, trajectory_interval=3, *args):
+    def __call__(self, dfs, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
         # TODO: Add these input options to the cli
         # TODO: Fix the plot when using max samples in evaluate model
         """
