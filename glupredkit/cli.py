@@ -536,7 +536,8 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
                 chosen_plot(dfs, prediction_horizon)
 
         elif plot in ['trajectories', 'trajectories_with_events', 'confusion_matrix', 'metric_comparison_bar_plot',
-                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier', 'metrics_across_prediction_horizons']:
+                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier',
+                      'metrics_across_prediction_horizons', 'feature_histogram']:
             chosen_plot(dfs)
 
         else:
