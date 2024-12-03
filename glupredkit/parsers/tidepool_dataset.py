@@ -45,14 +45,23 @@ class Parser(BaseParser):
         df = df_glucose.copy()
         df = df['CGM'].resample('5T', label='right').mean()
 
-        df_carbs = df_carbs.resample('5T', label='right').sum()
-        df = pd.merge(df, df_carbs, on="date", how='outer')
+        if not df_carbs.empty:
+            df_carbs = df_carbs.resample('5T', label='right').sum()
+            df = pd.merge(df, df_carbs, on="date", how='outer')
+        else:
+            print("Subject with no carbohydrates")
 
-        df_bolus = df_bolus.resample('5T', label='right').sum()
-        df = pd.merge(df, df_bolus, on="date", how='outer')
+        if not df_bolus.empty:
+            df_bolus = df_bolus.resample('5T', label='right').sum()
+            df = pd.merge(df, df_bolus, on="date", how='outer')
+        else:
+            print("Subject with no boluses")
 
-        df_basal = df_basal.resample('5T', label='right').sum()
-        df = pd.merge(df, df_basal, on="date", how='outer')
+        if not df_basal.empty:
+            df_basal = df_basal.resample('5T', label='right').sum()
+            df = pd.merge(df, df_basal, on="date", how='outer')
+        else:
+            print("Subject with no basals")
 
         if not df_workouts.empty:
             df_workout_labels = df_workouts['workout_label'].resample('5T', label='right').last()
