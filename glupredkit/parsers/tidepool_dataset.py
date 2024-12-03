@@ -26,8 +26,8 @@ class Parser(BaseParser):
         for prefix, folders in file_paths.items():
             for folder in folders:
                 current_file_path = os.path.join(file_path, folder, 'train-data' if 'train' in folder else 'test-data')
-                all_dfs, all_ids = get_dfs_and_ids(current_file_path, all_dfs, all_ids, id_prefix=f'{prefix}-')
-                is_test_bools += [True if 'test' in folder else False]
+                is_test = True if 'test' in folder else False
+                all_dfs, all_ids, is_test_bools = get_dfs_and_ids(current_file_path, all_dfs, all_ids, is_test_bools, is_test, id_prefix=f'{prefix}-')
 
         processed_dfs = []
         for index, df in enumerate(all_dfs):
@@ -195,7 +195,7 @@ def split_workouts_into_intervals(row):
     return rows
 
 
-def get_dfs_and_ids(file_path, all_dfs, all_ids, id_prefix):
+def get_dfs_and_ids(file_path, all_dfs, all_ids, is_test_bools, is_test, id_prefix):
     for root, dirs, files in os.walk(file_path):
         for file in files:
             if file.endswith('.csv'):
@@ -205,4 +205,6 @@ def get_dfs_and_ids(file_path, all_dfs, all_ids, id_prefix):
 
                 subject_id = id_prefix + file.split("_")[1].split(".")[0]
                 all_ids.append(subject_id)
-    return all_dfs, all_ids
+
+                is_test_bools.append(is_test)
+    return all_dfs, all_ids, is_test_bools
