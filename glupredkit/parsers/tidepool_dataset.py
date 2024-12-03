@@ -22,21 +22,19 @@ class Parser(BaseParser):
             'SAP100': ['Tidepool-JDRF-SAP100-train', 'Tidepool-JDRF-SAP100-test'],
             'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
         }
-        all_dfs, all_ids = [], []
+        all_dfs, all_ids, is_test_bools = [], [], []
         for prefix, folders in file_paths.items():
             for folder in folders:
                 current_file_path = os.path.join(file_path, folder, 'train-data' if 'train' in folder else 'test-data')
                 all_dfs, all_ids = get_dfs_and_ids(current_file_path, all_dfs, all_ids, id_prefix=f'{prefix}-')
+                is_test_bools += [True if 'test' in folder else False]
 
         processed_dfs = []
         for index, df in enumerate(all_dfs):
             df_glucose, df_bolus, df_basal, df_carbs, df_workouts = self.get_dataframes(df)
             df_resampled = self.resample_data(df_glucose, df_bolus, df_basal, df_carbs, df_workouts)
             df_resampled['id'] = all_ids[index]
-
-            # Add 'is_test' column, True if it's a test set, False if it's a training set
-            folder = file_paths[list(file_paths.keys())[index // len(file_paths['HCL150'])]][index % len(file_paths['HCL150'])]
-            df_resampled['is_test'] = True if 'test' in folder else False
+            df_resampled['is_test'] = is_test_bools[index]
 
             processed_dfs.append(df_resampled)
 
