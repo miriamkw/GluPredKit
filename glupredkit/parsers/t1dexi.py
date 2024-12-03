@@ -38,7 +38,7 @@ class Parser(BaseParser):
             df_subject.sort_index(inplace=True)
 
             df_subject_meals = df_meals[df_meals['id'] == subject_id].copy()
-            print("DF SUBJECT MEALS BEFORE:", df_subject_meals)
+            #print("DF SUBJECT MEALS BEFORE:", df_subject_meals)
             if not df_subject_meals.empty:
                 df_subject_meal_grams = df_subject_meals[df_subject_meals['meal_grams'].notna()][['meal_grams']].resample('5min', label='right').sum()
                 df_subject_meal_name = df_subject_meals[df_subject_meals['meal_label'].notna()][['meal_label']].resample('5min', label='right').agg(
@@ -58,8 +58,8 @@ class Parser(BaseParser):
                 df_subject['meal_label'] = np.nan
                 df_subject['carbs'] = np.nan
 
-            print("NOT NA MEALS FOR SUBJECT", subject_id)
-            print(df_subject[df_subject['carbs'] > 0][['carbs', 'meal_label', 'meal_grams']])
+            #print("NOT NA MEALS FOR SUBJECT", subject_id)
+            #print(df_subject[df_subject['carbs'] > 0][['carbs', 'meal_label', 'meal_grams']])
 
             df_subject_bolus = df_bolus[df_bolus['id'] == subject_id].copy()
             if not df_subject_bolus.empty:
@@ -218,17 +218,17 @@ class Parser(BaseParser):
         # TODO: when working, uncomment heart rate!
         # TODO: There are some crazy duplicates happening here..! subject 1000: 2030-10-16 17:30:00  568.40  Cheese, Colby Jack, Cheese, Colby Jack, Cheese... 6667.50
         df_fa_meals = df_fa_meals[df_fa_meals['FATESTCD'] == "DCARBT"][df_fa_meals['FACAT'] == "CONSUMED"]
-        print("STEP1", df_fa_meals)
+        #print("STEP1", df_fa_meals)
         df_fa_meals['FADTC'] = pd.to_datetime(df_fa_meals['FADTC'], unit='s')
-        print("STEP2", df_fa_meals)
+        #print("STEP2", df_fa_meals)
         df_fa_meals['FASTRESN'] = pd.to_numeric(df_fa_meals['FASTRESN'], errors='coerce')
-        print("STEP3", df_fa_meals)
+        #print("STEP3", df_fa_meals)
         df_fa_meals.rename(columns={'FASTRESN': 'carbs', 'FADTC': 'date', 'USUBJID': 'id'}, inplace=True)
         df_fa_meals = df_fa_meals[['carbs', 'id', 'date']]
-        print("STEP4", df_fa_meals)
+        #print("STEP4", df_fa_meals)
         df_meals = pd.concat([df_meals, df_fa_meals])
         df_meals.set_index('date', inplace=True)
-        print("STEP 5", df_meals)
+        #print("STEP 5", df_meals)
 
         df_insulin['FADTC'] = pd.to_datetime(df_insulin['FADTC'], unit='s')
         df_insulin['FASTRESN'] = pd.to_numeric(df_insulin['FASTRESN'], errors='coerce')

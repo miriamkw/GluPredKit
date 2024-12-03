@@ -15,31 +15,32 @@ class Parser(BaseParser):
 
     def __call__(self, file_path: str, *args):
         """
-        file_path -- the file path to the T1DEXI dataset root folder.
+        file_path -- the file path to the tidepool dataset root folder.
         """
-        # TODO: This of course has to be changed when we get the whole dataset
-        HCL150_file_path = os.path.join(file_path, 'Tidepool-JDRF-HCL150-train', 'train-data')
-        SAP100_file_path = os.path.join(file_path, 'Tidepool-JDRF-SAP100-train', 'train-data')
-        PA50_file_path = os.path.join(file_path, 'Tidepool-JDRF-PA50-train', 'train-data')
-
-        all_dfs, all_ids = get_dfs_and_ids(HCL150_file_path, [], [], id_prefix='HCL150-')
-        all_dfs, all_ids = get_dfs_and_ids(SAP100_file_path, all_dfs, all_ids, id_prefix='SAP100-')
-        all_dfs, all_ids = get_dfs_and_ids(PA50_file_path, all_dfs, all_ids, id_prefix='PA50-')
+        file_paths = {
+            'HCL150': ['Tidepool-JDRF-HCL150-train', 'Tidepool-JDRF-HCL150-test'],
+            'SAP100': ['Tidepool-JDRF-SAP100-train', 'Tidepool-JDRF-SAP100-test'],
+            'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
+        }
+        all_dfs, all_ids = [], []
+        for prefix, folders in file_paths.items():
+            for folder in folders:
+                current_file_path = os.path.join(file_path, folder, 'train-data' if 'train' in folder else 'test-data')
+                all_dfs, all_ids = get_dfs_and_ids(current_file_path, all_dfs, all_ids, id_prefix=f'{prefix}-')
 
         processed_dfs = []
         for index, df in enumerate(all_dfs):
             df_glucose, df_bolus, df_basal, df_carbs, df_workouts = self.get_dataframes(df)
             df_resampled = self.resample_data(df_glucose, df_bolus, df_basal, df_carbs, df_workouts)
             df_resampled['id'] = all_ids[index]
+
+            # Add 'is_test' column, True if it's a test set, False if it's a training set
+            folder = file_paths[list(file_paths.keys())[index // len(file_paths['HCL150'])]][index % len(file_paths['HCL150'])]
+            df_resampled['is_test'] = True if 'test' in folder else False
+
             processed_dfs.append(df_resampled)
 
         df_final = pd.concat(processed_dfs)
-
-        # TODO: Double check if you have overlapping ids. Maybe add a prefix to the ids!
-
-        # TODO: Update when you have all data
-        df_final['is_test'] = False
-
         return df_final
 
     def resample_data(self, df_glucose, df_bolus, df_basal, df_carbs, df_workouts):
@@ -60,14 +61,8 @@ class Parser(BaseParser):
             df_calories_burned = df_workouts['calories_burned'].resample('5T', label='right').sum()
             df = pd.merge(df, df_workout_labels, on="date", how='outer')
             df = pd.merge(df, df_calories_burned, on="date", how='outer')
-            #print(df[df['workout_label'].notna()])
 
         df['insulin'] = df['bolus'] + df['basal'] / 12
-
-        # TODO: Remove this!
-        #df_with_nan = df.replace(0, np.nan)
-        #print("INFO ABOUT COLUMNS: ", df_with_nan.info())
-
         return df
 
     def get_dataframes(self, df):
@@ -93,7 +88,7 @@ class Parser(BaseParser):
         df_bolus.set_index('date', inplace=True)
 
         # Dataframe basal rates
-        # TODO: Verify that basal are correctly added according to schedule / percentage / temp basals...
+        # TODO: Verify that basals are correctly added according to schedule / percentage / temp basals...
         df_basal = df[df['type'] == 'basal'][['time', 'duration', 'rate', 'units']]
         df_basal.rename(columns={"time": "date", "rate": "basal"}, inplace=True)
         df_basal['duration'] = df_basal['duration'] / 1000  # convert to seconds
