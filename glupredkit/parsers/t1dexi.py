@@ -112,7 +112,7 @@ class Parser(BaseParser):
 
                 # Fill NaN where strings were turned to ''
                 df_subject['workout_label'] = df_subject['workout_label'].replace('', np.nan)
-                df_subject.drop(columns=['workout_label', 'workout_duration'], inplace=True)
+                df_subject.drop(columns=['workout_duration'], inplace=True)
             else:
                 df_subject['workout_label'] = np.nan
                 df_subject['workout_intensity'] = np.nan
@@ -214,21 +214,13 @@ class Parser(BaseParser):
         #df_meals = df_meals[['meal_grams', 'meal_label', 'meal_category', 'id', 'date']]
         df_meals = df_meals[['meal_grams', 'meal_label', 'id', 'date']]
 
-        # TODO ADD CARBS
-        # TODO: when working, uncomment heart rate!
-        # TODO: There are some crazy duplicates happening here..! subject 1000: 2030-10-16 17:30:00  568.40  Cheese, Colby Jack, Cheese, Colby Jack, Cheese... 6667.50
         df_fa_meals = df_fa_meals[df_fa_meals['FATESTCD'] == "DCARBT"][df_fa_meals['FACAT'] == "CONSUMED"]
-        #print("STEP1", df_fa_meals)
         df_fa_meals['FADTC'] = pd.to_datetime(df_fa_meals['FADTC'], unit='s')
-        #print("STEP2", df_fa_meals)
         df_fa_meals['FASTRESN'] = pd.to_numeric(df_fa_meals['FASTRESN'], errors='coerce')
-        #print("STEP3", df_fa_meals)
         df_fa_meals.rename(columns={'FASTRESN': 'carbs', 'FADTC': 'date', 'USUBJID': 'id'}, inplace=True)
         df_fa_meals = df_fa_meals[['carbs', 'id', 'date']]
-        #print("STEP4", df_fa_meals)
         df_meals = pd.concat([df_meals, df_fa_meals])
         df_meals.set_index('date', inplace=True)
-        #print("STEP 5", df_meals)
 
         df_insulin['FADTC'] = pd.to_datetime(df_insulin['FADTC'], unit='s')
         df_insulin['FASTRESN'] = pd.to_numeric(df_insulin['FASTRESN'], errors='coerce')
@@ -270,6 +262,7 @@ class Parser(BaseParser):
         df_exercise.rename(
             columns={'PRSTDTC': 'date', 'USUBJID': 'id', 'PRCAT': 'workout', 'PRTRTC': 'workout_description',
                      'PLNEXDUR': 'workout_duration', 'EXCINTSY': 'workout_intensity'}, inplace=True)
+        # TODO: Rename so that all datasets are consistent
         df_exercise = df_exercise[
             ['workout', 'workout_description', 'workout_duration', 'workout_intensity', 'id', 'date']]
         df_exercise.set_index('date', inplace=True)
