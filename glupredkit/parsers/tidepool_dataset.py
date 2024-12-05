@@ -18,9 +18,9 @@ class Parser(BaseParser):
         file_path -- the file path to the tidepool dataset root folder.
         """
         file_paths = {
-            'HCL150': ['Tidepool-JDRF-HCL150-train', 'Tidepool-JDRF-HCL150-test'],
+            #'HCL150': ['Tidepool-JDRF-HCL150-train', 'Tidepool-JDRF-HCL150-test'],
             'SAP100': ['Tidepool-JDRF-SAP100-train', 'Tidepool-JDRF-SAP100-test'],
-            'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
+            #'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
         }
         all_dfs, all_ids, is_test_bools = [], [], []
         for prefix, folders in file_paths.items():
@@ -35,13 +35,22 @@ class Parser(BaseParser):
             df_resampled = self.resample_data(df_glucose, df_bolus, df_basal, df_carbs, df_workouts)
             df_resampled['id'] = all_ids[index]
             df_resampled['is_test'] = is_test_bools[index]
-
             processed_dfs.append(df_resampled)
 
         df_final = pd.concat(processed_dfs)
         return df_final
 
     def resample_data(self, df_glucose, df_bolus, df_basal, df_carbs, df_workouts):
+        # Ensure the index is sorted and is correctly set as date without nan
+        for df in [df_glucose, df_bolus, df_basal, df_carbs, df_workouts]:
+            if not df.empty:
+                if not isinstance(df.index, pd.DatetimeIndex):
+                    print(f"Index is not correctly set as date")
+                if df.index.isna().any():
+                    print(f"Index contains invalid datetime entries (NaT)")
+                if not df.index.is_monotonic_increasing:
+                    df.sort_index(inplace=True)
+
         df = df_glucose.copy()
         df = df['CGM'].resample('5T', label='right').mean()
 
@@ -70,6 +79,18 @@ class Parser(BaseParser):
             df = pd.merge(df, df_calories_burned, on="date", how='outer')
 
         df['insulin'] = df['bolus'] + df['basal'] / 12
+
+        # Ensuring homogenous time intervals
+        df.sort_index(inplace=True)
+        df = df.resample('5T').asfreq()
+
+        time_diffs = df.index.to_series().diff()
+        expected_interval = pd.Timedelta(minutes=5)
+        valid_intervals = (time_diffs[1:] == expected_interval).all()
+        if not valid_intervals:
+            invalid_intervals = time_diffs[time_diffs != expected_interval]
+            print(f"invalid time intervals found:", invalid_intervals)
+
         return df
 
     def get_dataframes(self, df):
