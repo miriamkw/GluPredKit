@@ -18,9 +18,9 @@ class Parser(BaseParser):
         file_path -- the file path to the tidepool dataset root folder.
         """
         file_paths = {
-            #'HCL150': ['Tidepool-JDRF-HCL150-train', 'Tidepool-JDRF-HCL150-test'],
+            'HCL150': ['Tidepool-JDRF-HCL150-train', 'Tidepool-JDRF-HCL150-test'],
             'SAP100': ['Tidepool-JDRF-SAP100-train', 'Tidepool-JDRF-SAP100-test'],
-            #'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
+            'PA50': ['Tidepool-JDRF-PA50-train', 'Tidepool-JDRF-PA50-test']
         }
         all_dfs, all_ids, is_test_bools = [], [], []
         for prefix, folders in file_paths.items():
