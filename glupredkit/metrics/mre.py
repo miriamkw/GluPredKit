@@ -10,6 +10,12 @@ class Metric(BaseMetric):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        mre = np.nanmean((y_pred - y_true) / y_true)
+        # Avoid division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            relative_error = (y_pred - y_true) / y_true
+            # Replace invalid values (resulting from division by zero) with NaN
+            relative_error[np.isinf(relative_error) | np.isnan(relative_error)] = np.nan
+
+        mre = np.nanmean(relative_error)
 
         return mre

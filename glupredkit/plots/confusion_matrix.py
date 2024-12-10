@@ -14,7 +14,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=120, *args):
+    def __call__(self, dfs, prediction_horizon=30, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """

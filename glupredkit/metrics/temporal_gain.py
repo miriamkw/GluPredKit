@@ -18,7 +18,7 @@ class Metric(BaseMetric):
 
         # Define the range of lags that corresponds to the prediction horizon
         lag_min = -prediction_horizon // 5
-        lag_max = prediction_horizon // 5
+        lag_max = 0  # if lag_max is prediction_horizon // 5, we might also have temporal gains > ph
 
         # Calculate the full range of lags for the cross-correlation
         full_lags = np.arange(-len(y_true) + 1, len(y_pred))
