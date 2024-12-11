@@ -61,7 +61,7 @@ To set up the CLI, simply run the following command:
 ```
 pip install glupredkit
 ```
-If you need the optional heavy dependencies (listed in `setup.py`), run:
+Most of the GluPredKit functionality is available with the basic install. If you need the optional heavy dependencies (listed in `setup.py`), run:
 ```
 pip install glupredkit[heavy]
 ```

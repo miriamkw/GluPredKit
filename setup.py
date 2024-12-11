@@ -34,11 +34,11 @@ setup(
         "click",
         "dill",
         "python-nightscout",
-        "error-grids"
+        "error-grids",
+        "xport"
     ],
     extras_require={
         'heavy': [
-            "xport",
             "tensorflow==2.14.0",
             "keras-tcn",
             "torch",

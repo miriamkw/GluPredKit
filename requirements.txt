@@ -2,17 +2,17 @@ matplotlib>=2.1.0
 reportlab
 svglib
 seaborn>=0.9.0
-pandas
+pandas>=1.3.5,<1.4
 scikit-learn
 tidepool-data-science-project
 reportlab
-numpy
+numpy>=1.20.0
 aiohttp
 click
 dill
 python-nightscout
 error-grids
-# xport
+xport
 # Optional heavy dependencies
 # tensorflow==2.14.0
 # keras-tcn
