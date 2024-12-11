@@ -50,7 +50,7 @@ class Parser(BaseParser):
         df['value'] = pd.to_numeric(df['value'], errors='coerce')
         df.rename(columns={'value': 'CGM', 'ts': 'date'}, inplace=True)
         df.set_index('date', inplace=True)
-        df = df.resample('5min', label='left').last()
+        df = df.resample('5min', label='right').mean()
 
         # Carbohydrates
         df_carbs = dataframes['meal'].copy()
@@ -110,14 +110,15 @@ class Parser(BaseParser):
         df = pd.merge(df, df_basal, on="date", how='outer')
         df['basal'] = df['basal'].ffill()
 
-        # Heart rate
         df = merge_data_type_into_dataframe(df, dataframes, 'basis_heart_rate', 'heartrate')
-
-        # Galvanic skin response
-        df = merge_data_type_into_dataframe(df, dataframes, 'basis_gsr', 'gsr')
-
-        # Skin temperature
+        df = merge_data_type_into_dataframe(df, dataframes, 'basis_gsr', 'galvanic_skin_response')
         df = merge_data_type_into_dataframe(df, dataframes, 'basis_skin_temperature', 'skin_temp')
+        if 'basis_air_temperature' in dataframes:
+            df = merge_data_type_into_dataframe(df, dataframes, 'basis_air_temperature', 'air_temp')
+        if 'basis_steps' in dataframes:
+            df = merge_data_type_into_dataframe(df, dataframes, 'basis_steps', 'steps', use_mean=False)
+        if 'acceleration' in dataframes:
+            df = merge_data_type_into_dataframe(df, dataframes, 'acceleration', 'acceleration')
 
         # Exercise
         df_exercise = dataframes['exercise'].copy()
@@ -126,12 +127,12 @@ class Parser(BaseParser):
             df_exercise['intensity'] = pd.to_numeric(df_exercise['intensity'], errors='coerce')
             df_exercise['duration'] = pd.to_numeric(df_exercise['duration'], errors='coerce')
             df_exercise['end_date'] = df_exercise['ts'] + pd.to_timedelta(df_exercise['duration'], unit='m')
-            df_exercise.rename(columns={'ts': 'start_date', 'intensity': 'exercise'}, inplace=True)
-            df['exercise'] = 0
+            df_exercise.rename(columns={'ts': 'start_date', 'intensity': 'workout_intensity'}, inplace=True)
+            df['workout_intensity'] = 0
             for idx, row in df_exercise.iterrows():
                 # Find the range in df that falls between start_date and end_date
                 mask = (df.index >= row['start_date']) & (df.index <= row['end_date'])
-                df.loc[mask, 'exercise'] = row['exercise']
+                df.loc[mask, 'workout_intensity'] = row['workout_intensity']
 
         df['is_test'] = is_test
         return df.sort_index()
@@ -148,14 +149,17 @@ class Parser(BaseParser):
         return ET.parse(file_path)
 
 
-def merge_data_type_into_dataframe(df, data, type_name, value_name):
+def merge_data_type_into_dataframe(df, data, type_name, value_name, use_mean=True):
     df_data_type = data[type_name].copy()
     if not df_data_type.empty:
         df_data_type['ts'] = pd.to_datetime(df_data_type['ts'], format='%d-%m-%Y %H:%M:%S', errors='coerce')
         df_data_type['value'] = pd.to_numeric(df_data_type['value'], errors='coerce')
         df_data_type.rename(columns={'ts': 'date', 'value': value_name}, inplace=True)
         df_data_type.set_index('date', inplace=True)
-        df_data_type = df_data_type.resample('5min', label='right').mean()
+        if use_mean:
+            df_data_type = df_data_type.resample('5min', label='right').mean()
+        else:
+            df_data_type = df_data_type.resample('5min', label='right').sum()
         return pd.merge(df, df_data_type, on="date", how='outer')
     else:
         return df

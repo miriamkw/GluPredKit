@@ -61,7 +61,7 @@ To set up the CLI, simply run the following command:
 ```
 pip install glupredkit
 ```
-If you need the optional heavy dependencies (listed in `setup.py`), run:
+Most of the GluPredKit functionality is available with the basic install. If you need the optional heavy dependencies (listed in `setup.py`), run:
 ```
 pip install glupredkit[heavy]
 ```
@@ -146,15 +146,19 @@ In the examples below we will use `glupredkit`.
 
 ### Parsing Data
 
-> **Synthetic Data:** If you want to test the software with a synthetic dataset, you can skip to the next step.
+> ⚠️ The parsers are a work in progress and might need further improvements to handle all data and subjects correctly. Thank you for your understanding. Contributions are always welcome and appreciated!
+
+> ℹ️ Synthetic Data: If you want to test the software with a synthetic dataset, you can skip to the next step.
 
 **Description**: Parse data from a chosen source and store it as CSV in `data/raw` using the selected parser. If you provide your own dataset, store it in `data/raw`, and make sure that the dataset adheres to the format defined in the output format of [Parsers](#parsers). 
 
+
+
 ```
-glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
+glupredkit parse --parser [tidepool|tidepool_dataset|nightscout|apple_health|ohio_t1dm|open_aps|t1dexi] [--username USERNAME] [--password PASSWORD] [--file-path FILE_PATH] [--start-date START_DATE] [--end-date END_DATE] [--test-size TEST_SIZE]
 ```
 
-- `--parser`: Choose a parser between `tidepool`, `nightscout`, `apple_health`, or `ohio_t1dm`.
+- `--parser`: Choose a parser between `tidepool`, `tidepool_dataset`, `nightscout`, `apple_health`, `ohio_t1dm`, `open_aps`, or `t1dexi`.
 - `--username` (Optional): Your username for the data source (for nightscout, use url).
 - `--password` (Optional): Your password for the data source (for nightscout, use API-KEY).
 - `--file-path`: (Optional): The file path to the raw data file that shall be parsed (required for the apple_health parser).
@@ -167,22 +171,47 @@ glupredkit parse --parser [tidepool|nightscout|apple_health|ohio_t1dm] [--userna
 
 
 #### Example Tidepool Parser
+
+Parsing data from the Tidepool API using a single user's credentials.
 ```
 glupredkit parse --parser tidepool --username johndoe@example.com --password mypassword --start-date 01-09-2023 --end-date 30-09-2023 --test-size 0.5
 ```
+#### Example Tidepool Dataset Parser
+
+Parsing data from the Tidepool Big Data Project. For this example, place the dataset in `data/raw`.
+```
+glupredkit parse --parser tidepool_dataset --file-path data/raw/
+```
 #### Example Nightscout Parser
+
+Parsing data from the Nightscout API using a single user's credentials.
 ```
 glupredkit parse --parser nightscout --username https://my_nightscout.net/ --password API_KEY --start-date 01-09-2023 --end-date 30-09-2023
 ```
 #### Example Apple Health Parser
+
+Parsing data from the Apple Health Export using a single user's data. For this example, place the dataset in `data/raw`.
 ```
 glupredkit parse --parser apple_health --file-path data/raw/export.xml --start-date 01-01-2023 --test-size 0.3
 ```
 #### Example Ohio T1DM Parser
-- The Ohio T1DM parser is parsing the data from each individual into separate dataframes.
-- `--file-path` shall be the path to where the `OhioT1DM` root folder is stored.
+The Ohio T1DM parser is parsing the data from each individual into separate dataframes. `--file-path` shall be the path to where the `OhioT1DM` root folder is stored.
 ```
 glupredkit parse --parser ohio_t1dm --file-path data/raw/
+```
+
+#### Example OpenAPS Parser
+
+Parsing data from OpenAPS Commons. For this example, place the dataset in `data/raw`.
+```
+glupredkit parse --parser open_aps --file-path data/raw/
+```
+
+#### Example T1DEXI Parser
+
+Parsing data from T1DEXI and T1DEXIP. For this example, place the dataset in `data/raw`.
+```
+glupredkit parse --parser t1dexi --file-path data/raw/
 ```
 
 ---

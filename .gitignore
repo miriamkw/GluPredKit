@@ -121,6 +121,7 @@ celerybeat.pid
 
 # Environments
 glupredkit_venv/
+replaybg_venv/
 .env
 .venv
 env/
