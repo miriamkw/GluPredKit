@@ -1,5 +1,5 @@
 name: test_models
-on: pull_request
+on: push
 permissions:
   contents: read
 jobs:
