@@ -43,8 +43,7 @@ def setup_directories():
 
 
 @click.command()
-@click.option('--parser', type=click.Choice(['tidepool', 'tidepool_dataset', 'nightscout', 'apple_health',
-                                             'ohio_t1dm', 'open_aps', 't1dexi']),
+@click.option('--parser', type=click.Choice(['tidepool', 'nightscout', 'apple_health', 'ohio_t1dm']),
               help='Choose a parser', required=True)
 @click.option('--username', type=str, required=False)
 @click.option('--password', type=str, required=False)
@@ -129,40 +128,18 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
             save_data(output_file_name="OhioT1DM", data=merged_df)
 
             return
-    elif parser in ['t1dexi']:
-        if file_path is None:
-            raise ValueError(f"{parser} parser requires that you provide --file-path")
-        else:
-            folder_1 = os.path.join(file_path, 'T1DEXI - DATA FOR UPLOAD')
-            parsed_data_1 = chosen_parser(file_path=folder_1)
-            parsed_data_1 = helpers.add_is_test_column(parsed_data_1, test_size)
-            save_data(output_file_name="T1DEXI", data=parsed_data_1)
-
-            folder_2 = os.path.join(file_path, 'T1DEXIP - DATA FOR UPLOAD')
-            parsed_data_2 = chosen_parser(file_path=folder_2)
-            parsed_data_2 = helpers.add_is_test_column(parsed_data_2, test_size)
-            save_data(output_file_name="T1DEXIP", data=parsed_data_2)
-            return
-    elif parser in ['open_aps']:
-        if file_path is None:
-            raise ValueError(f"{parser} parser requires that you provide --file-path")
-        else:
-            parsed_data = chosen_parser(file_path=file_path)
-            output_file_name = "open_aps"
-    elif parser in ['tidepool_dataset']:
-        if file_path is None:
-            raise ValueError(f"{parser} parser requires that you provide --file-path")
-        else:
-            parsed_data = chosen_parser(file_path=file_path)
-            output_file_name = "tidepool_dataset"
-            save_data(output_file_name=output_file_name, data=parsed_data)
-            # Already split into train and test data
-            return
     else:
         raise ValueError(f"unrecognized parser: '{parser}'")
 
     # Train and test split
-    parsed_data = helpers.add_is_test_column(parsed_data, test_size)
+    # Adding a margin of 24 hours to the train and the test data to avoid memory leak
+    margin = int((12 * 24) / 2)
+    split_index = int((len(parsed_data)) * (1 - test_size))
+
+    parsed_data['is_test'] = False
+    parsed_data['is_test'].iloc[split_index:] = True
+    parsed_data = parsed_data.drop(parsed_data.index[split_index - margin:split_index + margin])
+
     save_data(output_file_name=output_file_name, data=parsed_data)
 
 

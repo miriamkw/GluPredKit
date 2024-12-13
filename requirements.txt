@@ -12,7 +12,6 @@ click
 dill
 python-nightscout
 error-grids
-# xport
 # Optional heavy dependencies
 # tensorflow==2.14.0
 # keras-tcn
