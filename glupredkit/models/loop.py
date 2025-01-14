@@ -39,7 +39,7 @@ class Model(BaseModel):
             daily_avg_basal = np.mean(subset_df_x.groupby(pd.Grouper(freq='D')).agg({'basal': 'mean'}))
 
             # Calculate total daily insulin
-            daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+            daily_avg_insulin = np.mean(x_train_filtered.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))[0]
             print(f"Daily average insulin for subject {subject_id}: ", daily_avg_insulin)
 
             basal = daily_avg_basal
@@ -100,7 +100,7 @@ class Model(BaseModel):
             df_subset = x_test[x_test['id'] == subject_id]
             n_predictions = df_subset.shape[0]
             input_dict = self.get_input_dict(self.insulin_sensitivity_factor[index], self.carb_ratio[index],
-                                             self.basal[index])
+                                             self.basal[index][0])
 
             for i in range(0, n_predictions):
                 current_data = df_subset.iloc[i]

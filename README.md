@@ -371,7 +371,7 @@ glupredkit draw_plots
     - **trajectories** (providing start- and end- date for up to 48 hours is recommended for readability)
 - `--start-date` (optional): The start date for the predictions. If not set, the first sample from the test data will be used. Input the date in the format "dd-mm-yyyy/hh:mm".
 - `--end-date` (optional): This serves as either the end date for your range or the specific prediction date for one prediction plots. If left unspecified, the command defaults to using the last sample from the test data. The date format is "dd-mm-yyyy/hh:mm".
-- `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot.
+- `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot. Optional for confusion matrix.
 
 #### Example
 ```

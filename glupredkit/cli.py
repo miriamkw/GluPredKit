@@ -528,7 +528,16 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        elif plot == 'trajectories':
+        if plot == 'confusion_matrix':
+            if prediction_horizons is None:
+                prediction_horizons = '30'
+            prediction_horizons = helpers.split_string(prediction_horizons)
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon)
+
+        elif plot in ['trajectories', 'trajectories_with_events', 'metric_comparison_bar_plot',
+                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier',
+                      'metrics_across_prediction_horizons', 'feature_histogram']:
             chosen_plot(dfs)
 
         else:
