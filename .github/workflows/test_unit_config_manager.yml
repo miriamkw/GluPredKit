@@ -1,5 +1,5 @@
 name: test_unit_config_manager
-on: push
+on: pull_request
 permissions:
   contents: read
 jobs:
