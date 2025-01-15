@@ -528,14 +528,14 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        if plot in ['confusion_matrix', 'cgpm_table', 'all_metrics_table']:
+        if plot in ['confusion_matrix', 'cgpm_table', 'all_metrics_table', 'pareto_frontier']:
             if prediction_horizons is None:
                 prediction_horizons = '30'
             prediction_horizons = helpers.split_string(prediction_horizons)
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        elif plot in ['trajectories', 'trajectories_with_events', 'parkes_error_grid', 'pareto_frontier']:
+        elif plot in ['trajectories', 'trajectories_with_events', 'parkes_error_grid']:
             chosen_plot(dfs)
 
         else:

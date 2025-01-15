@@ -8,17 +8,12 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=120, *args):
+    def __call__(self, dfs, prediction_horizon=30, normalize_results=False, *args):
         """
         Plots the confusion matrix for the given trained_models data.
-        mode 0: normal metrics
-        mode 1: using equally weighted scores
-        mode 2: using cost function (severity blood glucose and gradient)
         """
-        # TODO: Implement overall vs prediction horizon
         metrics = ['rmse', 'temporal_gain', 'g_mean']
         data = []
-        prediction_horizons = []
 
         # Creates results df
         for df in dfs:
@@ -26,30 +21,18 @@ class Plot(BasePlot):
             row = {"Model Name": model_name}
 
             for metric_name in metrics:
-                # If prediction horizon is defined, add metric at prediction horizon.
-                # If not, add total across all prediction horizons
-                if prediction_horizon:
-                    score = df[f'{metric_name}_{prediction_horizon}'][0]
-                    row[metric_name] = score
-                else:
-                    ph = int(df['prediction_horizon'][0])
-                    prediction_horizons = list(range(5, ph + 1, 5))
-                    results = []
-                    for prediction_horizon in prediction_horizons:
-                        score = df[f'{metric_name}_{prediction_horizon}'][0]
-                        results += [score]
-                    average_score = np.mean(results)
-                    row[metric_name] = average_score
-
+                score = df[f'{metric_name}_{prediction_horizon}'][0]
+                row[metric_name] = score
             data.append(row)
 
         results_df = pd.DataFrame(data)
-        results_df['temporal_gain'] = (prediction_horizon - results_df['temporal_gain']) / prediction_horizon
-        results_df['g_mean'] = 1 - results_df['g_mean']
-        normalized_df = results_df.copy()
-        normalized_df[metrics] = normalized_df[metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
 
-        print("NORM", normalized_df)
+        if normalize_results:
+            prediction_horizon = float(prediction_horizon)
+            results_df['temporal_gain'] = (prediction_horizon - results_df['temporal_gain']) / prediction_horizon
+            results_df['g_mean'] = 1 - results_df['g_mean']
+            normalized_df = results_df.copy()
+            results_df[metrics] = normalized_df[metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
 
         def pareto_frontier(df):
             """
@@ -58,6 +41,10 @@ class Plot(BasePlot):
             A model is dominated if another model has better (lower) performance across all metrics.
             """
             pareto_front = []
+
+            # Change so that low value is better
+            df['temporal_gain'] = -df['temporal_gain']
+            df['g_mean'] = -df['g_mean']
 
             # Iterate through each model (row)
             for i, model in df.iterrows():
@@ -72,13 +59,14 @@ class Plot(BasePlot):
                 if not is_dominated:
                     pareto_front.append(model)  # This model is not dominated, so add to Pareto front
 
-            return pd.DataFrame(pareto_front)
+            # Change back to original
+            pareto_front_df = pd.DataFrame(pareto_front)
+            pareto_front_df['temporal_gain'] = -pareto_front_df['temporal_gain']
+            pareto_front_df['g_mean'] = -pareto_front_df['g_mean']
 
-        print("results", results_df)
+            return pareto_front_df
 
-        pareto_front_df = pareto_frontier(results_df)
-        print("Pareto Frontier:")
-        print(pareto_front_df)
+        pareto_front_df = pareto_frontier(results_df.copy())
 
         def plot_2d(df, pareto_front_df):
             """
@@ -117,6 +105,10 @@ class Plot(BasePlot):
             # Highlight Pareto frontier
             ax.scatter(pareto_front_df['rmse'], pareto_front_df['g_mean'], pareto_front_df['temporal_gain'],
                        color='red', label='Pareto Frontier', s=100, marker='x')
+
+            # Highlight the optimal point
+            ax.scatter(0.0, 1.0, float(prediction_horizon),
+                       color='green', label='Optimal Point', s=150, marker='o')
 
             # Add annotations (model names) for each point
             for i, model_name in enumerate(df['Model Name']):
