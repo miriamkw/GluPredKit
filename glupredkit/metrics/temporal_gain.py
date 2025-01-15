@@ -8,8 +8,8 @@ class Metric(BaseMetric):
         super().__init__('Temporal Gain')
 
     def _calculate_metric(self, y_true, y_pred, *args, **kwargs):
-        # 120 as default
-        prediction_horizon = kwargs.get('prediction_horizon', 120)
+        # 60 as default
+        prediction_horizon = kwargs.get('prediction_horizon', 60)
 
         y_true = np.asarray(y_true)
         y_pred = np.asarray(y_pred)
@@ -33,3 +33,5 @@ class Metric(BaseMetric):
         lag = prediction_horizon + valid_lags[max_corr_idx] * 5
 
         return lag
+
+

@@ -370,7 +370,7 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(curr_y_test, curr_y_pred)
+                score = chosen_metric(curr_y_test, curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     else:
@@ -384,7 +384,7 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
+                score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     subset_size = x_test.shape[0]
@@ -528,20 +528,19 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        if plot == 'confusion_matrix':
+        if plot in ['confusion_matrix', 'cgpm_table']:
             if prediction_horizons is None:
                 prediction_horizons = '30'
             prediction_horizons = helpers.split_string(prediction_horizons)
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        elif plot in ['trajectories', 'trajectories_with_events', 'metric_comparison_bar_plot',
-                      'metric_comparison_line_plot', 'metric_table', 'parkes_error_grid', 'pareto_frontier',
-                      'metrics_across_prediction_horizons', 'feature_histogram']:
+        elif plot in ['trajectories', 'trajectories_with_events', 'parkes_error_grid', 'pareto_frontier']:
             chosen_plot(dfs)
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
+            return
 
     click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 

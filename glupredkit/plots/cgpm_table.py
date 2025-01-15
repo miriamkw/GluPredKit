@@ -12,16 +12,7 @@ class Plot(BasePlot):
     def __call__(self, dfs, prediction_horizon=30, *args):
         """
         Plots the confusion matrix for the given trained_models data.
-        mode 0: normal metrics
-        mode 1: using equally weighted scores
-        mode 2: using cost function (severity blood glucose and gradient)
         """
-        # TODO: Implement overall vs prediction horizon
-        # TODO: Implement metrics as an input value
-        #metrics = ['rmse', 'parkes_linear', 'temporal_gain', 'mcc', 'f1']
-        #metrics = ['mcc', 'f1', 'g_mean']
-        #metrics = ['rmse', 'g_mean', 'temporal_gain', 'me', 'parkes_linear', 'mae', 'grmse', 'pcc', 'mre', 'mare']
-        #metrics = ['grmse', 'pcc', 'mre', 'mare']
         metrics = ['rmse', 'temporal_gain', 'g_mean', 'me']
         data = []
         prediction_horizons = []
@@ -51,7 +42,6 @@ class Plot(BasePlot):
 
         results_df = pd.DataFrame(data)
 
-        print("results", results_df)
         # Plotting the DataFrame as a table
         fig, ax = plt.subplots(figsize=(10, 4))  # Adjust size as needed
         ax.axis("tight")  # Turn off the axes
