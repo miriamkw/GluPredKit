@@ -1,3 +1,4 @@
+import glupredkit.helpers.cli as helpers
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,7 +14,10 @@ class Plot(BasePlot):
         """
         Plots the confusion matrix for the given trained_models data.
         """
-        metrics = ['rmse', 'temporal_gain', 'g_mean', 'me']
+        metrics = helpers.list_files_in_package('metrics')
+        # Removing values and metrics that will not look reasonable in this format
+        metrics = [val.split('.')[0] for val in metrics if not '__init__' in val and not 'base_metric' in val
+                   and not 'error_grid' in val and not 'glycemia_detection' in val]
         data = []
 
         # Creates results df
@@ -42,9 +46,6 @@ class Plot(BasePlot):
 
         results_df = pd.DataFrame(data)
 
-        print(results_df)
-        print(prediction_horizon)
-
         # Plotting the DataFrame as a table
         fig, ax = plt.subplots(figsize=(10, 4))  # Adjust size as needed
         ax.axis("tight")  # Turn off the axes
@@ -54,27 +55,8 @@ class Plot(BasePlot):
         title_text = f"Results for Prediction Horizon of {prediction_horizon} minutes"
         plt.text(0.0, 0.04, title_text, ha='center', va='center', fontsize=14, fontweight='bold', color='black')
 
-        scaled_rmse = scale_errors(results_df['rmse'], use_mg_dl=unit_config_manager.use_mgdl)
-        prediction_horizon = float(prediction_horizon)
-        scaled_tg = np.array((prediction_horizon - results_df['temporal_gain']) / prediction_horizon)
-        scaled_g_mean = np.array(1 - results_df['g_mean'])
-        scaled_me = scale_errors(results_df['me'], use_mg_dl=unit_config_manager.use_mgdl)
-
-        # Add CGPM
-        results_df['CGPM'] = scaled_rmse + scaled_tg + scaled_g_mean + scaled_me
-
         # Format numeric values to 2 decimals
         results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}")
-
-        # Add parenthesis for scaled version
-        results_df['rmse'] = add_scaled_value_to_result(results_df['rmse'], scaled_rmse)
-        results_df['temporal_gain'] = add_scaled_value_to_result(results_df['temporal_gain'], scaled_tg)
-        results_df['g_mean'] = add_scaled_value_to_result(results_df['g_mean'], scaled_g_mean)
-        results_df['me'] = add_scaled_value_to_result(results_df['me'], scaled_me)
-
-        # Map values to prettier strings
-        results_df.rename(columns={'rmse': 'RMSE', 'temporal_gain': 'Temporal Gain', 'g_mean': 'G-Mean',
-                                   'me': 'Mean Error'}, inplace=True)
 
         # Create the table
         table = ax.table(
@@ -101,19 +83,8 @@ class Plot(BasePlot):
         table.auto_set_column_width(col=list(range(len(results_df.columns))))
         for cell in table.get_celld().values():
             cell.set_height(0.1)  # Adjust height for vertical padding
-            cell.PAD = 0.1  # Increase cell padding
+            cell.PAD = 0.05  # Increase cell padding
 
         plt.show()
 
-
-def scale_errors(metric_results, use_mg_dl=False):
-    lower_bound = 1
-    if use_mg_dl:
-        lower_bound = 18
-    max_abs = max(np.max(np.abs(metric_results)), lower_bound)
-    return np.array([np.abs(val) / max_abs for val in metric_results])
-
-
-def add_scaled_value_to_result(results, scaled_results):
-    return results + ' (' + [f"{value:.2f}" for value in scaled_results] + ')'
 

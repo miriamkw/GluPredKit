@@ -528,7 +528,7 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        if plot in ['confusion_matrix', 'cgpm_table']:
+        if plot in ['confusion_matrix', 'cgpm_table', 'all_metrics_table']:
             if prediction_horizons is None:
                 prediction_horizons = '30'
             prediction_horizons = helpers.split_string(prediction_horizons)
