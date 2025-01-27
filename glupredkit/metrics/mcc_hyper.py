@@ -9,7 +9,7 @@ class Metric(BaseMetric):
     def __init__(self):
         super().__init__('MCC Hyperglycemia Detection')
 
-    def _calculate_metric(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred, *args, **kwargs):
         hyper_threshold = 180
 
         y_true = [val > hyper_threshold for val in y_true]

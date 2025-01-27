@@ -8,7 +8,7 @@ class BaseMetric(ABC):
     def __init__(self, name):
         self.name = name
 
-    def __call__(self, y_true: List[float], y_pred: List[float]) -> any:
+    def __call__(self, y_true: List[float], y_pred: List[float], *args, **kwargs) -> any:
         if len(y_true) != len(y_pred):
             raise ValueError("y_true and y_pred must have the same length")
 
@@ -21,13 +21,13 @@ class BaseMetric(ABC):
             raise ValueError("y_true contains zero or negative values")
 
         try:
-            return self._calculate_metric(y_true, y_pred)
+            return self._calculate_metric(y_true, y_pred, *args, **kwargs)
 
         except NotImplementedError:
             raise NotImplementedError("Metric not implemented!")
 
     @abstractmethod
-    def _calculate_metric(self, y_true: List[float], y_pred: List[float]) -> any:
+    def _calculate_metric(self, y_true: List[float], y_pred: List[float], *args, **kwargs) -> any:
         raise NotImplementedError("Metric not implemented!")
 
     def __repr__(self):
