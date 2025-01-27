@@ -39,8 +39,11 @@ class Plot(BasePlot):
 
             prediction_horizons = range(5, ph + 1, 5)
 
+            # TODO: Use CGM input!
             y_true = df[f'target_5'][0]
-            y_true = ast.literal_eval(y_true)
+            string_values = y_true.replace("nan", "None")
+            y_true = ast.literal_eval(string_values)
+            y_true = [np.nan if x is None else x for x in y_true]
 
             n_samples = 12*24
 
@@ -56,6 +59,9 @@ class Plot(BasePlot):
                 y_pred = y_pred.replace("nan", "None")
                 y_pred = ast.literal_eval(y_pred)
                 y_pred = [np.nan if val is None else val for val in y_pred]
+
+                if not unit_config_manager.use_mgdl:
+                    y_pred = [unit_config_manager.convert_value(val) for val in y_pred]
 
                 y_pred_lists += [y_pred]
 

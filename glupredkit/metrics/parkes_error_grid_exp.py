@@ -8,7 +8,7 @@ class Metric(BaseMetric):
     def __init__(self):
         super().__init__('Parkes Error Grid Exponential Cost Function')
 
-    def _calculate_metric(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred, *args, **kwargs):
         accuracy_values = zone_accuracy(y_true, y_pred, 'parkes')
         max_score = 10**4
         score = -1
