@@ -11,9 +11,6 @@ class Plot(BasePlot):
         super().__init__()
 
     def __call__(self, dfs, prediction_horizon=30, type='parkes', *args):
-        """
-        Plots the confusion matrix for the given trained_models data.
-        """
         # Validate the type
         valid_types = {"parkes", "clarke"}
         if type not in valid_types:

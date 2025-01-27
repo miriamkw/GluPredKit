@@ -1,9 +1,9 @@
 from .base_plot import BasePlot
 import ast
 import random
+import re
 import numpy as np
 import pandas as pd
-import re
 import matplotlib.pyplot as plt
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 from datetime import datetime
@@ -13,7 +13,6 @@ class Plot(BasePlot):
         super().__init__()
 
     def __call__(self, dfs, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
-        # TODO: Add these input options to the cli
         # TODO: Fix the plot when using max samples in evaluate model
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
@@ -50,14 +49,19 @@ class Plot(BasePlot):
             # TODO: Only use the types that are present in the input
             # TODO: We only use the first 2000 elements to use data from only one subject...
             # Create a DataFrame
-            model_df = pd.DataFrame({
-                'date': timestamp_list[:2000],
-                'CGM': get_list_from_string(df, 'test_input_CGM')[:2000],
-                'basal': get_list_from_string(df, 'test_input_basal')[:2000],
-                'bolus': get_list_from_string(df, 'test_input_bolus')[:2000],
-                'carbs': get_list_from_string(df, 'test_input_carbs')[:2000],
-                #'exercise': get_list_from_string(df, 'test_input_exercise')[:2000],
-            })
+            try:
+                model_df = pd.DataFrame({
+                    'date': timestamp_list[:2000],
+                    'CGM': get_list_from_string(df, 'test_input_CGM')[:2000],
+                    'basal': get_list_from_string(df, 'test_input_basal')[:2000],
+                    'bolus': get_list_from_string(df, 'test_input_bolus')[:2000],
+                    'carbs': get_list_from_string(df, 'test_input_carbs')[:2000],
+                    #'exercise': get_list_from_string(df, 'test_input_exercise')[:2000],
+                })
+            except Exception as e:
+                print(f"Could not draw trajectories_with_events for {model_name}. Following feature in the model is "
+                      f"required to draw this plot: {e}")
+                continue  # Skip to the next iteration
 
             pred_cols = [col for col in df.columns if col.startswith('y_pred_')]
             for col in pred_cols:
@@ -151,7 +155,8 @@ class Plot(BasePlot):
                     lines.append(line)
 
             # Second plot
-            ax2.set_title('Carbohydrates and Exercise', fontsize=14)
+            #ax2.set_title('Carbohydrates and Exercise', fontsize=14)
+            ax2.set_title('Carbohydrates', fontsize=14)
 
             for col in [col for col in df.columns if col.startswith('test_input')]:
                 if 'basal' in col:

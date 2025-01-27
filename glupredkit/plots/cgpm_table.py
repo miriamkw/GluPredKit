@@ -13,7 +13,7 @@ class Plot(BasePlot):
         """
         Plots the confusion matrix for the given trained_models data.
         """
-        metrics = ['rmse', 'temporal_gain', 'g_mean', 'me']
+        metrics = ['rmse', 'temporal_gain', 'g_mean']#, 'me']
         data = []
 
         # Creates results df
@@ -58,10 +58,10 @@ class Plot(BasePlot):
         prediction_horizon = float(prediction_horizon)
         scaled_tg = np.array((prediction_horizon - results_df['temporal_gain']) / prediction_horizon)
         scaled_g_mean = np.array(1 - results_df['g_mean'])
-        scaled_me = scale_errors(results_df['me'], use_mg_dl=unit_config_manager.use_mgdl)
+        #scaled_me = scale_errors(results_df['me'], use_mg_dl=unit_config_manager.use_mgdl)
 
         # Add CGPM
-        results_df['CGPM'] = scaled_rmse + scaled_tg + scaled_g_mean + scaled_me
+        results_df['CGPM'] = scaled_rmse + scaled_tg + scaled_g_mean # + scaled_me
 
         # Format numeric values to 2 decimals
         results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}")
@@ -70,7 +70,7 @@ class Plot(BasePlot):
         results_df['rmse'] = add_scaled_value_to_result(results_df['rmse'], scaled_rmse)
         results_df['temporal_gain'] = add_scaled_value_to_result(results_df['temporal_gain'], scaled_tg)
         results_df['g_mean'] = add_scaled_value_to_result(results_df['g_mean'], scaled_g_mean)
-        results_df['me'] = add_scaled_value_to_result(results_df['me'], scaled_me)
+        #results_df['me'] = add_scaled_value_to_result(results_df['me'], scaled_me)
 
         # Map values to prettier strings
         results_df.rename(columns={'rmse': 'RMSE', 'temporal_gain': 'Temporal Gain', 'g_mean': 'G-Mean',

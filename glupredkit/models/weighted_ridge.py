@@ -24,7 +24,7 @@ class Model(BaseModel):
         self.y_scaler = None
 
 
-    def _fit_model(self, x_train, y_train, epochs=1000, *args):
+    def _fit_model(self, x_train, y_train, epochs=3000, *args):
 
         # TODO: I think the final solution will be to train separate models for each prediction horizon!
 
@@ -103,7 +103,6 @@ class Model(BaseModel):
 
 
     def get_weight(self, bg, delta_bg):
-
         # Add one so that the lowest cost is 1 instead of 0
         # (we don't want to cancel out prediction errors of low cost predictions!)
         weight = self.zone_cost(bg) + self.slope_cost(bg, delta_bg) + 1
@@ -117,8 +116,10 @@ class Model(BaseModel):
 
         # This function assumes BG in mg / dL
         constant = 32.9170208165394
-        left_weight = 40.0
-        right_weight = 1.7
+        #left_weight = 40.0
+        #right_weight = 1.7
+        left_weight = 19.0
+        right_weight = 1.0
 
         if bg < target:
             risk = constant * left_weight * (np.log(bg) - np.log(target)) ** 2
@@ -130,7 +131,7 @@ class Model(BaseModel):
 
     def slope_cost(self, bg, delta_bg):
 
-        # TODO: Might tune this, especially since the zone cost is adjusted!
+        # TODO: Should tune this, especially since the zone cost is adjusted!
 
         k = 18.0182
         # This function assumes mmol/L
@@ -155,9 +156,6 @@ class CustomLoss(nn.Module):
         self.target = target
 
     def forward(self, y_pred, y_true, weights):
-
-        # TODO: Add slope cost as well - not just zone cost!!
-
         mse_loss = torch.mean(weights * (y_pred - y_true) ** 2)  # Mean Squared Error
         l1_loss = torch.mean(torch.abs(y_pred - y_true))  # Mean Absolute Error
         return mse_loss + self.alpha * l1_loss

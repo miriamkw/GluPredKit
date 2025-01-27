@@ -1,11 +1,5 @@
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.exceptions import NotFittedError
-from sklearn.linear_model import Ridge
-from abc import ABC, abstractmethod
-import numpy as np
 from glupredkit.helpers.scikit_learn import process_data
 from .base_model import BaseModel
-from scipy.optimize import minimize
 from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
@@ -17,7 +11,7 @@ class Model(BaseModel):
         super().__init__(prediction_horizon)
         self.input_dim = None
         self.output_dim = None
-        self.alpha = 1.0
+        self.alpha = 0.1
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Simple linear model with multiple outputs
@@ -54,7 +48,7 @@ class Model(BaseModel):
 
         # Optimizer with L2 penalty (Ridge regularization)
         # optimizer = optim.SGD(self.model.parameters(), lr=learning_rate, weight_decay=self.alpha)
-        optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(self.model.parameters(), lr=learning_rate) #, weight_decay=self.alpha)
 
         for epoch in range(epochs):
             self.model.train()

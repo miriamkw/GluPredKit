@@ -39,6 +39,7 @@ class Plot(BasePlot):
 
             prediction_horizons = range(5, ph + 1, 5)
 
+            # TODO: Use CGM input!
             y_true = df[f'target_5'][0]
             string_values = y_true.replace("nan", "None")
             y_true = ast.literal_eval(string_values)

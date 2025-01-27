@@ -220,6 +220,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'naive_linear_regressor',
     'random_forest',
     'ridge',
+    'weighted_ridge',
+    'pytorch_ridge',
     'stacked_plsr',
     'stl',
     'svr',
@@ -350,6 +352,13 @@ def evaluate_model(model_file, max_samples):
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
+
+    # Add test data input for numerical features
+    for feature in num_features:
+        results_df['test_input_' + feature] = [x_test[feature].tolist()]
+
+    # Add test data dates
+    results_df['test_input_date'] = [x_test.index.tolist()]
 
     metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
@@ -485,15 +494,9 @@ def evaluate_model(model_file, max_samples):
                                       'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.option('--start-date', type=str,
-              help='Start date for the predictions. Default is the first sample in the test data. '
-                   'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--end-date', type=str,
-              help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
-                   'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
-                                            'without space. Required for scatter plot. ', default=None)
-def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
+                                            'without space.', default=None)
+def draw_plots(results_files, plots, prediction_horizons):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -521,28 +524,20 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
         chosen_plot = plot_module.Plot()
 
-        if plot == 'scatter_plot':
-            if prediction_horizons is None:
-                raise ValueError(f"{plot} requires that you provide --prediction-horizons")
-            prediction_horizons = helpers.split_string(prediction_horizons)
-            for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon)
-
-        if plot in ['confusion_matrix', 'cgpm_table', 'all_metrics_table', 'pareto_frontier']:
+        if plot in ['all_metrics_table', 'cgpm_table', 'confusion_matrix', 'error_grid_plot', 'error_grid_table',
+                    'pareto_frontier', 'results_across_regions', 'scatter_plot', 'single_prediction_horizon', 'weighted_loss']:
             if prediction_horizons is None:
                 prediction_horizons = '30'
             prediction_horizons = helpers.split_string(prediction_horizons)
             for prediction_horizon in prediction_horizons:
                 chosen_plot(dfs, prediction_horizon)
 
-        elif plot in ['trajectories', 'trajectories_with_events', 'parkes_error_grid']:
+        elif plot in ['trajectories', 'trajectories_with_events']:
             chosen_plot(dfs)
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
             return
-
-    click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
 
 
 @click.command()
