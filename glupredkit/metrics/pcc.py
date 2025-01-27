@@ -6,7 +6,7 @@ class Metric(BaseMetric):
     def __init__(self):
         super().__init__("PCC")
 
-    def _calculate_metric(self, y_true, y_pred):
+    def _calculate_metric(self, y_true, y_pred, *args, **kwargs):
         # Convert y_true and y_pred to numpy arrays if they are not already
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)

@@ -215,11 +215,14 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.argument('model', type=click.Choice([
     'double_lstm',
     'loop',
+    'loop_v2',
     'lstm',
     'mtl',
     'naive_linear_regressor',
     'random_forest',
     'ridge',
+    'weighted_ridge',
+    'pytorch_ridge',
     'stacked_plsr',
     'stl',
     'svr',
@@ -351,6 +354,13 @@ def evaluate_model(model_file, max_samples):
     elif ['insulin'] in num_features:
         results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
 
+    # Add test data input for numerical features
+    for feature in num_features:
+        results_df['test_input_' + feature] = [x_test[feature].tolist()]
+
+    # Add test data dates
+    results_df['test_input_date'] = [x_test.index.tolist()]
+
     metrics = helpers.list_files_in_package('metrics')
     metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
 
@@ -370,7 +380,7 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(curr_y_test, curr_y_pred)
+                score = chosen_metric(curr_y_test, curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     else:
@@ -384,7 +394,7 @@ def evaluate_model(model_file, max_samples):
             for metric in metrics:
                 metric_module = helpers.get_metric_module(metric)
                 chosen_metric = metric_module.Metric()
-                score = chosen_metric(y_test[target_cols[i]], curr_y_pred)
+                score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
 
     subset_size = x_test.shape[0]
@@ -485,15 +495,13 @@ def evaluate_model(model_file, max_samples):
                                       'None, all models will be tested.')
 @click.option('--plots', help='List of plots to be computed, separated by comma. '
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
-@click.option('--start-date', type=str,
-              help='Start date for the predictions. Default is the first sample in the test data. '
-                   'Format "dd-mm-yyyy/hh:mm"', default=None)
-@click.option('--end-date', type=str,
-              help='End date, or prediction date for one prediction plots. Default is the last sample in the test data.'
-                   'Format "dd-mm-yyyy/hh:mm"', default=None)
 @click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
-                                            'without space. Required for scatter plot. ', default=None)
-def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
+                                            'without space.', default=None)
+@click.option('--type', type=click.Choice(['parkes', 'clarke']), default='parkes',
+              help='The type of error grid evaluation method to use.')
+@click.option('--metric', type=click.Choice(['mean_error', 'rmse']), default='mean_error',
+              help='The type of metric to use in results across regions.')
+def draw_plots(results_files, plots, prediction_horizons, type, metric):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -515,26 +523,37 @@ def draw_plots(results_files, plots, start_date, end_date, prediction_horizons):
     # Draw plots
     click.echo(f"Drawing plots...")
     os.makedirs(plot_results_path, exist_ok=True)
+
+    if prediction_horizons is None:
+        prediction_horizons = '30'
+    prediction_horizons = helpers.split_string(prediction_horizons)
+
     for plot in plots:
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
         chosen_plot = plot_module.Plot()
 
-        if plot == 'scatter_plot':
-            if prediction_horizons is None:
-                raise ValueError(f"{plot} requires that you provide --prediction-horizons")
-            prediction_horizons = helpers.split_string(prediction_horizons)
+        if plot in ['all_metrics_table', 'cgpm_table', 'confusion_matrix',
+                    'pareto_frontier', 'scatter_plot', 'single_prediction_horizon',
+                    'weighted_loss']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon)
+                chosen_plot(dfs, prediction_horizon=prediction_horizon)
 
-        elif plot == 'trajectories':
+        elif plot in ['error_grid_plot', 'error_grid_table']:
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
+
+        elif plot in ['results_across_regions']:
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
+
+        elif plot in ['trajectories', 'trajectories_with_events']:
             chosen_plot(dfs)
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
-
-    click.echo(f"{plots} for trained_models {results_files} are stored in '{plot_results_path}'")
+            return
 
 
 @click.command()
