@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import ast
 from .base_plot import BasePlot
 from methcomp import parkeszones, clarkezones
-from glupredkit.helpers.unit_config_manager import unit_config_manager
 from collections import Counter
 import pandas as pd
 
@@ -39,18 +38,11 @@ class Plot(BasePlot):
                 y_true_values += y_true
                 y_pred_values += y_pred
 
-            if unit_config_manager.get_unit() == 'mmol/L':
-                y_true_values = [unit_config_manager.convert_value(val) for val in y_true_values]
-                y_pred_values = [unit_config_manager.convert_value(val) for val in y_pred_values]
-                units = "mmol"
-            else:
-                units = "mgdl"
-
             if type == 'parkes':
-                zones = parkeszones(1, y_true_values, y_pred_values, units=units, numeric=False)
+                zones = parkeszones(1, y_true_values, y_pred_values, units="mgdl", numeric=False)
 
             else:
-                zones = clarkezones(y_true_values, y_pred_values, units=units, numeric=False)
+                zones = clarkezones(y_true_values, y_pred_values, units="mgdl", numeric=False)
 
             counter = Counter(zones)
             n_total = len(zones)

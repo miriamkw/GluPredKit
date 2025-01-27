@@ -42,8 +42,12 @@ class Plot(BasePlot):
                 y_true_values = [unit_config_manager.convert_value(val) for val in y_true_values]
                 y_pred_values = [unit_config_manager.convert_value(val) for val in y_pred_values]
                 units = "mmol"
+                x_label = 'Reference glucose concentration (mmol/L)'
+                y_label = 'Predicted glucose concentration (mmol/L)'
             else:
                 units = "mgdl"
+                x_label = 'Reference glucose concentration (mg/dL)'
+                y_label = 'Predicted glucose concentration (mg/dL)'
 
             if len(prediction_horizons) >1:
                 title = f"{type} error grid for {model_name} across all prediction horizons"
@@ -51,12 +55,12 @@ class Plot(BasePlot):
                 title = f'{type} error grid for {model_name} at prediction horizon {prediction_horizon}'
 
             if type == 'parkes':
-                parkes(1, y_true_values, y_pred_values, units=units,# x_label='', y_label=,
+                parkes(1, y_true_values, y_pred_values, units=units, x_label=x_label, y_label=y_label,
                        color_points="auto", grid=True, color_gridlabels='white',
                        percentage=False,
                        title=title)
             else:
-                clarke(y_true_values, y_pred_values, units=units,  # x_label='', y_label=,
+                clarke(y_true_values, y_pred_values, units=units, x_label=x_label, y_label=y_label,
                        color_points="auto", grid=True, color_gridlabels='white',
                        percentage=False,
                        title=title)
