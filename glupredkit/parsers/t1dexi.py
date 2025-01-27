@@ -152,7 +152,6 @@ class Parser(BaseParser):
 
         heartrate_dict = {}
 
-        """
         # Processing by chunks because the heartrate file is so big and can create memory problems
         for chunk in pd.read_sas(heartrate_file_path, chunksize=chunksize):
             row_count += chunksize
@@ -180,7 +179,7 @@ class Parser(BaseParser):
                 else:
                     # Otherwise, create a new DataFrame for this USUBJID
                     heartrate_dict[subject_id] = filtered_rows
-        """
+
         # Open and read the relevant .xpt files
         with open(glucose_file_path, 'rb') as file:
             df_glucose = xport.to_dataframe(file)
