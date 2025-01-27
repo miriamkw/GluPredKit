@@ -13,6 +13,8 @@ class Plot(BasePlot):
         """
         Plots the confusion matrix for the given trained_models data.
         """
+        # TODO: Add the colour coding, that can be turned on/off on input
+
         metrics = ['rmse', 'temporal_gain', 'g_mean']#, 'me']
         data = []
 

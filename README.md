@@ -381,10 +381,12 @@ glupredkit draw_plots
     - **trajectories** 
     - **trajectories_with_events**
 - `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot. Optional for confusion matrix.
+- `type` (optional): Can be either `parkes` or `clarke`, to indicate the type of `error_grid_plot` or `error_grid_table`.
+- `metric` (optional): Can be either `rmse` or `mean_error`, to indicate the metric in `results_across_regions`.
 
 #### Example
 ```
-glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot --start-date 25-10-2023/14:30 --end-date 30-10-2023/16:45 --prediction-horizons 30,60
+glupredkit draw_plots --results-files ridge__my_config__180.csv,lstm__my_config__180.csv --plots scatter_plot,cgpm_table,confusion_matrix --prediction-horizons 30,60
 ```
 
 ---

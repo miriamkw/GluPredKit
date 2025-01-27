@@ -17,6 +17,7 @@ class Model(BaseModel):
 
         # Simple linear model with multiple outputs
         self.model = None
+        # TODO: Make this adjustable on input, to decide which loss function to use
         #self.criterion = nn.MSELoss()
         self.criterion = CustomLoss(alpha=0.1)
 
@@ -25,9 +26,6 @@ class Model(BaseModel):
 
 
     def _fit_model(self, x_train, y_train, epochs=3000, *args):
-
-        # TODO: I think the final solution will be to train separate models for each prediction horizon!
-
         x_train.drop(['id'], axis=1, inplace=True)
         learning_rate = 0.01
 

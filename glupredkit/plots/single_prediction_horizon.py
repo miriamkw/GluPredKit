@@ -11,13 +11,13 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=None, plot_predictions=True, *args):
+    def __call__(self, dfs, prediction_horizon=30, plot_predictions=True, *args):
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
         """
-        n_samples = 12 * 2
-        start_index = 12*9
+        n_samples = 12 * 12
+        start_index = 0
 
         for df in dfs:
             model_name = df['Model Name'][0]
@@ -92,8 +92,8 @@ class Plot(BasePlot):
             # Indicate hypo- and hyperglycemic range
             ax_left.axhline(y=hypo, color='black', linestyle='--', linewidth=1)
             ax_left.axhline(y=hyper, color='black', linestyle='--', linewidth=1)
-            ax_left.text(x=-0.1, y=hypo + 0.2, s="Hypoglycemic threshold", color="black", ha="left", fontsize=13)
-            #ax_left.text(x=-0.1, y=hyper + 0.2, s="Hyperglycemic threshold", color="black", ha="left", fontsize=13)
+            ax_left.text(x=-0.4, y=hypo + 0.2, s="Hypoglycemic threshold", color="black", ha="left", fontsize=13)
+            ax_left.text(x=-0.4, y=hyper + 0.2, s="Hyperglycemic threshold", color="black", ha="left", fontsize=13)
 
             # Labeling axes
             ax_left.set_xlabel('Time (hours)', fontsize=18)

@@ -10,10 +10,12 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, *args):
+    def __call__(self, dfs, prediction_horizon=30, metric='mean_error', *args):
 
         # Whether to plot RMSE or Mean Error
         use_rmse = False
+        if metric == 'rmse':
+            use_rmse = True
 
         for df in dfs:
             model_name = df['Model Name'][0]

@@ -496,7 +496,11 @@ def evaluate_model(model_file, max_samples):
                               'By default a scatter plot will be drawn. ', default='scatter_plot')
 @click.option('--prediction-horizons', help='Integer for prediction horizons in minutes. Comma-separated'
                                             'without space.', default=None)
-def draw_plots(results_files, plots, prediction_horizons):
+@click.option('--type', type=click.Choice(['parkes', 'clarke']), default='parkes',
+              help='The type of error grid evaluation method to use.')
+@click.option('--metric', type=click.Choice(['mean_error', 'rmse']), default='mean_error',
+              help='The type of metric to use in results across regions.')
+def draw_plots(results_files, plots, prediction_horizons, type, metric):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -518,19 +522,30 @@ def draw_plots(results_files, plots, prediction_horizons):
     # Draw plots
     click.echo(f"Drawing plots...")
     os.makedirs(plot_results_path, exist_ok=True)
+
+    if prediction_horizons is None:
+        prediction_horizons = '30'
+    prediction_horizons = helpers.split_string(prediction_horizons)
+
     for plot in plots:
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
             raise click.ClickException(f"The selected plot '{plot}' must inherit from BasePlot.")
         chosen_plot = plot_module.Plot()
 
-        if plot in ['all_metrics_table', 'cgpm_table', 'confusion_matrix', 'error_grid_plot', 'error_grid_table',
-                    'pareto_frontier', 'results_across_regions', 'scatter_plot', 'single_prediction_horizon', 'weighted_loss']:
-            if prediction_horizons is None:
-                prediction_horizons = '30'
-            prediction_horizons = helpers.split_string(prediction_horizons)
+        if plot in ['all_metrics_table', 'cgpm_table', 'confusion_matrix',
+                    'pareto_frontier', 'scatter_plot', 'single_prediction_horizon',
+                    'weighted_loss']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon)
+                chosen_plot(dfs, prediction_horizon=prediction_horizon)
+
+        elif plot in ['error_grid_plot', 'error_grid_table']:
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
+
+        elif plot in ['results_across_regions']:
+            for prediction_horizon in prediction_horizons:
+                chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
 
         elif plot in ['trajectories', 'trajectories_with_events']:
             chosen_plot(dfs)
