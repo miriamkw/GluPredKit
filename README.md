@@ -1,4 +1,5 @@
 # Blood Glucose Prediction-Kit
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.06904/status.svg)](https://doi.org/10.21105/joss.06904)
 [![PyPI](https://img.shields.io/pypi/v/glupredkit?label=pypi%20package)](https://pypi.org/project/glupredkit/1.0.0/)
 [![test_metrics](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_metrics.yml)
 [![test_models](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml/badge.svg)](https://github.com/miriamkw/GluPredKit/actions/workflows/test_models.yml)
