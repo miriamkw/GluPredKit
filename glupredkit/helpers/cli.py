@@ -14,7 +14,8 @@ from ..helpers.model_config_manager import ModelConfigurationManager
 
 
 def read_data_from_csv(input_path, file_name):
-    file_path = input_path + file_name
+    input_path = Path(input_path)
+    file_path = input_path / file_name
     return pd.read_csv(file_path, index_col="date", parse_dates=True)
 
 
