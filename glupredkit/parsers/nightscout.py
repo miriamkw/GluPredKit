@@ -158,13 +158,13 @@ class Parser(BaseParser):
             # Calculate total insulin
             df['insulin'] = df['bolus'] + df['basal']
 
-            # Convert timezone
-            current_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-            df.index = df.index.tz_convert(current_timezone)
-
             # Add additional columns
             df['hour'] = df.index.hour
             df['id'] = 1
+
+            # Convert timezone
+            current_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+            df.index = df.index.tz_convert(current_timezone)
 
             # Final validation for negative values
             for col in ['basal', 'bolus', 'insulin', 'carbs']:
