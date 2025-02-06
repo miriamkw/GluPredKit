@@ -81,6 +81,10 @@ def test_parser(test_dir, date_range):
     df.index = df.index.tz_convert("UTC")
     expected_df.index = expected_df.index.tz_convert("UTC")
 
+    # Ensure same type of int for column hour
+    df['hour'] = df['hour'].astype('int64')
+    expected_df['hour'] = expected_df['hour'].astype('int64')
+
     # Compare output with expected
     pd.testing.assert_frame_equal(df, expected_df)
 
