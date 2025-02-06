@@ -85,9 +85,6 @@ def test_parser(test_dir, date_range):
     df['hour'] = df['hour'].astype('int64')
     expected_df['hour'] = expected_df['hour'].astype('int64')
 
-    print(df)
-    print(expected_df)
-
     # Compare output with expected
     pd.testing.assert_frame_equal(df, expected_df)
 
