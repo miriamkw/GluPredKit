@@ -35,7 +35,7 @@ class Plot(BasePlot):
             matrix_array = np.array(results)
             average_matrix = np.mean(matrix_array, axis=0)
 
-            plt.figure(figsize=(8, 6))
+            plt.figure(figsize=(7, 5.8))
             sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.2%', xticklabels=classes, yticklabels=classes)
             if len(prediction_horizons) > 1:
                 plt.title(f'Total Over all PHs for {model_name}')
@@ -53,5 +53,6 @@ class Plot(BasePlot):
 
             file_name = f'confusion_matrix_{safe_timestamp}_{model_name}.png'
             plt.savefig(file_path + file_name)
+
             plt.show()
 

@@ -12,6 +12,7 @@ from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Modules from this repository
 from .parsers.base_parser import BaseParser
@@ -519,6 +520,17 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         dfs += [df]
 
     plot_results_path = 'data/figures/'
+
+    # Set global params
+    plt.rcParams.update({
+        "font.size": 18,  # Default font size for all text
+        "axes.titlesize": 18,  # Title size
+        "axes.labelsize": 16,  # Axis label size
+        "xtick.labelsize": 16,  # X-tick label size
+        "ytick.labelsize": 16,  # Y-tick label size
+        "legend.fontsize": 14,  # Legend font size
+        "figure.titlesize": 20  # Figure title size
+    })
 
     # Draw plots
     click.echo(f"Drawing plots...")

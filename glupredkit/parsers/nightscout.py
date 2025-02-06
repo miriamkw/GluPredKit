@@ -186,7 +186,6 @@ class Parser(BaseParser):
             # Add additional columns
             df['hour'] = df.index.hour
             df['id'] = 1
-            df['is_test'] = False
 
             # Final validation for negative values
             for col in ['basal', 'bolus', 'insulin', 'carbs']:
@@ -196,7 +195,7 @@ class Parser(BaseParser):
 
             # Reorder columns
             df = df.reset_index()
-            df = df[['date', 'id', 'CGM', 'insulin', 'carbs', 'is_test', 'hour', 'basal', 'bolus']]
+            df = df[['date', 'id', 'CGM', 'insulin', 'carbs', 'hour', 'basal', 'bolus']]
             
             # Final cleanup
             for col in ['insulin', 'carbs', 'basal', 'bolus']:
@@ -538,6 +537,7 @@ class Parser(BaseParser):
 
         return final_df
 
+    # TODO: Add a switch for this, with default false
     def save_json(self, data, data_type, start_date, end_date):
         """Save raw data to JSON file."""
         os.makedirs('data/raw', exist_ok=True)

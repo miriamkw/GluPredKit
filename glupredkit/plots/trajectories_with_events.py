@@ -36,7 +36,7 @@ class Plot(BasePlot):
             unit = "mmol/L"
 
         for df in dfs:
-            fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(14, 8))
+            fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(14, 10))
 
             model_name = df['Model Name'][0]
             ph = int(df['prediction_horizon'][0])
@@ -121,7 +121,7 @@ class Plot(BasePlot):
             })
             """
 
-            ax1.set_title(f'Predicted trajectories for {model_name}', fontsize=16)
+            ax1.set_title(f'Predicted trajectories for {model_name}', fontsize=18)
             ax1.set_ylabel(f'Blood glucose [{unit}]')
 
             ax1.scatter(t, y_true, label='Measurements', color='black')
@@ -156,7 +156,7 @@ class Plot(BasePlot):
 
             # Second plot
             #ax2.set_title('Carbohydrates and Exercise', fontsize=14)
-            ax2.set_title('Carbohydrates', fontsize=14)
+            ax2.set_title('Carbohydrates', fontsize=18)
 
             for col in [col for col in df.columns if col.startswith('test_input')]:
                 if 'basal' in col:
@@ -167,7 +167,7 @@ class Plot(BasePlot):
                 elif 'bolus' in col:
                     bolus = ax3.twinx()
                     bolus.bar(t, model_df['bolus'].tolist(), label='Bolus Doses', color='pink', width=5)
-                    bolus.set_ylabel('Bolus Doses [IU]', fontsize=11)
+                    bolus.set_ylabel('Bolus Doses [IU]')
 
                 elif 'exercise' in col:
                     ax2.bar(t, model_df['exercise'].tolist(), label='Exercise', width=5)
@@ -176,13 +176,13 @@ class Plot(BasePlot):
                     ax2.set_xlim(0, n_samples * 5)
 
                 elif 'carbs' in col:
-                    carbs = ax2.twinx()
-                    carbs.bar(t, model_df['carbs'].tolist(), label='Carbohydrates', color='green', width=5)
-                    carbs.set_ylabel('Carbohydrates [grams]', fontsize=11)
+                    #carbs = ax2.twinx()
+                    ax2.bar(t, model_df['carbs'].tolist(), label='Carbohydrates', color='green', width=5)
+                    ax2.set_ylabel('Carbohydrates [grams]')
 
             # Third plot
-            ax3.set_title('Insulin Inputs', fontsize=14)
-            ax3.set_xlabel('Time (minutes)', fontsize=14)
+            ax3.set_title('Insulin Inputs', fontsize=18)
+            ax3.set_xlabel('Time (minutes)', fontsize=16)
 
             # Remove ticks on first and second plot
             ax1.set_xticklabels([])
@@ -199,6 +199,7 @@ class Plot(BasePlot):
             safe_timestamp = safe_timestamp.replace('.', '_')
             file_name = f"trajectories_{model_name}_{safe_timestamp}.png"
             plt.savefig(file_path + file_name)
+
             plt.show()
 
 

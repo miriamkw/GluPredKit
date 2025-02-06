@@ -101,6 +101,9 @@ class Plot(BasePlot):
             ax_left.tick_params(axis="x", labelsize=14)
             ax_left.tick_params(axis="y", labelsize=14, colors='black')
 
+            # Add gridlines with vertical lines only, behind the plot elements
+            ax_left.grid(True, which='both', axis='x', linestyle='--', zorder=-999)  # Grid behind everything
+
             # Set title
             plt.title(f"Predictions for {model_name} Model {prediction_horizon} Minutes PH", fontsize=20)
 
