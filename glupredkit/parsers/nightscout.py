@@ -52,84 +52,63 @@ Treatment.__init__ = new_init
 class Parser(BaseParser):
     def __init__(self):
         super().__init__()
-        self.test_mode = False
-        self.test_data_dir = None
 
-    def __call__(self, start_date, end_date, username: str, password: str, test_mode=False, test_data_dir=None):
+    def __call__(self, start_date, end_date, username: str, password: str, save_raw_json=False):
         """
         Main method to parse Nightscout data with enhanced validation.
         In the nightscout parser, the username is the nightscout URL, and the password is the API key.
         """
         try:
-            if test_mode:
-                # Load test data from local files
-                from pathlib import Path
-                test_dir = Path(test_data_dir)
-                
-                with open(test_dir / "nightscout_profiles.json") as f:
-                    profiles = json.load(f)
-                
-                with open(test_dir / "nightscout_treatments.json") as f:
-                    treatments_data = json.load(f)
-                treatments = []
-                for t in treatments_data:
-                    treatment = type('Treatment', (), {})()
-                    for k, v in t.items():
-                        setattr(treatment, k, v)
-                    treatments.append(treatment)
-                
-                with open(test_dir / "nightscout_entries.json") as f:
-                    entries_data = json.load(f)
-                entries = []
-                for e in entries_data:
-                    entry = type('Entry', (), {})()
-                    for k, v in e.items():
-                        setattr(entry, k, v)
-                    entries.append(entry)
+            api = nightscout.Api(username, api_secret=password)
+            api_start_date = start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+            api_end_date = end_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
 
-            else:
-                api = nightscout.Api(username, api_secret=password)
-                api_start_date = start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-                api_end_date = end_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+            # Fetch profiles
+            profile_query_params = {
+                'count': 0,
+                'find[created_at][$gte]': api_start_date,
+                'find[created_at][$lte]': api_end_date
+            }
+            base_url = username.rstrip('/')
+            profile_url = f"{base_url}/api/v1/profile?{urllib.parse.urlencode(profile_query_params)}"
+            profiles_response = requests.get(profile_url, headers=api.request_headers())
+            profiles = profiles_response.json()
 
-                # Fetch profiles
-                profile_query_params = {
-                    'count': 0,
-                    'find[created_at][$gte]': api_start_date,
-                    'find[created_at][$lte]': api_end_date
-                }
-                base_url = username.rstrip('/')
-                profile_url = f"{base_url}/api/v1/profile?{urllib.parse.urlencode(profile_query_params)}"
-                profiles_response = requests.get(profile_url, headers=api.request_headers())
-                profiles = profiles_response.json()
+            # Fetch treatments
+            treatment_query_params = {
+                'count': 0,
+                'find[created_at][$gte]': api_start_date,
+                'find[created_at][$lte]': api_end_date
+            }
+            treatments = api.get_treatments(treatment_query_params)
+
+            # Fetch entries (CGM data)
+            query_params = {
+                'count': 0,
+                'find[dateString][$gte]': api_start_date,
+                'find[dateString][$lte]': api_end_date
+            }
+            entries = api.get_sgvs(query_params)
+
+            if save_raw_json:
                 self.save_json_profiles(profiles, 'profiles', api_start_date, api_end_date)
-
-                # Fetch treatments
-                treatment_query_params = {
-                    'count': 0,
-                    'find[created_at][$gte]': api_start_date,
-                    'find[created_at][$lte]': api_end_date
-                }
-                treatments = api.get_treatments(treatment_query_params)
                 self.save_json(treatments, 'treatments', api_start_date, api_end_date)
-
-                # Fetch entries (CGM data)
-                query_params = {
-                    'count': 0,
-                    'find[dateString][$gte]': api_start_date,
-                    'find[dateString][$lte]': api_end_date
-                }
-                entries = api.get_sgvs(query_params)
                 self.save_json(entries, 'entries', api_start_date, api_end_date)
 
+        except Exception as e:
+            print(f"Error in data processing: {str(e)}")
+            raise
+
+        return self.process_data(entries, treatments, profiles, start_date, end_date)
+
+
+    def process_data(self, entries, treatments, profiles, start_date, end_date):
+
+        try:
             # Process CGM data
             df_glucose = self.create_dataframe(entries, 'date', 'sgv', 'CGM')
             # Handle CGM values - replace 0s with NaN and interpolate
             df_glucose['CGM'] = df_glucose['CGM'].replace(0, np.nan)
-            df_glucose['CGM'] = df_glucose['CGM'].interpolate(
-                method='time', 
-                limit=3  # max 15 minutes gap
-            )
             print("Created Glucose DataFrame")
 
             # Process carbs

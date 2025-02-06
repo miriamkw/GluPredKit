@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import pandas as pd
 import sys
+import json
 import os
 from glupredkit.helpers.cli import read_data_from_csv
 
@@ -42,15 +43,27 @@ def test_parser(test_dir, date_range):
     assert (test_dir / "nightscout_treatments.json").exists(), "Treatments file not found"
     assert (test_dir / "nightscout_entries.json").exists(), "Entries file not found"
 
-    # Run parser
-    df = parser(
-        start_date=start_date,
-        end_date=end_date,
-        username="dummy_url",
-        password="dummy_password",
-        test_mode=True,
-        test_data_dir=str(test_dir)  # Convert Path to string
-    )
+    # Load test data from local files
+    with open(test_dir / "nightscout_profiles.json") as f:
+        profiles = json.load(f)
+    with open(test_dir / "nightscout_treatments.json") as f:
+        treatments_data = json.load(f)
+    treatments = []
+    for t in treatments_data:
+        treatment = type('Treatment', (), {})()
+        for k, v in t.items():
+            setattr(treatment, k, v)
+        treatments.append(treatment)
+    with open(test_dir / "nightscout_entries.json") as f:
+        entries_data = json.load(f)
+    entries = []
+    for e in entries_data:
+        entry = type('Entry', (), {})()
+        for k, v in e.items():
+            setattr(entry, k, v)
+        entries.append(entry)
+
+    df = parser.process_data(entries, treatments, profiles, start_date, end_date)
 
     # Save output to a snapshot file if it doesn't exist
     snapshot_file_name = "nightscout_expected_output.csv"
