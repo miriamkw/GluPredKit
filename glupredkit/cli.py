@@ -237,7 +237,9 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
+@click.option('--model-name', type=str, required=False)
+
+def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject, model_name):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -251,9 +253,13 @@ def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples
     if model:
         click.echo(f"Using pre-defined model: {model}")
         model_module = helpers.get_model_module(model=model)
+        if not model_name:
+            model_name = model
     else:
         click.echo(f"Using custom model from: {model_path}")
         model_module = helpers.get_model_module(model_path=model_path)
+        if not model_name:
+            model_name = model_path.split('/')[-1].split('.')[0]
 
     # Filtering out UserWarning because we are using an old Keras file format on purpose
     warnings.filterwarnings(
@@ -296,7 +302,7 @@ def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples
 
     # Assuming model_instance is your class instance
     output_dir = Path("data") / "trained_models"
-    output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    output_file_name = f'{model_name}__{config_file_name}__{prediction_horizon}.pkl'
     output_path = output_dir / output_file_name
 
     try:
@@ -411,6 +417,7 @@ def evaluate_model(model_file, max_samples):
 
     subset_size = x_test.shape[0]
 
+    """
     # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
     if (model_name == 'loop') | (model_name == 'uva_padova'):
         subset_size = 1000
@@ -493,6 +500,7 @@ def evaluate_model(model_file, max_samples):
             averages = [np.nanmean(x) for x in zip(*y_pred)]
             averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
             results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+    """
 
     # Define the path to store the dataframe
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
