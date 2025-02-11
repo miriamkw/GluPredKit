@@ -1,9 +1,12 @@
+import io
+
 import pandas as pd
 import sys
 import os
 import ast
 import requests
 import click
+import json
 import dill
 import importlib
 from importlib import resources
@@ -75,6 +78,10 @@ def get_model_module(model=None, model_path=None):
             raise Exception(f"The specified model path '{model_path}' does not exist.")
         model_dir, model_file = os.path.split(model_path)
         module_name, _ = os.path.splitext(model_file)
+
+        if model_dir not in sys.path:
+            sys.path.insert(0, model_dir)
+
         try:
             spec = importlib.util.spec_from_file_location(module_name, model_path)
             custom_model_module = importlib.util.module_from_spec(spec)
