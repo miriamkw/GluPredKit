@@ -213,7 +213,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 
 
 @click.command()
-@click.argument('model', type=click.Choice([
+@click.argument('config-file-name', type=str)
+@click.option('--model', type=click.Choice([
     'double_lstm',
     'loop',
     'loop_v2',
@@ -230,18 +231,30 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'tcn',
     'uva_padova',
     'zero_order'
-]))
-@click.argument('config-file-name', type=str)
+]), help="Choose a pre-defined model")
+@click.option('--model-path', type=click.Path(exists=True), help="Provide the path to your custom model file")
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
+def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
     """
     This method does the following:
     1) Process data using the given configurations
     2) Train the given models for the given prediction horizons in the configuration
     """
+    if not model and not model_path:
+        raise click.UsageError("You must specify either --model or --model-path.")
+    if model and model_path:
+        raise click.UsageError("You can specify only one: either --model or --model-path.")
+
+    if model:
+        click.echo(f"Using pre-defined model: {model}")
+        model_module = helpers.get_model_module(model=model)
+    else:
+        click.echo(f"Using custom model from: {model_path}")
+        model_module = helpers.get_model_module(model_path=model_path)
+
     # Filtering out UserWarning because we are using an old Keras file format on purpose
     warnings.filterwarnings(
         "ignore",
@@ -250,9 +263,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 
     click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
     model_config_manager = ModelConfigurationManager(config_file_name)
-
     prediction_horizon = model_config_manager.get_prediction_horizon()
-    model_module = helpers.get_model_module(model)
 
     # PREPROCESSING
     # Perform data preprocessing using your preprocessor

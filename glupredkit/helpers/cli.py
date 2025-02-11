@@ -53,13 +53,42 @@ def get_metric_module(metric):
     return metric_module
 
 
-def get_model_module(model):
+def get_model_module(model=None, model_path=None):
+    """
     model_module = importlib.import_module(f'glupredkit.models.{model}')
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(model_module.Model, BaseModel):
         raise Exception(f"The selected model '{model}' must inherit from BaseModel.")
-
     return model_module
+    """
+    if model:
+        try:
+            model_module = importlib.import_module(f'glupredkit.models.{model}')
+        except ModuleNotFoundError:
+            raise Exception(f"The predefined model '{model}' could not be found.")
+        if not issubclass(model_module.Model, BaseModel):
+            raise Exception(f"The selected model '{model}' must inherit from BaseModel.")
+        return model_module
+
+    elif model_path:
+        if not os.path.exists(model_path):
+            raise Exception(f"The specified model path '{model_path}' does not exist.")
+        model_dir, model_file = os.path.split(model_path)
+        module_name, _ = os.path.splitext(model_file)
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, model_path)
+            custom_model_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_model_module)
+        except Exception as e:
+            raise Exception(f"Failed to load the custom model from '{model_path}': {e}")
+
+        if not hasattr(custom_model_module, 'Model') or not issubclass(custom_model_module.Model, BaseModel):
+            raise Exception(f"The custom model in '{model_path}' must define a 'Model' class inheriting from BaseModel.")
+
+        return custom_model_module
+
+    else:
+        raise ValueError("Either 'model' or 'model_path' must be provided.")
 
 
 def get_trained_model(model_file_name):

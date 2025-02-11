@@ -1,7 +1,7 @@
 """
 A zero-order hold algorithm assumes that glucose will not change in the future.
 """
-from .base_model import BaseModel
+from glupredkit.models.base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
 import numpy as np
 
