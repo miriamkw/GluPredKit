@@ -126,13 +126,13 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     if "CGM" not in config_manager.get_num_features():
         raise ValueError(f"CGM is a required column for numerical features. Please ensure that your configuration and "
                          f"input data are valid.")
-    if missing_features:
-        raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
-                         f"{', '.join(missing_features)}. ")
-    if common_elements:
-        raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
-                         f"separate subjects and train and test data. Please remove these features from the "
-                         f"configuration.")
+    #if missing_features:
+    #    raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
+    #                     f"{', '.join(missing_features)}. ")
+    #if common_elements:
+    #    raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
+    #                     f"separate subjects and train and test data. Please remove these features from the "
+    #                     f"configuration.")
 
     if carbs:
         if 'carbs' in data.columns:
