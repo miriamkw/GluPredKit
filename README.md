@@ -382,8 +382,9 @@ glupredkit draw_plots
     - **trajectories** 
     - **trajectories_with_events**
 - `--prediction-horizons` (optional): Integer for prediction horizons in minutes. Comma-separated without space. Required for scatter plot. Optional for confusion matrix.
-- `type` (optional): Can be either `parkes` or `clarke`, to indicate the type of `error_grid_plot` or `error_grid_table`.
-- `metric` (optional): Can be either `rmse` or `mean_error`, to indicate the metric in `results_across_regions`.
+- `--type` (optional): Can be either `parkes` or `clarke`, to indicate the type of `error_grid_plot` or `error_grid_table`.
+- `--metric` (optional): Can be either `rmse` or `mean_error`, to indicate the metric in `results_across_regions`.
+- `--wandb-project` (optional): If you add this input, the plots will be logged to the given weights and biases project. This requires that you create a `.env.local` fine, and define your `WANDB_API_KEY` (api key can be found here: https://wandb.ai/authorize).
 
 #### Example
 ```

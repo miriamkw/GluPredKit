@@ -39,6 +39,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+wandb/
 
 # Operating System Generated Files
 .DS_Store
