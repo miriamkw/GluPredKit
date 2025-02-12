@@ -50,7 +50,7 @@ class Plot(BasePlot):
                 units = "mmol"
                 x_label = 'Reference glucose concentration (mmol/L)'
                 y_label = 'Predicted glucose concentration (mmol/L)'
-                max_val = max(max(y_true_values), max(y_pred_values))
+                max_val = max(np.nanmax(y_true_values), np.nanmax(y_pred_values))
                 max_val_rounded = np.round(max_val / 5) * 5
                 custom_ticks = list(range(0, int(max_val_rounded) + 1, 5))
             else:

@@ -1,5 +1,6 @@
 import json
 from importlib import resources
+import numpy as np
 import os
 
 
@@ -36,7 +37,10 @@ class UnitConfigManager:
 
     def convert_value(self, value):
         if not self.use_mgdl:
-            return value / 18.018
+            if value is not None:
+                return value / 18.018
+            else:
+                return np.nan
         return value
 
     def get_unit(self):

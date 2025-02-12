@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import ast
+import math
 from .base_plot import BasePlot
 from methcomp import parkeszones, clarkezones
 from collections import Counter
@@ -36,8 +37,12 @@ class Plot(BasePlot):
                 y_true = ast.literal_eval(y_true)
                 y_pred = ast.literal_eval(y_pred)
 
-                y_true_values += y_true
-                y_pred_values += y_pred
+                filtered_y_true, filtered_y_pred = zip(
+                    *[(x, y) for x, y in zip(y_true, y_pred) if x is not None and y is not None]
+                )
+
+                y_true_values += filtered_y_true
+                y_pred_values += filtered_y_pred
 
             if type == 'parkes':
                 zones = parkeszones(1, y_true_values, y_pred_values, units="mgdl", numeric=False)

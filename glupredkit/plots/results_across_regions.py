@@ -26,9 +26,15 @@ class Plot(BasePlot):
             y_true = df[f'target_{prediction_horizon}'][0]  # PH doesnt really matter that much
             y_true = ast.literal_eval(y_true)
             y_true = np.array(y_true)
-            y_pred = df[f'y_pred_{prediction_horizon}'][0]
+            y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")
             y_pred = ast.literal_eval(y_pred)
             y_pred = np.array(y_pred)
+
+            # Remove nan predictions
+            y_true, y_pred = map(
+                np.array,
+                zip(*[(x, y) for x, y in zip(y_true, y_pred) if x is not None and y is not None])
+            )
 
             # Define bins based on y_true values
             bin_edges = [0, 70, 180, np.inf]  # Bins: <70, 70-180, >180
