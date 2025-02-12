@@ -19,6 +19,9 @@ class Plot(BasePlot):
         if type not in valid_types:
             raise ValueError(f"Invalid type: {type}. Must be one of {valid_types}")
 
+        plots = []
+        names = []
+
         for df in dfs:
             model_name = df['Model Name'][0]
 
@@ -81,5 +84,9 @@ class Plot(BasePlot):
             ax.set_xticks(custom_ticks)
             ax.set_yticks(custom_ticks)
 
-            plt.show()
+            plot_name = f'{model_name}_{type}_error_grid_plot_ph_{prediction_horizon}'
+            plots.append(plt.gcf())
+            names.append(plot_name)
+            plt.close()
 
+        return plots, names

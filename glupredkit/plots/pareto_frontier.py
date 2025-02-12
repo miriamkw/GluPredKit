@@ -14,6 +14,8 @@ class Plot(BasePlot):
         """
         metrics = ['rmse', 'temporal_gain', 'g_mean']
         data = []
+        plots = []
+        names = []
 
         # Creates results df
         for df in dfs:
@@ -120,8 +122,14 @@ class Plot(BasePlot):
             ax.set_ylabel('g_mean')
             ax.set_zlabel('temporal_gain')
             ax.legend(loc='upper left')
-            plt.show()
 
         # Plot 3D visualization
         plot_3d(results_df, pareto_front_df)
+
+        plot_name = f'pareto_frontier_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+        plt.close()
+
+        return plots, names
 

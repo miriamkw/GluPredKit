@@ -31,12 +31,14 @@ class Plot(BasePlot):
         else:
             unit = "mmol/L"
 
+        plots = []
+        names = []
+
         for df in dfs:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(14, 6))
 
             model_name = df['Model Name'][0]
             ph = int(df['prediction_horizon'][0])
-
             prediction_horizons = range(5, ph + 1, 5)
 
             # TODO: Use CGM input!
@@ -44,7 +46,6 @@ class Plot(BasePlot):
             string_values = y_true.replace("nan", "None")
             y_true = ast.literal_eval(string_values)
             y_true = [np.nan if x is None else x for x in y_true]
-
             n_samples = 12*24
 
             if len(y_true) - n_samples > len(y_true):
@@ -62,7 +63,6 @@ class Plot(BasePlot):
 
                 if not unit_config_manager.use_mgdl:
                     y_pred = [unit_config_manager.convert_value(val) for val in y_pred]
-
                 y_pred_lists += [y_pred]
 
             y_true = np.array(y_true)[start_index:start_index + n_samples]
@@ -97,11 +97,10 @@ class Plot(BasePlot):
             fig.canvas.mpl_connect('motion_notify_event', on_hover)
             ax.legend()
             plt.title(f'Predicted trajectories for {model_name}')
-            file_path = "data/figures/"
 
-            timestamp = datetime.now().isoformat()
-            safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-            safe_timestamp = safe_timestamp.replace('.', '_')
-            file_name = f"trajectories_{model_name}_{safe_timestamp}.png"
-            plt.savefig(file_path + file_name)
-            plt.show()
+            plot_name = f'{model_name}_trajectories'
+            plots.append(plt.gcf())
+            names.append(plot_name)
+            plt.close()
+
+        return plots, names

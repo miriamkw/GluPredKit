@@ -4,9 +4,11 @@ import dill
 import requests
 import warnings
 import os
+import wandb
 import ast
 import importlib
 import pandas as pd
+from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
@@ -521,7 +523,8 @@ def evaluate_model(model_file, max_samples):
               help='The type of error grid evaluation method to use.')
 @click.option('--metric', type=click.Choice(['mean_error', 'rmse']), default='mean_error',
               help='The type of metric to use in results across regions.')
-def draw_plots(results_files, plots, prediction_horizons, type, metric):
+@click.option('--wandb-project', help='Optional logging of the plot to a wandb project.', default=None)
+def draw_plots(results_files, plots, prediction_horizons, type, metric, wandb_project):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -538,7 +541,7 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         df = generate_report.get_df_from_results_file(results_file)
         dfs += [df]
 
-    plot_results_path = 'data/figures/'
+    plot_results_path = Path('data', 'figures')
 
     # Set global params
     plt.rcParams.update({
@@ -551,7 +554,6 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         "figure.titlesize": 20  # Figure title size
     })
 
-    # Draw plots
     click.echo(f"Drawing plots...")
     os.makedirs(plot_results_path, exist_ok=True)
 
@@ -559,6 +561,8 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         prediction_horizons = '30'
     prediction_horizons = helpers.split_string(prediction_horizons)
 
+    drawn_plots = []
+    names = []
     for plot in plots:
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
@@ -569,22 +573,52 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
                     'pareto_frontier', 'scatter_plot', 'single_prediction_horizon',
                     'weighted_loss']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon)
+                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon)
+                drawn_plots += plts
+                names += plot_names
 
         elif plot in ['error_grid_plot', 'error_grid_table']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
+                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
+                drawn_plots += plts
+                names += plot_names
 
         elif plot in ['results_across_regions']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
+                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
+                drawn_plots += plts
+                names += plot_names
 
         elif plot in ['trajectories', 'trajectories_with_events']:
-            chosen_plot(dfs)
+            plts, plot_names = chosen_plot(dfs)
+            drawn_plots += plts
+            names += plot_names
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
             return
+
+    for current_plot, plot_name in zip(drawn_plots, names):
+        file_name = plot_name + '.png'
+        print("Saving plot: ", file_name)
+        current_plot.savefig(Path(plot_results_path, file_name))
+
+    # TODO: And check that plots and names are equally long lists (maybe it could be a base plot validation)
+
+    if wandb_project:
+        load_dotenv(".env.local")
+        wandb_api_key = os.environ["WANDB_API_KEY"]
+        wandb.login(key=wandb_api_key)
+        wandb.init(
+            project=wandb_project,
+            name="glupredkit plots",
+            tags="validation",
+            job_type="eval"
+        )
+        for current_plot, plot_name in zip(drawn_plots, names):
+            file_name = plot_name + '.png'
+            wandb.log({plot_name: wandb.Image(str(Path(plot_results_path, file_name)))})
+
 
 
 @click.command()

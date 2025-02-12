@@ -17,6 +17,8 @@ class Plot(BasePlot):
         """
         classes = ['Hypo', 'Target', 'Hyper']
 
+        plots = []
+        names = []
         for df in dfs:
             model_name = df['Model Name'][0]
 
@@ -34,9 +36,9 @@ class Plot(BasePlot):
 
             matrix_array = np.array(results)
             average_matrix = np.mean(matrix_array, axis=0)
-
             plt.figure(figsize=(7, 5.8))
-            sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.2%', xticklabels=classes, yticklabels=classes)
+            sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.1%', xticklabels=classes,
+                        yticklabels=classes)
             if len(prediction_horizons) > 1:
                 plt.title(f'Total Over all PHs for {model_name}')
             else:
@@ -47,12 +49,10 @@ class Plot(BasePlot):
             file_path = "data/figures/"
             os.makedirs(file_path, exist_ok=True)
 
-            timestamp = datetime.now().isoformat()
-            safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-            safe_timestamp = safe_timestamp.replace('.', '_')
+            plot_name = f'{model_name}_confusion_matrix_ph_{prediction_horizon}'
+            plots.append(plt.gcf())
+            names.append(plot_name)
+            plt.close()
 
-            file_name = f'confusion_matrix_{safe_timestamp}_{model_name}.png'
-            plt.savefig(file_path + file_name)
-
-            plt.show()
+        return plots, names
 

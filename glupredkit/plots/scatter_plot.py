@@ -28,6 +28,9 @@ class Plot(BasePlot):
 
         plt.figure(figsize=(10, 8))
 
+        plots = []
+        names = []
+
         for df in dfs:
             model_name = df['Model Name'][0]
 
@@ -60,12 +63,9 @@ class Plot(BasePlot):
         plt.title(f"Scatter Plot of Prediction Accuracy {prediction_horizon} Minutes Prediction Horizon")
         plt.legend(loc='upper left')
 
-        file_path = "data/figures/"
-        os.makedirs(file_path, exist_ok=True)
+        plot_name = f'scatter_plot_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+        plt.close()
 
-        timestamp = datetime.now().isoformat()
-        safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-        safe_timestamp = safe_timestamp.replace('.', '_')
-        file_name = f'scatter_plot_{safe_timestamp}.png'
-        plt.savefig(file_path + file_name)
-        plt.show()
+        return plots, names

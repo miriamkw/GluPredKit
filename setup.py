@@ -35,7 +35,9 @@ setup(
         "dill",
         "python-nightscout",
         "error-grids",
-        "methcomp"
+        "methcomp",
+        "wandb",
+        "python-dotenv"
     ],
     extras_require={
         'heavy': [

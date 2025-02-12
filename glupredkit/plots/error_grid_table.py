@@ -16,7 +16,8 @@ class Plot(BasePlot):
             raise ValueError(f"Invalid type: {type}. Must be one of {valid_types}")
 
         data = []
-
+        plots = []
+        names = []
         for df in dfs:
             model_name = df['Model Name'][0]
             row = {"Model Name": model_name}
@@ -101,5 +102,10 @@ class Plot(BasePlot):
             cell.set_height(0.1)  # Adjust height for vertical padding
             cell.PAD = 0.1  # Increase cell padding
 
-        plt.show()
+        plot_name = f'{type}_error_grid_table_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+        plt.close()
+
+        return plots, names
 

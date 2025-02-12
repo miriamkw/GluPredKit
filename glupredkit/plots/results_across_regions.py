@@ -17,6 +17,8 @@ class Plot(BasePlot):
         if metric == 'rmse':
             use_rmse = True
 
+        plots = []
+        names = []
         for df in dfs:
             model_name = df['Model Name'][0]
 
@@ -30,7 +32,7 @@ class Plot(BasePlot):
 
             # Define bins based on y_true values
             bin_edges = [0, 70, 180, np.inf]  # Bins: <70, 70-180, >180
-            bin_labels = ['<70', '70-180', '>180']
+            bin_labels = ['Below 70', '70-180', 'Above 180']
 
             error_values = []
 
@@ -57,7 +59,12 @@ class Plot(BasePlot):
                 plt.ylabel('Mean Error')
                 plt.title(f'{model_name} Mean Error by Bins of y_true')
 
-            plt.show()
+            plot_name = f'{model_name}_results_across_regions_ph_{prediction_horizon}'
+            plots.append(plt.gcf())
+            names.append(plot_name)
+            plt.close()
+
+        return plots, names
 
 
 def calculate_rmse(y_true, y_pred):

@@ -17,6 +17,8 @@ class Plot(BasePlot):
 
         metrics = ['rmse', 'temporal_gain', 'g_mean']#, 'me']
         data = []
+        plots = []
+        names = []
 
         # Creates results df
         for df in dfs:
@@ -105,8 +107,12 @@ class Plot(BasePlot):
             cell.set_height(0.1)  # Adjust height for vertical padding
             cell.PAD = 0.1  # Increase cell padding
 
-        plt.show()
+        plot_name = f'cgpm_table_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+        plt.close()
 
+        return plots, names
 
 def scale_errors(metric_results, use_mg_dl=False):
     lower_bound = 1
