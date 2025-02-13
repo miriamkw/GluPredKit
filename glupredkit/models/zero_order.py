@@ -14,6 +14,8 @@ class Model(BaseModel):
         return self
 
     def _predict_model(self, x_test):
+        print("X TEST", x_test)
+
         n_predictions = self.prediction_horizon // 5
         cgm_values = x_test['CGM'].tolist()
 
@@ -26,4 +28,4 @@ class Model(BaseModel):
         return None
 
     def process_data(self, df, model_config_manager, real_time):
-        return process_data(df, model_config_manager, real_time)
+        return df
