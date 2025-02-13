@@ -23,7 +23,7 @@ class Plot(BasePlot):
             model_name = df['Model Name'][0]
 
             # Get results:
-            y_true = df[f'target_{prediction_horizon}'][0]  # PH doesnt really matter that much
+            y_true = df[f'target_{prediction_horizon}'][0].replace("nan", "None")
             y_true = ast.literal_eval(y_true)
             y_true = np.array(y_true)
             y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")

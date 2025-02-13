@@ -36,10 +36,16 @@ class Plot(BasePlot):
             y_true_values = []
             y_pred_values = []
             for prediction_horizon in prediction_horizons:
-                y_true = df[f'target_{prediction_horizon}'][0]
+                y_true = df[f'target_{prediction_horizon}'][0].replace("nan", "None")
                 y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")
                 y_true = ast.literal_eval(y_true)
                 y_pred = ast.literal_eval(y_pred)
+
+                # Remove nan predictions
+                y_true, y_pred = map(
+                    list,
+                    zip(*[(x, y) for x, y in zip(y_true, y_pred) if x is not None and y is not None])
+                )
 
                 y_true_values += y_true
                 y_pred_values += y_pred
