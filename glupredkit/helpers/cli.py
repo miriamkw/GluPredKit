@@ -103,7 +103,7 @@ def get_trained_model(model_file_name):
     return model_instance
 
 
-def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager, carbs=None, insulin=None,
+def get_preprocessed_data(data, prediction_horizon: int, config_manager: ModelConfigurationManager, carbs=None, insulin=None,
                           start_date=None, end_date=None):
     preprocessor = config_manager.get_preprocessor()
     input_file_name = config_manager.get_data()
@@ -116,8 +116,6 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
                                                            config_manager.get_cat_features(),
                                                            config_manager.get_what_if_features(),
                                                            prediction_horizon, config_manager.get_num_lagged_features())
-    # Load the input CSV file into a DataFrame
-    data = read_data_from_csv("data/raw/", input_file_name)
 
     # Checking if the data and the configuration are aligned
     required_features = (config_manager.get_num_features() + config_manager.get_cat_features() +

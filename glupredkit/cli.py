@@ -240,8 +240,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
 @click.option('--model-name', type=str, required=False)
-
-def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject, model_name):
+@click.option('--max-samples', type=int, required=False)
+def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject, model_name, max_samples):
     """
     This method does the following:
     1) Process data using the given configurations
@@ -275,7 +275,13 @@ def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples
 
     # PREPROCESSING
     # Perform data preprocessing using your preprocessor
-    train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+    input_file_name = model_config_manager.get_data()
+    data = helpers.read_data_from_csv("data/raw/", input_file_name)
+    data = data[~data['is_test']]
+    if max_samples:
+        data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
+
+    train_data, _ = helpers.get_preprocessed_data(data, prediction_horizon, model_config_manager)
     click.echo(f"Training data finished preprocessing...")
 
     # MODEL TRAINING
@@ -334,7 +340,14 @@ def evaluate_model(model_file, max_samples):
 
     model_config_manager = ModelConfigurationManager(config_file_name)
     model_instance = helpers.get_trained_model(model_file)
-    training_data, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+
+    input_file_name = model_config_manager.get_data()
+    data = helpers.read_data_from_csv("data/raw/", input_file_name)
+    data = data[data['is_test']]
+    training_data = data[~data['is_test']]
+    if max_samples:
+        data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
+    _, test_data = helpers.get_preprocessed_data(data, prediction_horizon, model_config_manager)
 
     processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in processed_data if col.startswith('target')]
