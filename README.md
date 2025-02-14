@@ -260,7 +260,8 @@ glupredkit generate_config --file-name my_config_3 --data df.csv --subject-ids 5
 ```
 glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
 ```
-- `model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
+- `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
+- `--model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:
     - double_lstm: A double long short-term memory recurrent neural network ([LSTMs and Neural Attention Models for Blood Glucose Prediction: Comparative Experiments on Real and Synthetic Data
 ](https://ieeexplore.ieee.org/document/8856940)). 
     - loop: The model used in Tidepool Loop ([PyLoopKit](https://github.com/tidepool-org/PyLoopKit)). This is a physiological model that requires CGM, carbohydrates, bolus and basal as features.
@@ -275,11 +276,13 @@ glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
     - tcn: [TCN](https://github.com/locuslab/TCN/tree/master).
     - uva_padova: A physiological model based on the UvA/Padova simulator, with Markov Chain Monte Carlo (MCMC) parameter estimation ([py_replay_bg](https://github.com/gcappon/py_replay_bg?tab=readme-ov-file)), and particle filter for prediction ([phy-predict](https://github.com/checoisback/phy-predict)). This model requires CGM, carbohydrates, bolus and basal as features.
     - zero_order: A naive model assuming that the value of the series will remain constant and equal to the last observed value (used for benchmark).
-- `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
+- `--model-path`: The path to a custom model. Either a model or a model path must be given, but not both.
 - `--epochs` (optional): The number of epochs used for training deep learning models (bLSTM, LSTM, MTL, STL and TCN).
 - `--n-cross-val-samples` (optional): Number of samples to use in tuning therapy settings for the Loop model
 - `--n-steps` (optional): The number of steps that will be used for identification in the UvA/Padova model. It should be at least 100k.
 - `--training-samples-per-subject` (optional): The number of training samples that will be included for identification in the UvA/Padova model. Default is 4320, corresponding to two weeks of data. 
+- `--model-name` (optional): Name the stored model. This impacts the file name that the model will be stored in. 
+- `--max-samples` (optional): The number of training samples that will be included for identification in the UvA/Padova model. Default is 4320, corresponding to two weeks of data. 
 
 #### Examples
 ```
@@ -411,6 +414,25 @@ glupredkit set_unit --use-mgdl False
 
 
 That's it! You can now run the desired command with the mentioned arguments. Always refer back to this guide for the correct usage.
+
+
+
+
+
+## Usage as a Python Dependency
+
+
+
+TO DO: 
+- add example script, example model
+
+
+
+
+
+
+
+
 
 
 

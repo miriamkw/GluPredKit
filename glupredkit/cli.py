@@ -241,7 +241,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 @click.option('--training-samples-per-subject', type=int, required=False)
 @click.option('--model-name', type=str, required=False)
 @click.option('--max-samples', type=int, required=False)
-def train_model(config_file_name, model, model_path, epochs, n_cross_val_samples, n_steps, training_samples_per_subject, model_name, max_samples):
+def train_model(config_file_name, model, model_name, model_path, epochs, n_cross_val_samples, n_steps,
+                training_samples_per_subject, max_samples):
     """
     This method does the following:
     1) Process data using the given configurations
