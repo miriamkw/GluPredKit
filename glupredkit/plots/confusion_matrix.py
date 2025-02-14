@@ -46,12 +46,10 @@ class Plot(BasePlot):
             plt.xlabel('True label')
             plt.ylabel('Predicted label')
 
-            file_path = "data/figures/"
-            os.makedirs(file_path, exist_ok=True)
-
             plot_name = f'{model_name}_confusion_matrix_ph_{prediction_horizon}'
             plots.append(plt.gcf())
             names.append(plot_name)
+
             plt.close()
 
         return plots, names

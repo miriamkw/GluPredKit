@@ -16,7 +16,11 @@ class Metric(BaseMetric):
         y_true = np.array(y_true)
         y_pred = np.array(y_pred)
 
-        # tuples = []
+        # Remove nan measurements or predictions
+        y_true, y_pred = map(
+            np.array,
+            zip(*[(x, y) for x, y in zip(y_true, y_pred) if np.isfinite(x) and np.isfinite(y)])
+        )
         percentages = []
         n_conditions = 3
 
