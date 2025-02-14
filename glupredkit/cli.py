@@ -279,6 +279,7 @@ def train_model(config_file_name, model, model_name, model_path, epochs, n_cross
     input_file_name = model_config_manager.get_data()
     data = helpers.read_data_from_csv("data/raw/", input_file_name)
     data = data[~data['is_test']]
+
     if max_samples:
         data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
 
