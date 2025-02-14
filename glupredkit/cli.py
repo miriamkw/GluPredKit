@@ -335,7 +335,19 @@ def train_model(config_file_name, model, model_name, model_path, epochs, n_cross
 @click.option('--max-samples', type=int, required=False)
 def evaluate_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
+    results_df = get_results_df(model_file, max_samples=max_samples)
 
+    # Define the path to store the dataframe
+    model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                        int(model_file.split('__')[2].split('.')[0]))
+    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
+
+    # Store the dataframe in a file
+    results_df.to_csv(output_file, index=False)
+    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
+
+
+def get_results_df(model_file, max_samples=None):
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
                                                         int(model_file.split('__')[2].split('.')[0]))
 
@@ -430,100 +442,7 @@ def evaluate_model(model_file, max_samples):
                 chosen_metric = metric_module.Metric()
                 score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
                 results_df[f'{metric}_{minutes}'] = [score]
-
-    subset_size = x_test.shape[0]
-
-    """
-    # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova'):
-        subset_size = 1000
-    subset_df_x = x_test[-subset_size:]
-
-    insulin_doses = [1, 5, 10]
-    carb_intakes = [10, 50, 100]
-
-    insulin_col = None
-    if 'insulin' in num_features:
-        insulin_col = 'insulin'
-    elif 'bolus' in num_features:
-        insulin_col = 'bolus'
-
-    if insulin_col:
-        if 'sequence' in x_test.columns:
-            _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-            x_test_copy = test_data.copy()
-        else:
-            x_test_copy = subset_df_x.copy()
-
-        x_test_copy[insulin_col] = 0
-
-        if 'sequence' in x_test.columns:
-            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-        y_pred_bolus_0 = model_instance.predict(x_test_copy)
-        y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
-
-        for insulin_dose in insulin_doses:
-            if 'sequence' in x_test.columns:
-                x_test_copy = test_data.copy()
-            else:
-                x_test_copy = subset_df_x.copy()
-
-            x_test_copy[insulin_col] = insulin_dose
-
-            if 'sequence' in x_test.columns:
-                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-            y_pred = model_instance.predict(x_test_copy)
-
-            # Calculate the average of elements at each index position
-            averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [float(x - y) for x, y in zip(averages, y_pred_bolus_0)]
-
-            results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
-
-    if 'carbs' in num_features:
-        if 'sequence' in x_test.columns:
-            x_test_copy = test_data.copy()
-        else:
-            x_test_copy = subset_df_x.copy()
-
-        x_test_copy['carbs'] = 0
-
-        if 'sequence' in x_test.columns:
-            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-        y_pred_carbs_0 = model_instance.predict(x_test_copy)
-        y_pred_carbs_0 = [np.nanmean(x) for x in zip(*y_pred_carbs_0)]
-
-        for carb_intake in carb_intakes:
-            if 'sequence' in x_test.columns:
-                x_test_copy = test_data.copy()
-            else:
-                x_test_copy = subset_df_x.copy()
-
-            x_test_copy['carbs'] = carb_intake
-
-            if 'sequence' in x_test.columns:
-                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-            y_pred = model_instance.predict(x_test_copy)
-            # Calculate the average of elements at each index position
-            averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
-            results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
-    """
-
-    # Define the path to store the dataframe
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
-
-    # Store the dataframe in a file
-    results_df.to_csv(output_file, index=False)
-    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
+    return results_df
 
 
 @click.command()
