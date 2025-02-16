@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, *args):
 
         plots = []
         names = []
@@ -49,6 +49,9 @@ class Plot(BasePlot):
         plot_name = f'slope_cost'
         plots.append(plt.gcf())
         names.append(plot_name)
+
+        if show_plot:
+            plt.show()
         plt.close()
 
         # TODO 3: Plot cost function in 3d

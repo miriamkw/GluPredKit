@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
+    def __call__(self, dfs, show_plot=True, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
         # TODO: Fix the plot when using max samples in evaluate model
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
@@ -198,6 +198,9 @@ class Plot(BasePlot):
             plot_name = f'{model_name}_trajectories_with_events'
             plots.append(plt.gcf())
             names.append(plot_name)
+
+            if show_plot:
+                plt.show()
             plt.close()
 
         return plots, names

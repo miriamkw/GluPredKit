@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, type='parkes', *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, type='parkes', *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
@@ -40,12 +40,6 @@ class Plot(BasePlot):
                 y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")
                 y_true = ast.literal_eval(y_true)
                 y_pred = ast.literal_eval(y_pred)
-
-                # Remove nan predictions
-                y_true, y_pred = map(
-                    list,
-                    zip(*[(x, y) for x, y in zip(y_true, y_pred) if x is not None and y is not None])
-                )
 
                 y_true_values += y_true
                 y_pred_values += y_pred
@@ -93,6 +87,9 @@ class Plot(BasePlot):
             plot_name = f'{model_name}_{type}_error_grid_plot_ph_{prediction_horizon}'
             plots.append(plt.gcf())
             names.append(plot_name)
+
+            if show_plot:
+                plt.show()
             plt.close()
 
         return plots, names

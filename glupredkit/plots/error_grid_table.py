@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, type='parkes', *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, type='parkes', *args):
         # Validate the type
         valid_types = {"parkes", "clarke"}
         if type not in valid_types:
@@ -110,6 +110,9 @@ class Plot(BasePlot):
         plot_name = f'{type}_error_grid_table_ph_{prediction_horizon}'
         plots.append(plt.gcf())
         names.append(plot_name)
+
+        if show_plot:
+            plt.show()
         plt.close()
 
         return plots, names

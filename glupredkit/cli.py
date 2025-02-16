@@ -23,6 +23,7 @@ from glupredkit.helpers.unit_config_manager import unit_config_manager
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager, generate_model_configuration
 import glupredkit.helpers.cli as helpers
 import glupredkit.helpers.generate_report as generate_report
+import glupredkit.api as gpk
 
 
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
@@ -336,19 +337,6 @@ def train_model(config_file_name, model, model_name, model_path, epochs, n_cross
 @click.option('--max-samples', type=int, required=False)
 def evaluate_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
-    results_df = get_results_df(model_file, max_samples=max_samples)
-
-    # Define the path to store the dataframe
-    model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
-                                                        int(model_file.split('__')[2].split('.')[0]))
-    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
-
-    # Store the dataframe in a file
-    results_df.to_csv(output_file, index=False)
-    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
-
-
-def get_results_df(model_file, max_samples=None):
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
                                                         int(model_file.split('__')[2].split('.')[0]))
 
@@ -363,87 +351,30 @@ def get_results_df(model_file, max_samples=None):
         data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
     _, test_data = helpers.get_preprocessed_data(data, prediction_horizon, model_config_manager)
 
-    processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-    target_cols = [col for col in processed_data if col.startswith('target')]
+    test_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+    target_cols = [col for col in test_data if col.startswith('target')]
 
     if max_samples:
-        x_test = processed_data.drop(target_cols, axis=1)[-max_samples:]
-        y_test = processed_data[target_cols][-max_samples:]
+        test_data = test_data[-max_samples:]
+        x_test = test_data.drop(target_cols, axis=1)
     else:
-        x_test = processed_data.drop(target_cols, axis=1)
-        y_test = processed_data[target_cols]
+        x_test = test_data.drop(target_cols, axis=1)
     y_pred = model_instance.predict(x_test)
 
-    hypo_threshold = 70
-    hyper_threshold = 180
+    results_df = gpk.get_results_df(model_name, training_data, test_data, y_pred, prediction_horizon,
+                                    num_lagged_features=model_config_manager.get_num_lagged_features(),
+                                    num_features=model_config_manager.get_num_features(),
+                                    cat_features=model_config_manager.get_cat_features(),
+                                    what_if_features=model_config_manager.get_what_if_features())
 
-    # Create a dataframe to store the model name, configuration, predictions, and other results
-    results_df = pd.DataFrame({
-        'Model Name': [model_name],
-        'training_samples': [training_data.shape[0]],
-        'test_samples': [test_data.shape[0]],
-        'hypo_training_samples': [training_data[training_data['CGM'] < hypo_threshold].shape[0]],
-        'hypo_test_samples': [test_data[test_data['CGM'] < hypo_threshold].shape[0]],
-        'hyper_training_samples': [training_data[training_data['CGM'] > hyper_threshold].shape[0]],
-        'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]],
-        'unit': [unit_config_manager.get_unit()]
-    })
+    # Define the path to store the dataframe
+    model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                        int(model_file.split('__')[2].split('.')[0]))
+    output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
 
-    configs = model_config_manager.load_config()
-    for config in configs:
-        results_df[config] = [configs[config]]
-
-    # Add daily average insulin if relevant
-    num_features = model_config_manager.get_num_features()
-    if 'bolus' in num_features and 'basal' in num_features:
-        test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
-        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-    elif ['insulin'] in num_features:
-        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-
-    # Add test data input for numerical features
-    for feature in num_features:
-        results_df['test_input_' + feature] = [x_test[feature].tolist()]
-
-    # Add test data dates
-    results_df['test_input_date'] = [x_test.index.tolist()]
-
-    metrics = helpers.list_files_in_package('metrics')
-    metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
-
-    if target_cols == ['target']:
-        # In this case, targets are stored into sequences for Neural Networks
-        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_test['target']]
-        targets = np.array(targets)
-        _, n_predictions = targets.shape
-
-        for i, minutes in enumerate(range(5, n_predictions * 5 + 1, 5)):
-            curr_y_test = targets[:, i].tolist()
-            curr_y_pred = [float(val[i]) for val in y_pred]
-            results_df = results_df.copy()  # To silent PerformanceWarning
-            results_df[f'target_{minutes}'] = [curr_y_test]
-            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
-
-            for metric in metrics:
-                metric_module = helpers.get_metric_module(metric)
-                chosen_metric = metric_module.Metric()
-                score = chosen_metric(curr_y_test, curr_y_pred, prediction_horizon=minutes)
-                results_df[f'{metric}_{minutes}'] = [score]
-
-    else:
-        for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
-            curr_y_test = y_test[target_cols[i]].tolist()
-            curr_y_pred = [float(val[i]) for val in y_pred]
-            results_df = results_df.copy()  # To silent PerformanceWarning
-            results_df[target_cols[i]] = [curr_y_test]
-            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
-
-            for metric in metrics:
-                metric_module = helpers.get_metric_module(metric)
-                chosen_metric = metric_module.Metric()
-                score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
-                results_df[f'{metric}_{minutes}'] = [score]
-    return results_df
+    # Store the dataframe in a file
+    results_df.to_csv(output_file, index=False)
+    click.echo(f"Model {model_name} is finished testing. Results are stored in {tested_models_path}")
 
 
 @click.command()
@@ -455,10 +386,11 @@ def get_results_df(model_file, max_samples=None):
                                             'without space.', default=None)
 @click.option('--type', type=click.Choice(['parkes', 'clarke']), default='parkes',
               help='The type of error grid evaluation method to use.')
+@click.option('--show-plots', type=bool, default=True)
 @click.option('--metric', type=click.Choice(['mean_error', 'rmse']), default='mean_error',
               help='The type of metric to use in results across regions.')
 @click.option('--wandb-project', help='Optional logging of the plot to a wandb project.', default=None)
-def draw_plots(results_files, plots, prediction_horizons, type, metric, wandb_project):
+def draw_plots(results_files, plots, prediction_horizons, type, show_plots, metric, wandb_project):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -475,8 +407,6 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric, wandb_pr
         df = generate_report.get_df_from_results_file(results_file)
         dfs += [df]
 
-    plot_results_path = Path('data', 'figures')
-
     # Set global params
     plt.rcParams.update({
         "font.size": 18,  # Default font size for all text
@@ -489,13 +419,12 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric, wandb_pr
     })
 
     click.echo(f"Drawing plots...")
-    os.makedirs(plot_results_path, exist_ok=True)
 
     if prediction_horizons is None:
         prediction_horizons = '30'
     prediction_horizons = helpers.split_string(prediction_horizons)
 
-    drawn_plots = []
+    figures = []
     names = []
     for plot in plots:
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
@@ -507,52 +436,35 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric, wandb_pr
                     'pareto_frontier', 'scatter_plot', 'single_prediction_horizon',
                     'weighted_loss']:
             for prediction_horizon in prediction_horizons:
-                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon)
-                drawn_plots += plts
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon)
+                figures += plts
                 names += plot_names
 
         elif plot in ['error_grid_plot', 'error_grid_table']:
             for prediction_horizon in prediction_horizons:
-                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
-                drawn_plots += plts
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon, type=type)
+                figures += plts
                 names += plot_names
 
         elif plot in ['results_across_regions']:
             for prediction_horizon in prediction_horizons:
-                plts, plot_names = chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
-                drawn_plots += plts
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon, metric=metric)
+                figures += plts
                 names += plot_names
 
         elif plot in ['trajectories', 'trajectories_with_events']:
-            plts, plot_names = chosen_plot(dfs)
-            drawn_plots += plts
+            plts, plot_names = chosen_plot(dfs, show_plot=show_plots)
+            figures += plts
             names += plot_names
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
             return
 
-    for current_plot, plot_name in zip(drawn_plots, names):
-        file_name = plot_name + '.png'
-        print("Saving plot: ", file_name)
-        current_plot.savefig(Path(plot_results_path, file_name))
-
-    # TODO: And check that plots and names are equally long lists (maybe it could be a base plot validation)
+    gpk.save_figures(figures, names)
 
     if wandb_project:
-        load_dotenv(".env.local")
-        wandb_api_key = os.environ["WANDB_API_KEY"]
-        wandb.login(key=wandb_api_key)
-        wandb.init(
-            project=wandb_project,
-            name="glupredkit plots",
-            tags="validation",
-            job_type="eval"
-        )
-        for current_plot, plot_name in zip(drawn_plots, names):
-            file_name = plot_name + '.png'
-            wandb.log({plot_name: wandb.Image(str(Path(plot_results_path, file_name)))})
-
+        gpk.log_figures_in_wandb(wandb_project, figures, names)
 
 
 @click.command()

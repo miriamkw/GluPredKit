@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, metric='mean_error', *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, metric='mean_error', *args):
 
         # Whether to plot RMSE or Mean Error
         use_rmse = False
@@ -68,6 +68,9 @@ class Plot(BasePlot):
             plot_name = f'{model_name}_results_across_regions_ph_{prediction_horizon}'
             plots.append(plt.gcf())
             names.append(plot_name)
+
+            if show_plot:
+                plt.show()
             plt.close()
 
         return plots, names

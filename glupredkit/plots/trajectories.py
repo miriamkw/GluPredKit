@@ -11,7 +11,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, *args):
+    def __call__(self, dfs, show_plot=True, *args):
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
@@ -101,6 +101,9 @@ class Plot(BasePlot):
             plot_name = f'{model_name}_trajectories'
             plots.append(plt.gcf())
             names.append(plot_name)
+
+            if show_plot:
+                plt.show()
             plt.close()
 
         return plots, names

@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=None, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=None, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
@@ -90,6 +90,9 @@ class Plot(BasePlot):
         plot_name = f'all_metrics_table_ph_{prediction_horizon}'
         plots.append(plt.gcf())
         names.append(plot_name)
+
+        if show_plot:
+            plt.show()
         plt.close()
 
         return plots, names

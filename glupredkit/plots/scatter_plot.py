@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, *args):
         """
         Plots the scatter plot for the given trained_models data.
         """
@@ -66,6 +66,9 @@ class Plot(BasePlot):
         plot_name = f'scatter_plot_ph_{prediction_horizon}'
         plots.append(plt.gcf())
         names.append(plot_name)
+
+        if show_plot:
+            plt.show()
         plt.close()
 
         return plots, names

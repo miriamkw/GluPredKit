@@ -40,7 +40,8 @@ class BaseModel(BaseEstimator, TransformerMixin, ABC):
 
         Returns:
             list of lists: Predicted trajectories, where each sublist corresponds to a predicted trajectory. The length
-            of the sublist should be self.prediction_horizon // 5.
+            of the sublist should be self.prediction_horizon // 5, and the length of the root list should be the number
+            of rows in x_test.
         """
         if not self.is_fitted:
             raise NotFittedError("This model instance is not fitted yet. Call 'fit' with appropriate arguments before "
