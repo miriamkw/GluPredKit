@@ -422,106 +422,20 @@ That's it! You can now run the desired command with the mentioned arguments. Alw
 
 ## Usage as a Python Dependency
 
-You can use GluPredKit to implement your own models and preprocessors in separate repositories and generate GluPredKit charts with those results. 
+You can use GluPredKit to implement your own models and preprocessors, or simply use the provided components to generate GluPredKit charts with your results.
 
-First, add GluPredKit as a dependency to your repository. `pip install glupredkit`. Implement a model by creating a file implementing the Base Class: 
+1. Install GluPredKit as a dependency in your repository: 
+    ```
+    pip install glupredkit
+    ```
+2. Use existing models (e.g. Ridge):
+    ```
+    from glupredkit.models.ridge import Model as Ridge
+    ```
 
-```
-from glupredkit.models.base_model import BaseModel
-from glupredkit.helpers.scikit_learn import process_data
-import numpy as np
+Or, implement your own components by inheriting from the base classes.
 
-
-class Model(BaseModel):
-    def __init__(self, prediction_horizon):
-        super().__init__(prediction_horizon)
-
-    def _fit_model(self, x_train, y_train, *args):
-        """
-        Fits the model to the training data.
-
-        Args:
-            x_train (DataFrame): Processed data for model training.
-            y_train (DataFrame): Processed target data, where each feature is named target_5, target_10... The number
-                behind target corresponds to the prediction horizon
-            *args: Additional positional arguments for the fit method.
-            **kwargs: Additional keyword arguments for the fit method.
-
-        Returns:
-            self: The fitted model instance.
-        """
-        return self
-
-    def _predict_model(self, x_test):
-        """
-        Predicts the output for the given test data.
-
-        Args:
-            x_test (DataFrame): The input data for testing, processed in the same way that the fit method takes in.
-
-        Returns:
-            list of lists: Predicted trajectories, where each sublist corresponds to a predicted trajectory. The length
-            of the sublist should be self.prediction_horizon // 5.
-        """
-        return np.array(y_pred)
-
-    def best_params(self):
-        return ...
-
-    def process_data(self, df, model_config_manager, real_time):
-        return ...
-
-```
-
-Use our functions to train, evaluate and generate visualizations of the results: 
-
-
-```
-import pandas as pd
-import glupredkit as gpk
-
-# fetch data
-df = pd.read_csv() # This df should be parsed using one of our parsers or be in the exact same format
-
-# process data
-train_data, _ = gpk.helpers.cli.get_preprocessed_data(data, prediction_horizon, model_config_manager)
-
-# train and save model
-model_module = gpk.helpers.cli.get_model_module(model_path=model_path)
-chosen_model = model_module.Model(prediction_horizon)
-processed_data = chosen_model.process_data(train_data, model_config_manager, real_time=False)
-target_columns = [column for column in processed_data.columns if column.startswith('target')]
-x_train = processed_data.drop(target_columns, axis=1)
-y_train = processed_data[target_columns]
-model_instance = chosen_model.fit(x_train, y_train)
-output_dir = Path("data") / "trained_models"
-output_file_name = f'{model_name}__{config_file_name}__{prediction_horizon}.pkl'
-output_path = output_dir / output_file_name
-
-try:
-    # Ensure the output directory exists
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save the model to a file
-    with open(output_path, 'wb') as f:
-        click.echo(f"Saving model {model} to {output_path}...")
-        dill.dump(model_instance, f)
-except Exception as e:
-    click.echo(f"Error saving model {model}: {e}")
-
-# evaluate model
-model_file = my_model__my_config__60.pkl
-results_df = gpk.cli.get_results_df(model_file, max_samples=100)
-
-# draw plots
-plot = 'error_grid_plot'
-plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
-chosen_plot = plot_module.Plot()
-plts, plot_names = chosen_plot(dfs, prediction_horizon=30)
-for plot in plts:
-    plot.show()
-```
-
+For a full example, see `examples/main.py`, which demonstrates how to use GluPredKit as a dependency and generate charts.
 
 
 

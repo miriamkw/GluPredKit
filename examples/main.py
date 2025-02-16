@@ -30,11 +30,11 @@ train_data, test_data = Preprocessor(subject_ids=subject_ids,
                                      prediction_horizon=prediction_horizon,
                                      num_lagged_features=lookback).__call__(data)
 
-# Train both a glupredkit and a custom model (create processor and custom model!)
+# Train a model
 x_train, y_train = gpk.features_target_split(train_data)
 model = ZeroOrder(prediction_horizon=prediction_horizon).fit(x_train, y_train)
 
-# Test model
+# Test a model
 x_test, y_test = gpk.features_target_split(test_data)
 y_pred = model.predict(x_test)
 
