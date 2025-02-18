@@ -30,17 +30,15 @@ class Plot(BasePlot):
 
             results = []
             for prediction_horizon in prediction_horizons:
-                percentages = df[f'glycemia_detection_{prediction_horizon}'][0]
-
-                print("PERS", percentages)
-                print("TYPE", type(percentages))
-
-                if isinstance(percentages, str):
-                    percentages = ast.literal_eval(percentages)
+                percentages = df[f'glycemia_detection_{prediction_horizon}'][0].replace("nan", "None")
+                percentages = ast.literal_eval(percentages)
+                percentages = [
+                    [np.nan if x is None else x for x in sublist] for sublist in percentages
+                ]
                 results += [percentages]
 
             matrix_array = np.array(results)
-            average_matrix = np.mean(matrix_array, axis=0)
+            average_matrix = np.nanmean(matrix_array, axis=0)
             plt.figure(figsize=(7, 5.8))
             sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.1%', xticklabels=classes,
                         yticklabels=classes)

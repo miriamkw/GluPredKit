@@ -1,7 +1,8 @@
 import glupredkit.api as gpk
+import numpy as np
 from glupredkit.preprocessors.llm import Preprocessor
 from glupredkit.models.zero_order import Model as ZeroOrder
-from glupredkit.plots import ErrorGridPlot, AllMetricsTable, ConfusionMatrix
+from glupredkit.plots import ErrorGridPlot, AllMetricsTable, ConfusionMatrix, CGPMTable
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 
 # Model configurations
@@ -44,6 +45,7 @@ results_df = gpk.get_results_df('Zero Order Hold', train_data, test_data, y_pred
 error_grid_plot = ErrorGridPlot()
 metrics_table = AllMetricsTable()
 confusion_matrix = ConfusionMatrix()
+cgpm_table = CGPMTable()
 
 results_figures = []
 for ph in [30, 60]:
@@ -52,6 +54,7 @@ for ph in [30, 60]:
         metrics_table(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
         confusion_matrix(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph)
     ]
+results_figures += [cgpm_table(dfs=[results_df], show_plot=show_plots)]
 
 # Flatten the lists
 plots, names = zip(*results_figures)
