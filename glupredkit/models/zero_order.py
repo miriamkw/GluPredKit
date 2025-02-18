@@ -27,4 +27,5 @@ class Model(BaseModel):
         return None
 
     def process_data(self, df, model_config_manager, real_time):
+        print(df)
         return df.dropna(subset=['CGM'])

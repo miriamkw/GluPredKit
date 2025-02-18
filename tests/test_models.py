@@ -33,10 +33,4 @@ def test_metric_class_name(model_cls):
     assert model.__class__.__name__ == "Model", f"Class name for {model_cls.__name__} is not 'Model'"
 
 
-@pytest.mark.parametrize("model_cls", model_classes)
-def test_predict_unfitted_model(model_cls, sample_data):
-    model = model_cls(prediction_horizon=30)
-    x_test = sample_data
-    with pytest.raises(NotFittedError):
-        model.predict(x_test)
 

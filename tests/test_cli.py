@@ -137,17 +137,17 @@ def test_train_model(runner, temp_dir):
     config_file_name = 'my_config_1'
 
     args_list = [
-        # ['blstm', config_file_name, '--epochs', epochs],
+        # ['lstm', config_file_name, '--epochs', epochs],
         # ['loop', config_file_name, '--n-cross-val-samples', 10],
         # ['lstm', config_file_name, '--epochs', epochs],
         # ['mtl', config_file_name, '--epochs', epochs],
-        ['naive_linear_regressor', config_file_name],
+        [config_file_name, '--model', 'naive_linear_regressor'],
         # ['random_forest', config_file_name],
-        ['ridge', config_file_name],
+        [config_file_name, '--model', 'ridge'],
         # ['stl', config_file_name, '--epochs', epochs],
         # ['tcn', config_file_name, '--epochs', epochs],
         # ['uva_padova', config_file_name, '--n-steps', 100, '--training-samples-per-subject', 100],
-        ['zero_order', config_file_name]
+        [config_file_name, '--model', 'zero_order'],
     ]
 
     for args in args_list:
@@ -162,7 +162,7 @@ def test_train_model(runner, temp_dir):
         assert "Training model..." in result.output
 
         # Check if the model file was created
-        output_file_name = f'{args[0]}__{config_file_name}__60.pkl'
+        output_file_name = f'{args[2]}__{config_file_name}__60.pkl'
         output_path = Path('data') / 'trained_models' / output_file_name
         assert output_path.exists(), f"Expected file {output_path} was not created"
 

@@ -258,7 +258,7 @@ glupredkit generate_config --file-name my_config_3 --data df.csv --subject-ids 5
 ### Train a Model
 **Description**: Train a model using the specified training data.
 ```
-glupredkit train_model MODEL_NAME CONFIG_FILE_NAME
+glupredkit train_model CONFIG_FILE_NAME [OPTIONS]
 ```
 - `config-file-name`: Name of the configuration to train the model (without .json). The file name must exist in `data/configurations/`.
 - `--model`: Name of the model file (without .py) to be trained. The file name must exist in `glupredkit/models/`. The available models are:

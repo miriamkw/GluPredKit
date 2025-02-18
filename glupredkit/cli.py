@@ -345,11 +345,9 @@ def evaluate_model(model_file, max_samples):
 
     input_file_name = model_config_manager.get_data()
     data = helpers.read_data_from_csv("data/raw/", input_file_name)
-    data = data[data['is_test']]
+    test_data = data[data['is_test']]
     training_data = data[~data['is_test']]
-    if max_samples:
-        data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
-    _, test_data = helpers.get_preprocessed_data(data, prediction_horizon, model_config_manager)
+    _, test_data = helpers.get_preprocessed_data(test_data, prediction_horizon, model_config_manager)
 
     test_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
     target_cols = [col for col in test_data if col.startswith('target')]

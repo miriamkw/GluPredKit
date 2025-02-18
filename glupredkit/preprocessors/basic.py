@@ -22,7 +22,7 @@ class Preprocessor(BasePreprocessor):
         train_df = df[~df['is_test']]
         test_df = df[df['is_test']]
 
-        dataset_ids = train_df['id'].unique()
+        dataset_ids = df['id'].unique()
         dataset_ids = list(filter(lambda x: not np.isnan(x), dataset_ids))
 
         # Drop columns that are not included
