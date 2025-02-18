@@ -43,6 +43,16 @@ class Plot(BasePlot):
                 y_true = [np.nan if x is None else x for x in y_true]
                 y_pred = [np.nan if x is None else x for x in y_pred]
 
+                filtered_pairs = [(x, y) for x, y in zip(y_true, y_pred) if np.isfinite(x) and np.isfinite(y)]
+
+                # Ensure filtered_pairs is not empty
+                if not filtered_pairs:
+                    print("No valid pairs of true and predicted values!")
+                    return np.full((3, 3), np.nan)
+
+                # Unpack the filtered pairs
+                y_true, y_pred = map(list, zip(*filtered_pairs))
+
                 y_true_values += y_true
                 y_pred_values += y_pred
 
@@ -59,9 +69,6 @@ class Plot(BasePlot):
                 units = "mgdl"
                 x_label = 'Reference glucose concentration (mg/dL)'
                 y_label = 'Predicted glucose concentration (mg/dL)'
-
-                print(y_true_values)
-                print(y_pred_values)
                 max_val = max(np.nanmax(y_true_values), np.nanmax(y_pred_values))
                 max_val_rounded = np.ceil(max_val / 100) * 100
                 custom_ticks = list(range(0, int(max_val_rounded) + 1, 100))

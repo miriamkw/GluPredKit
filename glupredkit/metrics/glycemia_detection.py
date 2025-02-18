@@ -24,12 +24,6 @@ class Metric(BaseMetric):
             print("No valid pairs of true and predicted values!")
             return np.full((3, 3), np.nan)
 
-        # Remove nan measurements or predictions
-        y_true, y_pred = map(
-            np.array,
-            zip(*[(x, y) for x, y in zip(y_true, y_pred) if np.isfinite(x) and np.isfinite(y)])
-        )
-
         # Unpack the filtered pairs
         y_true, y_pred = map(np.array, zip(*filtered_pairs))
 
