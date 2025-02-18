@@ -122,13 +122,15 @@ def save_figures(figures, names):
             current_plot.savefig(Path(plot_results_path, file_name))
 
 
-def log_figures_in_wandb(wandb_project, figures, names):
+def log_figures_in_wandb(wandb_project, wandb_name, figures, names):
     load_dotenv(".env.local")
     wandb_api_key = os.environ["WANDB_API_KEY"]
     wandb.login(key=wandb_api_key)
+    if not wandb_name:
+        wandb_name = "glupredkit plots"
     wandb.init(
         project=wandb_project,
-        name="glupredkit plots",
+        name=wandb_name,
         tags="validation",
         job_type="eval"
     )
