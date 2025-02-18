@@ -68,7 +68,7 @@ class Plot(BasePlot):
         results_df['CGPM'] = scaled_rmse + scaled_tg + scaled_g_mean # + scaled_me
 
         # Format numeric values to 2 decimals
-        results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}")
+        results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}").astype(str)
 
         # Add parenthesis for scaled version
         results_df['rmse'] = add_scaled_value_to_result(results_df['rmse'], scaled_rmse)

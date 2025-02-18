@@ -52,9 +52,9 @@ for ph in [30, 60]:
     results_figures += [
         error_grid_plot(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph, type='parkes'),
         metrics_table(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
-        confusion_matrix(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph)
+        confusion_matrix(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
+        cgpm_table(dfs=[results_df], show_plot=show_plots)
     ]
-results_figures += [cgpm_table(dfs=[results_df], show_plot=show_plots)]
 
 # Flatten the lists
 plots, names = zip(*results_figures)
