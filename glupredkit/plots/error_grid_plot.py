@@ -40,6 +40,8 @@ class Plot(BasePlot):
                 y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")
                 y_true = ast.literal_eval(y_true)
                 y_pred = ast.literal_eval(y_pred)
+                y_true = [np.nan if x is None else x for x in y_true]
+                y_pred = [np.nan if x is None else x for x in y_pred]
 
                 y_true_values += y_true
                 y_pred_values += y_pred
@@ -57,7 +59,10 @@ class Plot(BasePlot):
                 units = "mgdl"
                 x_label = 'Reference glucose concentration (mg/dL)'
                 y_label = 'Predicted glucose concentration (mg/dL)'
-                max_val = max(max(y_true_values), max(y_pred_values))
+
+                print(y_true_values)
+                print(y_pred_values)
+                max_val = max(np.nanmax(y_true_values), np.nanmax(y_pred_values))
                 max_val_rounded = np.ceil(max_val / 100) * 100
                 custom_ticks = list(range(0, int(max_val_rounded) + 1, 100))
 

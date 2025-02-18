@@ -1,8 +1,7 @@
 import glupredkit.api as gpk
 from glupredkit.preprocessors.llm import Preprocessor
 from glupredkit.models.zero_order import Model as ZeroOrder
-from glupredkit.plots.error_grid_plot import Plot as ErrorGridPlot
-from glupredkit.plots.all_metrics_table import Plot as MetricsTable
+from glupredkit.plots import ErrorGridPlot, AllMetricsTable, ConfusionMatrix
 from glupredkit.helpers.unit_config_manager import unit_config_manager
 
 # Model configurations
@@ -16,7 +15,7 @@ show_plots = True  # Whether to show plots in a window. If false, they will stil
 wandb_project = None  # If you want to log figures in weights and biases, change to project name
 
 # Set whether to use mg/dL in visualizations and results
-unit_config_manager.use_mgdl(True)
+unit_config_manager.use_mgdl = True
 
 # Get data in the standardized, parsed format
 data = gpk.get_synthetic_data()
@@ -29,10 +28,8 @@ train_data, test_data = Preprocessor(subject_ids=subject_ids,
                                      what_if_features=what_if_features,
                                      prediction_horizon=prediction_horizon,
                                      num_lagged_features=lookback).__call__(data)
-
-# Train a model
 x_train, y_train = gpk.features_target_split(train_data)
-model = ZeroOrder(prediction_horizon=prediction_horizon).fit(x_train, y_train)
+model = ZeroOrder(prediction_horizon=prediction_horizon)
 
 # Test a model
 x_test, y_test = gpk.features_target_split(test_data)
@@ -45,13 +42,15 @@ results_df = gpk.get_results_df('Zero Order Hold', train_data, test_data, y_pred
 
 # Draw plots
 error_grid_plot = ErrorGridPlot()
-metrics_table = MetricsTable()
+metrics_table = AllMetricsTable()
+confusion_matrix = ConfusionMatrix()
 
 results_figures = []
 for ph in [30, 60]:
     results_figures += [
         error_grid_plot(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph, type='parkes'),
-        metrics_table(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph)
+        metrics_table(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
+        confusion_matrix(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph)
     ]
 
 # Flatten the lists
