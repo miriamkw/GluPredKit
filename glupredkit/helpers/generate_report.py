@@ -28,21 +28,15 @@ def generate_single_model_front_page(canvas, df):
     canvas.drawString(100, 660, f'Categorical features: {df["cat_features"][0]}')
     canvas.drawString(100, 640, f'What-if features: {df["what_if_features"][0]}')
     canvas.drawString(100, 620, f'Number of time-lagged features: {df["num_lagged_features"][0]}')
-    canvas.drawString(100, 600, f'Preprocessor: {df["preprocessor"][0]}')
+    #canvas.drawString(100, 600, f'Preprocessor: {df["preprocessor"][0]}')
 
     # Subtitle
     canvas.setFont("Helvetica-Bold", 12)
     canvas.drawString(100, 560, f'Data Description')
 
-    if df["subject_ids"][0] == '[]':
-        data_ids = "All"
-    else:
-        data_ids = df["subject_ids"][0]
-
     # Normal text
     canvas.setFont("Helvetica", 12)
-    canvas.drawString(100, 540, f'Dataset: {df["data"][0]}')
-    canvas.drawString(100, 520, f'Data ids: {data_ids}')
+    #canvas.drawString(100, 540, f'Dataset: {df["data"][0]}')
     canvas.drawString(100, 480, f'Training samples: {df["training_samples"][0]}')
     canvas.drawString(100, 460, f'Hypoglycemia training samples: {df["hypo_training_samples"][0]}')
     canvas.drawString(100, 440, f'Hyperglycemia training samples: {df["hyper_training_samples"][0]}')
@@ -228,10 +222,10 @@ def draw_model_comparison_predicted_distribution_table(c, dfs, y_placement):
         models += [df['Model Name'][0]]
         std_result_values = []
         for ph in prediction_horizons:
-            y_test = df[f'target_{ph}'][0]
-            y_pred = df[f'y_pred_{ph}'][0]
+            y_test = df[f'target_{ph}'][0].replace('nan', 'None')
+            y_pred = df[f'y_pred_{ph}'][0].replace('nan', 'None')
             y_test = ast.literal_eval(y_test)
-            y_pred = y_pred.replace("nan", "None")
+            y_test = [np.nan if val is None else val for val in y_test]
             y_pred = ast.literal_eval(y_pred)
             y_pred = [np.nan if val is None else val for val in y_pred]
             result = np.nanstd(y_pred) / np.nanstd(y_test) * 100
@@ -277,7 +271,10 @@ def draw_overall_ranking_table(c, dfs, y_placement):
         seg_list += [np.mean([df[f'parkes_error_grid_exp_{ph}'][0] for ph in prediction_horizons])]
         mcc_list += [np.mean([(df[f'mcc_hypo_{ph}'][0] + df[f'mcc_hyper_{ph}'][0]) / 2 for ph in prediction_horizons])]
 
-        y_test = [ast.literal_eval(df[f'target_{ph}'][0]) for ph in prediction_horizons]
+        y_test = [ast.literal_eval(df[f'target_{ph}'][0].replace('nan', 'None')) for ph in prediction_horizons]
+        y_test = [
+            [np.nan if x is None else x for x in sublist] for sublist in y_test
+        ]
         y_test_std = [np.nanstd(y_vals) for y_vals in y_test]
 
         y_pred_std = []
@@ -508,11 +505,14 @@ def draw_physiological_alignment_single_dimension_table(c, df, feature, y_placem
                         calculated_ratios += [-calculated_ISF]
                     prev_value = row[i]
 
-        percentage_below_zero = (correct_sign_values / total_values) * 100
-        percentage_persistant_values = (persistant_values / total_values) * 100
-        total = (percentage_below_zero + percentage_persistant_values) / 2
-        table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
-                        "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
+        if total_values == 0:
+            table_data += [[f'nan', 'nan', 'nan', 'nan', 'nan']]
+        else:
+            percentage_below_zero = (correct_sign_values / total_values) * 100
+            percentage_persistant_values = (persistant_values / total_values) * 100
+            total = (percentage_below_zero + percentage_persistant_values) / 2
+            table_data += [[f'{int(percentage_below_zero)}%', f'{int(percentage_persistant_values)}%',
+                            "{:.1f}".format(np.mean(calculated_ratios)), "{:.1f}".format(expected_ratio), f'{int(total)}%']]
         c = draw_table(c, table_data, y_placement)
         return c
     else:
@@ -708,9 +708,10 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
         x_values = list(range(5, get_ph(df) + 1, 5))
         y_values = []
         for ph in x_values:
-            y_test = df[f'target_{ph}'][0]
+            y_test = df[f'target_{ph}'][0].replace("nan", "None")
             y_pred = df[f'y_pred_{ph}'][0].replace("nan", "None")
             y_test = ast.literal_eval(y_test)
+            y_test = [np.nan if x is None else x for x in y_test]
             y_pred = ast.literal_eval(y_pred)
             y_pred = [np.nan if x is None else x for x in y_pred]
             y_values += [np.nanstd(y_pred) / np.nanstd(y_test) * 100]
@@ -736,11 +737,10 @@ def plot_predicted_dristribution_across_prediction_horizons(c, dfs, height=2, y_
 def draw_scatter_plot(c, df, ph, x_placement, y_placement):
     fig = plt.figure(figsize=(2, 2))
 
-    y_test = df[f'target_{ph}'][0]
-    y_pred = df[f'y_pred_{ph}'][0]
+    y_test = df[f'target_{ph}'][0].replace('nan', 'None')
+    y_pred = df[f'y_pred_{ph}'][0].replace('nan', 'None')
 
     y_test = ast.literal_eval(y_test)
-    y_pred = y_pred.replace("nan", "None")
     y_pred = ast.literal_eval(y_pred)
 
     plt.scatter(y_test, y_pred, alpha=0.5)
@@ -779,10 +779,10 @@ def plot_predicted_distribution(c, df, x_placement, y_placement):
     y_test_std = []
 
     for ph in x_values:
-        y_test = df[f'target_{ph}'][0]
-        y_pred = df[f'y_pred_{ph}'][0]
+        y_test = df[f'target_{ph}'][0].replace("nan", "None")
+        y_pred = df[f'y_pred_{ph}'][0].replace("nan", "None")
         y_test = ast.literal_eval(y_test)
-        y_pred = y_pred.replace("nan", "None")
+        y_test = [np.nan if x is None else x for x in y_test]
         y_pred = ast.literal_eval(y_pred)
         y_pred = [np.nan if x is None else x for x in y_pred]
         y_pred_std += [np.nanstd(y_pred)]
