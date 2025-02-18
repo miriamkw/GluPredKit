@@ -9,6 +9,7 @@ from glupredkit.helpers.unit_config_manager import unit_config_manager
 from dotenv import load_dotenv
 from io import BytesIO
 from pathlib import Path
+from matplotlib.figure import Figure
 
 
 # DATA PARSING AND RETRIEVAL
@@ -114,9 +115,11 @@ def save_figures(figures, names):
     plot_results_path = get_figure_path()
     os.makedirs(plot_results_path, exist_ok=True)
     for current_plot, plot_name in zip(figures, names):
-        file_name = plot_name + '.png'
-        print("Saving plot: ", file_name)
-        current_plot.savefig(Path(plot_results_path, file_name))
+        is_valid = check_plot_validity(current_plot, plot_name)
+        if is_valid:
+            file_name = plot_name + '.png'
+            print("Saving plot: ", file_name)
+            current_plot.savefig(Path(plot_results_path, file_name))
 
 
 def log_figures_in_wandb(wandb_project, figures, names):
@@ -130,12 +133,24 @@ def log_figures_in_wandb(wandb_project, figures, names):
         job_type="eval"
     )
     for current_plot, plot_name in zip(figures, names):
-        # file_name = plot_name + '.png'
-        # wandb.log({plot_name: wandb.Image(str(Path(get_figure_path(), file_name)))})
-        wandb.log({plot_name: wandb.Image(current_plot)})
+        is_valid = check_plot_validity(current_plot, plot_name)
+        if is_valid:
+            wandb.log({plot_name: wandb.Image(current_plot)})
 
 
 def get_figure_path():
     return Path('data', 'figures')
+
+
+
+def check_plot_validity(plot, name):
+    if not isinstance(plot, Figure):  # Matplotlib plot objects often return lists
+        print(f"Error: Expected a plot, but got: {plot}")
+        return False
+
+    if not isinstance(name, str):
+        print(f"Error: plot name is not a string. Current value: {name}")
+        return False
+    return True
 
 

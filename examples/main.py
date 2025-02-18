@@ -12,7 +12,7 @@ numerical_features = ['CGM', 'insulin', 'carbs']
 categorical_features = ['hour']
 what_if_features = []
 subject_ids = []  # Add subject ids if you want to use only a subset of the subjects in the dataset
-show_plots = True  # Whether to show plots in a window. If false, they will still be saved to data/figures/
+show_plots = False  # Whether to show plots in a window. If false, they will still be saved to data/figures/
 wandb_project = None  # If you want to log figures in weights and biases, change to project name
 
 # Set whether to use mg/dL in visualizations and results
@@ -41,19 +41,14 @@ results_df = gpk.get_results_df('Zero Order Hold', train_data, test_data, y_pred
                                 num_lagged_features=lookback, num_features=numerical_features,
                                 cat_features=categorical_features, what_if_features=what_if_features)
 
-# Draw plots
-error_grid_plot = ErrorGridPlot()
-metrics_table = AllMetricsTable()
-confusion_matrix = ConfusionMatrix()
-cgpm_table = CGPMTable()
-
+result_dfs = [results_df]
 results_figures = []
 for ph in [30, 60]:
     results_figures += [
-        error_grid_plot(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph, type='parkes'),
-        metrics_table(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
-        confusion_matrix(dfs=[results_df], show_plot=show_plots, prediction_horizon=ph),
-        cgpm_table(dfs=[results_df], show_plot=show_plots)
+        AllMetricsTable().__call__(dfs=result_dfs, show_plot=show_plots, prediction_horizon=ph),
+        CGPMTable().__call__(dfs=result_dfs, show_plot=show_plots, prediction_horizon=ph),
+        ConfusionMatrix().__call__(dfs=result_dfs, show_plot=show_plots, prediction_horizon=ph),
+        ErrorGridPlot().__call__(dfs=result_dfs, show_plot=show_plots, prediction_horizon=ph, type='parkes')
     ]
 
 # Flatten the lists

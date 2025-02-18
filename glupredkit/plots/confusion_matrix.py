@@ -30,8 +30,10 @@ class Plot(BasePlot):
 
             results = []
             for prediction_horizon in prediction_horizons:
-                percentages = df[f'glycemia_detection_{prediction_horizon}'][0].replace("nan", "None")
-                percentages = ast.literal_eval(percentages)
+                percentages = df[f'glycemia_detection_{prediction_horizon}'][0]
+                if isinstance(percentages, str):
+                    percentages = percentages.replace("nan", "None")
+                    percentages = ast.literal_eval(percentages)
                 percentages = [
                     [np.nan if x is None else x for x in sublist] for sublist in percentages
                 ]
