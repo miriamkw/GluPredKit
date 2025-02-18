@@ -20,7 +20,6 @@ class Model(BaseModel):
 
         # Replicate each value in the "CGM" column n_predictions times
         y_pred = [[cgm_value] * n_predictions for cgm_value in cgm_values]
-        y_pred[0] = [np.nan for _ in y_pred[0]]
         return np.array(y_pred)
 
     def best_params(self):

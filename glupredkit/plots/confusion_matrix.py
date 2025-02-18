@@ -30,8 +30,9 @@ class Plot(BasePlot):
 
             results = []
             for prediction_horizon in prediction_horizons:
-                percentages = df[f'glycemia_detection_{prediction_horizon}'][0].replace("nan", "None")
-                percentages = ast.literal_eval(percentages)
+                percentages = df[f'glycemia_detection_{prediction_horizon}'][0]
+                if isinstance(percentages, str):
+                    percentages = ast.literal_eval(percentages)
                 results += [percentages]
 
             matrix_array = np.array(results)
