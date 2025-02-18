@@ -130,7 +130,7 @@ def log_figures_in_wandb(wandb_project, figures, names):
         job_type="eval"
     )
     for current_plot, plot_name in zip(figures, names):
-        file_name = plot_name + '.png'
+        # file_name = plot_name + '.png'
         # wandb.log({plot_name: wandb.Image(str(Path(get_figure_path(), file_name)))})
         wandb.log({plot_name: wandb.Image(current_plot)})
 

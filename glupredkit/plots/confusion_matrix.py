@@ -31,6 +31,10 @@ class Plot(BasePlot):
             results = []
             for prediction_horizon in prediction_horizons:
                 percentages = df[f'glycemia_detection_{prediction_horizon}'][0]
+
+                print("PERS", percentages)
+                print("TYPE", type(percentages))
+
                 if isinstance(percentages, str):
                     percentages = ast.literal_eval(percentages)
                 results += [percentages]
