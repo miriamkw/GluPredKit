@@ -9,6 +9,7 @@ import numpy as np
 class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
+        self.is_fitted = True
 
     def _fit_model(self, x_train, y_train, *args):
         return self
