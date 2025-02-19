@@ -10,7 +10,7 @@ from glupredkit.helpers.cli import read_data_from_csv
 # Add the parent directory to Python path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from glupredkit.parsers.nightscout import Parser
+from glupredkit.parsers import NightscoutParser
 
 # Setup fixtures
 @pytest.fixture(scope="module")
@@ -30,7 +30,7 @@ def test_parser(test_dir, date_range):
     start_date, end_date = date_range
 
     # Initialize parser
-    parser = Parser()
+    parser = NightscoutParser()
 
     print(f"Test directory: {test_dir}")
     print(f"Looking for files:")
