@@ -13,9 +13,11 @@ class Model(BaseModel):
 
         self.subject_ids = None
         self.models = []
+        self.features = []
 
     def _fit_model(self, x_train, y_train, *args):
         self.subject_ids = x_train['id'].unique()
+        self.features = x_train.columns
 
         # Define the parameter grid
         param_grid = {
@@ -38,6 +40,7 @@ class Model(BaseModel):
     def _predict_model(self, x_test):
         y_pred = []
         ids_list = x_test.id.unique()
+        x_test = x_test[self.features]
 
         for curr_id in ids_list:
             model_index = np.where(self.subject_ids == curr_id)[0][0]
