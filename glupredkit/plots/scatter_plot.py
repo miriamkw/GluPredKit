@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, *args):
         """
         Plots the scatter plot for the given trained_models data.
         """
@@ -27,6 +27,9 @@ class Plot(BasePlot):
             max_val = unit_config_manager.convert_value(400)
 
         plt.figure(figsize=(10, 8))
+
+        plots = []
+        names = []
 
         for df in dfs:
             model_name = df['Model Name'][0]
@@ -60,12 +63,12 @@ class Plot(BasePlot):
         plt.title(f"Scatter Plot of Prediction Accuracy {prediction_horizon} Minutes Prediction Horizon")
         plt.legend(loc='upper left')
 
-        file_path = "data/figures/"
-        os.makedirs(file_path, exist_ok=True)
+        plot_name = f'scatter_plot_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
 
-        timestamp = datetime.now().isoformat()
-        safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-        safe_timestamp = safe_timestamp.replace('.', '_')
-        file_name = f'scatter_plot_{safe_timestamp}.png'
-        plt.savefig(file_path + file_name)
-        plt.show()
+        if show_plot:
+            plt.show()
+        plt.close()
+
+        return plots, names

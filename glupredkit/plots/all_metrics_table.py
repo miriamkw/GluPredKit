@@ -10,7 +10,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=None, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=None, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
@@ -19,6 +19,8 @@ class Plot(BasePlot):
         metrics = [val.split('.')[0] for val in metrics if not '__init__' in val and not 'base_metric' in val
                    and not 'error_grid' in val and not 'glycemia_detection' in val]
         data = []
+        plots = []
+        names = []
 
         # Creates results df
         for df in dfs:
@@ -85,6 +87,13 @@ class Plot(BasePlot):
             cell.set_height(0.1)  # Adjust height for vertical padding
             cell.PAD = 0.05  # Increase cell padding
 
-        plt.show()
+        plot_name = f'all_metrics_table_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
 
+        if show_plot:
+            plt.show()
+        plt.close()
+
+        return plots, names
 

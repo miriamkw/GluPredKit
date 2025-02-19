@@ -9,7 +9,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=None, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=None, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
@@ -17,6 +17,8 @@ class Plot(BasePlot):
 
         metrics = ['rmse', 'temporal_gain', 'g_mean']#, 'me']
         data = []
+        plots = []
+        names = []
 
         # Creates results df
         for df in dfs:
@@ -66,7 +68,7 @@ class Plot(BasePlot):
         results_df['CGPM'] = scaled_rmse + scaled_tg + scaled_g_mean # + scaled_me
 
         # Format numeric values to 2 decimals
-        results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}")
+        results_df.iloc[:, 1:] = results_df.iloc[:, 1:].applymap(lambda x: f"{x:.2f}").astype(str)
 
         # Add parenthesis for scaled version
         results_df['rmse'] = add_scaled_value_to_result(results_df['rmse'], scaled_rmse)
@@ -105,8 +107,15 @@ class Plot(BasePlot):
             cell.set_height(0.1)  # Adjust height for vertical padding
             cell.PAD = 0.1  # Increase cell padding
 
-        plt.show()
+        plot_name = f'cgpm_table_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
 
+        if show_plot:
+            plt.show()
+        plt.close()
+
+        return plots, names
 
 def scale_errors(metric_results, use_mg_dl=False):
     lower_bound = 1

@@ -11,12 +11,14 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
         classes = ['Hypo', 'Target', 'Hyper']
 
+        plots = []
+        names = []
         for df in dfs:
             model_name = df['Model Name'][0]
 
@@ -29,14 +31,19 @@ class Plot(BasePlot):
             results = []
             for prediction_horizon in prediction_horizons:
                 percentages = df[f'glycemia_detection_{prediction_horizon}'][0]
-                percentages = ast.literal_eval(percentages)
+                if isinstance(percentages, str):
+                    percentages = percentages.replace("nan", "None")
+                    percentages = ast.literal_eval(percentages)
+                percentages = [
+                    [np.nan if x is None else x for x in sublist] for sublist in percentages
+                ]
                 results += [percentages]
 
             matrix_array = np.array(results)
-            average_matrix = np.mean(matrix_array, axis=0)
-
+            average_matrix = np.nanmean(matrix_array, axis=0)
             plt.figure(figsize=(7, 5.8))
-            sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.2%', xticklabels=classes, yticklabels=classes)
+            sns.heatmap(average_matrix, annot=True, cmap=plt.cm.Blues, fmt='.1%', xticklabels=classes,
+                        yticklabels=classes)
             if len(prediction_horizons) > 1:
                 plt.title(f'Total Over all PHs for {model_name}')
             else:
@@ -44,15 +51,14 @@ class Plot(BasePlot):
             plt.xlabel('True label')
             plt.ylabel('Predicted label')
 
-            file_path = "data/figures/"
-            os.makedirs(file_path, exist_ok=True)
+            plot_name = f'{model_name}_confusion_matrix_ph_{prediction_horizon}'
+            plots.append(plt.gcf())
+            names.append(plot_name)
 
-            timestamp = datetime.now().isoformat()
-            safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-            safe_timestamp = safe_timestamp.replace('.', '_')
+            if show_plot:
+                plt.show()
 
-            file_name = f'confusion_matrix_{safe_timestamp}_{model_name}.png'
-            plt.savefig(file_path + file_name)
+            plt.close()
 
-            plt.show()
+        return plots, names
 

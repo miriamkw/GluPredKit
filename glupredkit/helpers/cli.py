@@ -1,9 +1,12 @@
+import io
+
 import pandas as pd
 import sys
 import os
 import ast
 import requests
 import click
+import json
 import dill
 import importlib
 from importlib import resources
@@ -16,7 +19,7 @@ from ..helpers.model_config_manager import ModelConfigurationManager
 def read_data_from_csv(input_path, file_name):
     input_path = Path(input_path)
     file_path = input_path / file_name
-    return pd.read_csv(file_path, index_col="date", parse_dates=True)
+    return pd.read_csv(file_path, index_col="date", parse_dates=True, low_memory=False)
 
 
 def store_data_as_csv(df, output_path, file_name):
@@ -53,13 +56,43 @@ def get_metric_module(metric):
     return metric_module
 
 
-def get_model_module(model):
+def get_model_module(model=None, model_path=None):
+    """
     model_module = importlib.import_module(f'glupredkit.models.{model}')
     # Ensure the chosen parser inherits from BaseParser
     if not issubclass(model_module.Model, BaseModel):
         raise Exception(f"The selected model '{model}' must inherit from BaseModel.")
-
     return model_module
+    """
+    if model:
+        try:
+            model_module = importlib.import_module(f'glupredkit.models.{model}')
+        except ModuleNotFoundError:
+            raise Exception(f"The predefined model '{model}' could not be found.")
+        if not issubclass(model_module.Model, BaseModel):
+            raise Exception(f"The selected model '{model}' must inherit from BaseModel.")
+        return model_module
+
+    elif model_path:
+        if not os.path.exists(model_path):
+            raise Exception(f"The specified model path '{model_path}' does not exist.")
+        model_dir, model_file = os.path.split(model_path)
+        module_name, _ = os.path.splitext(model_file)
+
+        try:
+            spec = importlib.util.spec_from_file_location(module_name, model_path)
+            custom_model_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(custom_model_module)
+        except Exception as e:
+            raise Exception(f"Failed to load the custom model from '{model_path}': {e}")
+
+        if not hasattr(custom_model_module, 'Model') or not issubclass(custom_model_module.Model, BaseModel):
+            raise Exception(f"The custom model in '{model_path}' must define a 'Model' class inheriting from BaseModel.")
+
+        return custom_model_module
+
+    else:
+        raise ValueError("Either 'model' or 'model_path' must be provided.")
 
 
 def get_trained_model(model_file_name):
@@ -70,7 +103,7 @@ def get_trained_model(model_file_name):
     return model_instance
 
 
-def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigurationManager, carbs=None, insulin=None,
+def get_preprocessed_data(data, prediction_horizon: int, config_manager: ModelConfigurationManager, carbs=None, insulin=None,
                           start_date=None, end_date=None):
     preprocessor = config_manager.get_preprocessor()
     input_file_name = config_manager.get_data()
@@ -83,8 +116,6 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
                                                            config_manager.get_cat_features(),
                                                            config_manager.get_what_if_features(),
                                                            prediction_horizon, config_manager.get_num_lagged_features())
-    # Load the input CSV file into a DataFrame
-    data = read_data_from_csv("data/raw/", input_file_name)
 
     # Checking if the data and the configuration are aligned
     required_features = (config_manager.get_num_features() + config_manager.get_cat_features() +
@@ -97,13 +128,13 @@ def get_preprocessed_data(prediction_horizon: int, config_manager: ModelConfigur
     if "CGM" not in config_manager.get_num_features():
         raise ValueError(f"CGM is a required column for numerical features. Please ensure that your configuration and "
                          f"input data are valid.")
-    if missing_features:
-        raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
-                         f"{', '.join(missing_features)}. ")
-    if common_elements:
-        raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
-                         f"separate subjects and train and test data. Please remove these features from the "
-                         f"configuration.")
+    #if missing_features:
+    #    raise ValueError(f"The following features are defined in the configuration, but are missing from the data: "
+    #                     f"{', '.join(missing_features)}. ")
+    #if common_elements:
+    #    raise ValueError(f"'id' and 'is_test' should not be used as a features because they are used as columns to "
+    #                     f"separate subjects and train and test data. Please remove these features from the "
+    #                     f"configuration.")
 
     if carbs:
         if 'carbs' in data.columns:

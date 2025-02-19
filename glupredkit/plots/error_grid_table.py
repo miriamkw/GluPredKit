@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import ast
+import math
 from .base_plot import BasePlot
 from methcomp import parkeszones, clarkezones
 from collections import Counter
@@ -9,14 +10,15 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, type='parkes', *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, type='parkes', *args):
         # Validate the type
         valid_types = {"parkes", "clarke"}
         if type not in valid_types:
             raise ValueError(f"Invalid type: {type}. Must be one of {valid_types}")
 
         data = []
-
+        plots = []
+        names = []
         for df in dfs:
             model_name = df['Model Name'][0]
             row = {"Model Name": model_name}
@@ -30,13 +32,17 @@ class Plot(BasePlot):
             y_true_values = []
             y_pred_values = []
             for prediction_horizon in prediction_horizons:
-                y_true = df[f'target_{prediction_horizon}'][0]
+                y_true = df[f'target_{prediction_horizon}'][0].replace("nan", "None")
                 y_pred = df[f'y_pred_{prediction_horizon}'][0].replace("nan", "None")
                 y_true = ast.literal_eval(y_true)
                 y_pred = ast.literal_eval(y_pred)
 
-                y_true_values += y_true
-                y_pred_values += y_pred
+                filtered_y_true, filtered_y_pred = zip(
+                    *[(x, y) for x, y in zip(y_true, y_pred) if x is not None and y is not None]
+                )
+
+                y_true_values += filtered_y_true
+                y_pred_values += filtered_y_pred
 
             if type == 'parkes':
                 zones = parkeszones(1, y_true_values, y_pred_values, units="mgdl", numeric=False)
@@ -101,5 +107,13 @@ class Plot(BasePlot):
             cell.set_height(0.1)  # Adjust height for vertical padding
             cell.PAD = 0.1  # Increase cell padding
 
-        plt.show()
+        plot_name = f'{type}_error_grid_table_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+
+        if show_plot:
+            plt.show()
+        plt.close()
+
+        return plots, names
 

@@ -8,12 +8,14 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, normalize_results=False, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, normalize_results=False, *args):
         """
         Plots the confusion matrix for the given trained_models data.
         """
         metrics = ['rmse', 'temporal_gain', 'g_mean']
         data = []
+        plots = []
+        names = []
 
         # Creates results df
         for df in dfs:
@@ -120,8 +122,17 @@ class Plot(BasePlot):
             ax.set_ylabel('g_mean')
             ax.set_zlabel('temporal_gain')
             ax.legend(loc='upper left')
-            plt.show()
 
         # Plot 3D visualization
         plot_3d(results_df, pareto_front_df)
+
+        plot_name = f'pareto_frontier_ph_{prediction_horizon}'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+
+        if show_plot:
+            plt.show()
+        plt.close()
+
+        return plots, names
 

@@ -13,6 +13,8 @@ dill
 python-nightscout
 error-grids
 methcomp
+wandb
+python-dotenv
 # xport
 # Optional heavy dependencies
 # tensorflow==2.14.0

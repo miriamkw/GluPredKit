@@ -12,7 +12,7 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
+    def __call__(self, dfs, show_plot=True, start_index=12*12*1, n_samples=12*12, trajectory_interval=3, *args):
         # TODO: Fix the plot when using max samples in evaluate model
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
@@ -34,6 +34,9 @@ class Plot(BasePlot):
             unit = "mg/dL"
         else:
             unit = "mmol/L"
+
+        plots = []
+        names = []
 
         for df in dfs:
             fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(14, 10))
@@ -77,7 +80,6 @@ class Plot(BasePlot):
                 n_samples = model_df.shape[0]
 
             if start_index is not None:
-                print("start index true")
                 if start_index > model_df.shape[0] - n_samples:
                     print(f"Start index too high. Should be below {model_df.shape[0] - n_samples}. Setting start index to 0...")
                     start_index = 0
@@ -192,16 +194,16 @@ class Plot(BasePlot):
 
             # Collect all legends into one frame
             fig.legend(loc='upper right', bbox_to_anchor=(0.95, 0.95))  # Adjust position as needed
-            file_path = "data/figures/"
 
-            timestamp = datetime.now().isoformat()
-            safe_timestamp = timestamp.replace(':', '_')  # Windows does not allow ":" in file names
-            safe_timestamp = safe_timestamp.replace('.', '_')
-            file_name = f"trajectories_{model_name}_{safe_timestamp}.png"
-            plt.savefig(file_path + file_name)
+            plot_name = f'{model_name}_trajectories_with_events'
+            plots.append(plt.gcf())
+            names.append(plot_name)
 
-            plt.show()
+            if show_plot:
+                plt.show()
+            plt.close()
 
+        return plots, names
 
 def get_list_from_string(df, col):
     string_values = df[col][0]

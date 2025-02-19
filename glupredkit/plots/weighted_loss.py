@@ -10,7 +10,10 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, *args):
+
+        plots = []
+        names = []
 
         # Plotting zone cost
         bg_values = np.linspace(18.6, 600, 500)
@@ -25,8 +28,11 @@ class Plot(BasePlot):
         plt.ylabel('Cost', fontsize=14)
         plt.legend(fontsize=12)
         plt.grid(True)
-        plt.tight_layout()
-        plt.show()
+
+        plot_name = f'zone_cost'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+        plt.close()
 
         # Generate bg and delta_bg ranges
         bg_values = np.linspace(0, 600, 100)
@@ -39,8 +45,14 @@ class Plot(BasePlot):
         plt.title('Slope Cost Function Heatmap', fontsize=16)
         plt.xlabel('BG (Blood Glucose)', fontsize=14)
         plt.ylabel('Delta BG', fontsize=14)
-        plt.tight_layout()
-        plt.show()
+
+        plot_name = f'slope_cost'
+        plots.append(plt.gcf())
+        names.append(plot_name)
+
+        if show_plot:
+            plt.show()
+        plt.close()
 
         # TODO 3: Plot cost function in 3d
 
@@ -81,6 +93,7 @@ class Plot(BasePlot):
         plt.tight_layout()
         plt.show()
         """
+        return plots, names
 
 
 def weighted_rmse(y_true, y_pred, weights):

@@ -1,7 +1,7 @@
 """
 A zero-order hold algorithm assumes that glucose will not change in the future.
 """
-from .base_model import BaseModel
+from glupredkit.models.base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
 import numpy as np
 
@@ -9,6 +9,7 @@ import numpy as np
 class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
+        self.is_fitted = True
 
     def _fit_model(self, x_train, y_train, *args):
         return self
@@ -26,4 +27,4 @@ class Model(BaseModel):
         return None
 
     def process_data(self, df, model_config_manager, real_time):
-        return process_data(df, model_config_manager, real_time)
+        return df.dropna(subset=['CGM'])

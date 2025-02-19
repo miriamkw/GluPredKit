@@ -1,6 +1,11 @@
 """
 The T1DEXI parser is processing the .xpt data from the Ohio T1DM datasets and returning the data merged into
 the same time grid in a dataframe.
+
+To do:
+- correct the dates that are now in the future
+- workouts and similar should have a separate column for duration instead
+-
 """
 from .base_parser import BaseParser
 import pandas as pd

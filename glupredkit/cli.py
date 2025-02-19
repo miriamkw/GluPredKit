@@ -4,9 +4,11 @@ import dill
 import requests
 import warnings
 import os
+import wandb
 import ast
 import importlib
 import pandas as pd
+from dotenv import load_dotenv
 from pathlib import Path
 from datetime import timedelta, datetime
 from reportlab.lib.pagesizes import letter
@@ -21,6 +23,7 @@ from glupredkit.helpers.unit_config_manager import unit_config_manager
 from glupredkit.helpers.model_config_manager import ModelConfigurationManager, generate_model_configuration
 import glupredkit.helpers.cli as helpers
 import glupredkit.helpers.generate_report as generate_report
+import glupredkit.api as gpk
 
 
 # TODO: Fix so that all default values are defined upstream (=here in the CLI), and removed from downstream
@@ -213,7 +216,8 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
 
 
 @click.command()
-@click.argument('model', type=click.Choice([
+@click.argument('config-file-name', type=str)
+@click.option('--model', type=click.Choice([
     'double_lstm',
     'loop',
     'loop_v2',
@@ -230,18 +234,37 @@ def generate_config(file_name, data, subject_ids, preprocessor, prediction_horiz
     'tcn',
     'uva_padova',
     'zero_order'
-]))
-@click.argument('config-file-name', type=str)
+]), help="Choose a pre-defined model")
+@click.option('--model-path', type=click.Path(exists=True), help="Provide the path to your custom model file")
 @click.option('--epochs', type=int, required=False)
 @click.option('--n-cross-val-samples', type=int, required=False)
 @click.option('--n-steps', type=int, required=False)
 @click.option('--training-samples-per-subject', type=int, required=False)
-def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, training_samples_per_subject):
+@click.option('--model-name', type=str, required=False)
+@click.option('--max-samples', type=int, required=False)
+def train_model(config_file_name, model, model_name, model_path, epochs, n_cross_val_samples, n_steps,
+                training_samples_per_subject, max_samples):
     """
     This method does the following:
     1) Process data using the given configurations
     2) Train the given models for the given prediction horizons in the configuration
     """
+    if not model and not model_path:
+        raise click.UsageError("You must specify either --model or --model-path.")
+    if model and model_path:
+        raise click.UsageError("You can specify only one: either --model or --model-path.")
+
+    if model:
+        click.echo(f"Using pre-defined model: {model}")
+        model_module = helpers.get_model_module(model=model)
+        if not model_name:
+            model_name = model
+    else:
+        click.echo(f"Using custom model from: {model_path}")
+        model_module = helpers.get_model_module(model_path=model_path)
+        if not model_name:
+            model_name = model_path.split('/')[-1].split('.')[0]
+
     # Filtering out UserWarning because we are using an old Keras file format on purpose
     warnings.filterwarnings(
         "ignore",
@@ -250,13 +273,18 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 
     click.echo(f"Starting pipeline to train model {model} with configurations in {config_file_name}...")
     model_config_manager = ModelConfigurationManager(config_file_name)
-
     prediction_horizon = model_config_manager.get_prediction_horizon()
-    model_module = helpers.get_model_module(model)
 
     # PREPROCESSING
     # Perform data preprocessing using your preprocessor
-    train_data, _ = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
+    input_file_name = model_config_manager.get_data()
+    data = helpers.read_data_from_csv("data/raw/", input_file_name)
+    data = data[~data['is_test']]
+
+    if max_samples:
+        data = data.tail(max_samples + model_config_manager.get_num_lagged_features() + (prediction_horizon // 5))
+
+    train_data, _ = helpers.get_preprocessed_data(data, prediction_horizon, model_config_manager)
     click.echo(f"Training data finished preprocessing...")
 
     # MODEL TRAINING
@@ -285,7 +313,7 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 
     # Assuming model_instance is your class instance
     output_dir = Path("data") / "trained_models"
-    output_file_name = f'{model}__{config_file_name}__{prediction_horizon}.pkl'
+    output_file_name = f'{model_name}__{config_file_name}__{prediction_horizon}.pkl'
     output_path = output_dir / output_file_name
 
     try:
@@ -309,181 +337,37 @@ def train_model(model, config_file_name, epochs, n_cross_val_samples, n_steps, t
 @click.option('--max-samples', type=int, required=False)
 def evaluate_model(model_file, max_samples):
     tested_models_path = "data/tested_models"
-
     model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
                                                         int(model_file.split('__')[2].split('.')[0]))
 
     model_config_manager = ModelConfigurationManager(config_file_name)
     model_instance = helpers.get_trained_model(model_file)
-    training_data, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
 
-    processed_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
-    target_cols = [col for col in processed_data if col.startswith('target')]
+    input_file_name = model_config_manager.get_data()
+    data = helpers.read_data_from_csv("data/raw/", input_file_name)
+    test_data = data[data['is_test']]
+    training_data = data[~data['is_test']]
+    _, test_data = helpers.get_preprocessed_data(test_data, prediction_horizon, model_config_manager)
+
+    test_data = model_instance.process_data(test_data, model_config_manager, real_time=False)
+    target_cols = [col for col in test_data if col.startswith('target')]
 
     if max_samples:
-        x_test = processed_data.drop(target_cols, axis=1)[-max_samples:]
-        y_test = processed_data[target_cols][-max_samples:]
+        test_data = test_data[-max_samples:]
+        x_test = test_data.drop(target_cols, axis=1)
     else:
-        x_test = processed_data.drop(target_cols, axis=1)
-        y_test = processed_data[target_cols]
+        x_test = test_data.drop(target_cols, axis=1)
     y_pred = model_instance.predict(x_test)
 
-    hypo_threshold = 70
-    hyper_threshold = 180
-
-    # Create a dataframe to store the model name, configuration, predictions, and other results
-    results_df = pd.DataFrame({
-        'Model Name': [model_name],
-        'training_samples': [training_data.shape[0]],
-        'test_samples': [test_data.shape[0]],
-        'hypo_training_samples': [training_data[training_data['CGM'] < hypo_threshold].shape[0]],
-        'hypo_test_samples': [test_data[test_data['CGM'] < hypo_threshold].shape[0]],
-        'hyper_training_samples': [training_data[training_data['CGM'] > hyper_threshold].shape[0]],
-        'hyper_test_samples': [test_data[test_data['CGM'] > hyper_threshold].shape[0]],
-        'unit': [unit_config_manager.get_unit()]
-    })
-
-    configs = model_config_manager.load_config()
-    for config in configs:
-        results_df[config] = [configs[config]]
-
-    # Add daily average insulin if relevant
-    num_features = model_config_manager.get_num_features()
-    if 'bolus' in num_features and 'basal' in num_features:
-        test_data['insulin'] = test_data['bolus'] + (test_data['basal'] / 12)
-        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-    elif ['insulin'] in num_features:
-        results_df['daily_avg_insulin'] = np.mean(test_data.groupby(pd.Grouper(freq='D')).agg({'insulin': 'sum'}))
-
-    # Add test data input for numerical features
-    for feature in num_features:
-        results_df['test_input_' + feature] = [x_test[feature].tolist()]
-
-    # Add test data dates
-    results_df['test_input_date'] = [x_test.index.tolist()]
-
-    metrics = helpers.list_files_in_package('metrics')
-    metrics = [os.path.splitext(file)[0] for file in metrics if file not in ('__init__.py', 'base_metric.py')]
-
-    if target_cols == ['target']:
-        # In this case, targets are stored into sequences for Neural Networks
-        targets = [np.array(ast.literal_eval(target_str)) for target_str in y_test['target']]
-        targets = np.array(targets)
-        _, n_predictions = targets.shape
-
-        for i, minutes in enumerate(range(5, n_predictions * 5 + 1, 5)):
-            curr_y_test = targets[:, i].tolist()
-            curr_y_pred = [float(val[i]) for val in y_pred]
-            results_df = results_df.copy()  # To silent PerformanceWarning
-            results_df[f'target_{minutes}'] = [curr_y_test]
-            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
-
-            for metric in metrics:
-                metric_module = helpers.get_metric_module(metric)
-                chosen_metric = metric_module.Metric()
-                score = chosen_metric(curr_y_test, curr_y_pred, prediction_horizon=minutes)
-                results_df[f'{metric}_{minutes}'] = [score]
-
-    else:
-        for i, minutes in enumerate(range(5, len(target_cols) * 5 + 1, 5)):
-            curr_y_test = y_test[target_cols[i]].tolist()
-            curr_y_pred = [float(val[i]) for val in y_pred]
-            results_df = results_df.copy()  # To silent PerformanceWarning
-            results_df[target_cols[i]] = [curr_y_test]
-            results_df[f'y_pred_{minutes}'] = [curr_y_pred]
-
-            for metric in metrics:
-                metric_module = helpers.get_metric_module(metric)
-                chosen_metric = metric_module.Metric()
-                score = chosen_metric(y_test[target_cols[i]], curr_y_pred, prediction_horizon=minutes)
-                results_df[f'{metric}_{minutes}'] = [score]
-
-    subset_size = x_test.shape[0]
-
-    # For physiological models the insulin and meal curves are deterministic, and we can reduce the samples
-    if (model_name == 'loop') | (model_name == 'uva_padova'):
-        subset_size = 1000
-    subset_df_x = x_test[-subset_size:]
-
-    insulin_doses = [1, 5, 10]
-    carb_intakes = [10, 50, 100]
-
-    insulin_col = None
-    if 'insulin' in num_features:
-        insulin_col = 'insulin'
-    elif 'bolus' in num_features:
-        insulin_col = 'bolus'
-
-    if insulin_col:
-        if 'sequence' in x_test.columns:
-            _, test_data = helpers.get_preprocessed_data(prediction_horizon, model_config_manager)
-            x_test_copy = test_data.copy()
-        else:
-            x_test_copy = subset_df_x.copy()
-
-        x_test_copy[insulin_col] = 0
-
-        if 'sequence' in x_test.columns:
-            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-        y_pred_bolus_0 = model_instance.predict(x_test_copy)
-        y_pred_bolus_0 = [np.nanmean(x) for x in zip(*y_pred_bolus_0)]
-
-        for insulin_dose in insulin_doses:
-            if 'sequence' in x_test.columns:
-                x_test_copy = test_data.copy()
-            else:
-                x_test_copy = subset_df_x.copy()
-
-            x_test_copy[insulin_col] = insulin_dose
-
-            if 'sequence' in x_test.columns:
-                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-            y_pred = model_instance.predict(x_test_copy)
-
-            # Calculate the average of elements at each index position
-            averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [float(x - y) for x, y in zip(averages, y_pred_bolus_0)]
-
-            results_df[f'partial_dependency_bolus_{insulin_dose}'] = [averages]
-
-    if 'carbs' in num_features:
-        if 'sequence' in x_test.columns:
-            x_test_copy = test_data.copy()
-        else:
-            x_test_copy = subset_df_x.copy()
-
-        x_test_copy['carbs'] = 0
-
-        if 'sequence' in x_test.columns:
-            processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-            x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-        y_pred_carbs_0 = model_instance.predict(x_test_copy)
-        y_pred_carbs_0 = [np.nanmean(x) for x in zip(*y_pred_carbs_0)]
-
-        for carb_intake in carb_intakes:
-            if 'sequence' in x_test.columns:
-                x_test_copy = test_data.copy()
-            else:
-                x_test_copy = subset_df_x.copy()
-
-            x_test_copy['carbs'] = carb_intake
-
-            if 'sequence' in x_test.columns:
-                processed_data = model_instance.process_data(x_test_copy, model_config_manager, real_time=False)
-                x_test_copy = processed_data.drop(target_cols, axis=1)[-subset_size:]
-
-            y_pred = model_instance.predict(x_test_copy)
-            # Calculate the average of elements at each index position
-            averages = [np.nanmean(x) for x in zip(*y_pred)]
-            averages = [float(x - y) for x, y in zip(averages, y_pred_carbs_0)]
-            results_df[f'partial_dependency_carbs_{carb_intake}'] = [averages]
+    results_df = gpk.get_results_df(model_name, training_data, test_data, y_pred, prediction_horizon,
+                                    num_lagged_features=model_config_manager.get_num_lagged_features(),
+                                    num_features=model_config_manager.get_num_features(),
+                                    cat_features=model_config_manager.get_cat_features(),
+                                    what_if_features=model_config_manager.get_what_if_features())
 
     # Define the path to store the dataframe
+    model_name, config_file_name, prediction_horizon = (model_file.split('__')[0], model_file.split('__')[1],
+                                                        int(model_file.split('__')[2].split('.')[0]))
     output_file = f"{tested_models_path}/{model_name}__{config_file_name}__{prediction_horizon}.csv"
 
     # Store the dataframe in a file
@@ -500,9 +384,11 @@ def evaluate_model(model_file, max_samples):
                                             'without space.', default=None)
 @click.option('--type', type=click.Choice(['parkes', 'clarke']), default='parkes',
               help='The type of error grid evaluation method to use.')
+@click.option('--show-plots', type=bool, default=True)
 @click.option('--metric', type=click.Choice(['mean_error', 'rmse']), default='mean_error',
               help='The type of metric to use in results across regions.')
-def draw_plots(results_files, plots, prediction_horizons, type, metric):
+@click.option('--wandb-project', help='Optional logging of the plot to a wandb project.', default=None)
+def draw_plots(results_files, plots, prediction_horizons, type, show_plots, metric, wandb_project):
     """
     This command draws the given plots and store them in data/figures/.
     """
@@ -519,8 +405,6 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         df = generate_report.get_df_from_results_file(results_file)
         dfs += [df]
 
-    plot_results_path = 'data/figures/'
-
     # Set global params
     plt.rcParams.update({
         "font.size": 18,  # Default font size for all text
@@ -532,14 +416,14 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
         "figure.titlesize": 20  # Figure title size
     })
 
-    # Draw plots
     click.echo(f"Drawing plots...")
-    os.makedirs(plot_results_path, exist_ok=True)
 
     if prediction_horizons is None:
         prediction_horizons = '30'
     prediction_horizons = helpers.split_string(prediction_horizons)
 
+    figures = []
+    names = []
     for plot in plots:
         plot_module = importlib.import_module(f'glupredkit.plots.{plot}')
         if not issubclass(plot_module.Plot, BasePlot):
@@ -550,22 +434,35 @@ def draw_plots(results_files, plots, prediction_horizons, type, metric):
                     'pareto_frontier', 'scatter_plot', 'single_prediction_horizon',
                     'weighted_loss']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon)
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon)
+                figures += plts
+                names += plot_names
 
         elif plot in ['error_grid_plot', 'error_grid_table']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon, type=type)
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon, type=type)
+                figures += plts
+                names += plot_names
 
         elif plot in ['results_across_regions']:
             for prediction_horizon in prediction_horizons:
-                chosen_plot(dfs, prediction_horizon=prediction_horizon, metric=metric)
+                plts, plot_names = chosen_plot(dfs, show_plot=show_plots, prediction_horizon=prediction_horizon, metric=metric)
+                figures += plts
+                names += plot_names
 
         elif plot in ['trajectories', 'trajectories_with_events']:
-            chosen_plot(dfs)
+            plts, plot_names = chosen_plot(dfs, show_plot=show_plots)
+            figures += plts
+            names += plot_names
 
         else:
             click.echo(f"Plot {plot} does not exist. Please look in the documentation for the existing plots.")
             return
+
+    gpk.save_figures(figures, names)
+
+    if wandb_project:
+        gpk.log_figures_in_wandb(wandb_project, figures, names)
 
 
 @click.command()

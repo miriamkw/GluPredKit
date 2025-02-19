@@ -11,13 +11,16 @@ class Plot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def __call__(self, dfs, prediction_horizon=30, plot_predictions=True, *args):
+    def __call__(self, dfs, show_plot=True, prediction_horizon=30, plot_predictions=True, *args):
         """
         This plot plots predicted trajectories from the measured values. A random subsample of around 24 hours will
         be plotted.
         """
         n_samples = 12 * 12
         start_index = 0
+
+        plots = []
+        names = []
 
         for df in dfs:
             model_name = df['Model Name'][0]
@@ -107,8 +110,15 @@ class Plot(BasePlot):
             # Set title
             plt.title(f"Predictions for {model_name} Model {prediction_horizon} Minutes PH", fontsize=20)
 
-            # Save plot
-            plt.show()
+            plot_name = f'{model_name}_single_prediction_horizon_ph_{prediction_horizon}'
+            plots.append(plt.gcf())
+            names.append(plot_name)
+
+            if show_plot:
+                plt.show()
+            plt.close()
+
+        return plots, names
 
 def get_list_from_string(df, col):
     string_values = df[col][0]
