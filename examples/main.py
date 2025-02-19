@@ -14,7 +14,7 @@ numerical_features = ['CGM', 'insulin', 'carbs']
 categorical_features = ['hour']
 what_if_features = []
 subject_ids = []  # Add subject ids if you want to use only a subset of the subjects in the dataset
-show_plots = True  # Whether to show plots in a window. If false, they will still be saved to data/figures/
+show_plots = False  # Whether to show plots in a window. If false, they will still be saved to data/figures/
 wandb_project = None  # If you want to log figures in weights and biases, change to project name
 
 # Set whether to use mg/dL in visualizations and results
@@ -34,7 +34,7 @@ train_data, test_data = Preprocessor(subject_ids=subject_ids,
                                                                             add_what_if_features=True, dropna=True)
 x_train, y_train = gpk.features_target_split(train_data)
 zero_order_hold = ZeroOrderHold(prediction_horizon=prediction_horizon)
-naive_linear_regressor = NaiveLinearRegressor(prediction_horizon=prediction_horizon).fit(x_train, y_train)
+naive_linear_regressor = NaiveLinearRegressor(prediction_horizon=prediction_horizon)
 ridge = Ridge(prediction_horizon=prediction_horizon).fit(x_train, y_train)
 
 # Get results

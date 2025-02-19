@@ -1,34 +1,58 @@
-from sklearn.linear_model import LinearRegression
 from .base_model import BaseModel
 from glupredkit.helpers.scikit_learn import process_data
-from sklearn.multioutput import MultiOutputRegressor
 import numpy as np
 
 
 class Model(BaseModel):
     def __init__(self, prediction_horizon):
         super().__init__(prediction_horizon)
-
-        self.columns = ['CGM', 'CGM_5', 'CGM_10']
-        self.model = None
+        self.is_fitted = True
 
     def _fit_model(self, x_train, y_train, *args):
-        # Define the base regressor
-        base_regressor = LinearRegression()
-
-        # Wrap the base regressor with MultiOutputRegressor
-        multi_output_regressor = MultiOutputRegressor(base_regressor)
-
-        # Perform grid search to find the best parameters and fit the model
-        multi_output_regressor.fit(x_train[self.columns], y_train)
-
-        self.model = multi_output_regressor
         return self
 
     def _predict_model(self, x_test):
-        y_pred = self.model.predict(x_test[self.columns])
-        y_pred = np.array(y_pred)
-        return y_pred
+
+        """
+        Apply prediction function to each row of a DataFrame.
+
+        Args:
+            x_test (pd.DataFrame): DataFrame where each row contains exactly three numerical values.
+
+        Returns:
+            list of lists: Lists containing predicted trajectories for input each row.
+        """
+        steps = self.prediction_horizon // 5
+        predictions = x_test.apply(lambda row: self.predict_future_row(row, steps), axis=1)
+
+        return predictions
+
+    def predict_future_row(self, row, steps=1):
+        """
+        Predict future values based on the slope of the last three values in a row.
+
+        Args:
+            row (pd.Series): A row of the DataFrame with exactly three numerical values.
+            steps (int): Number of future steps to predict.
+
+        Returns:
+            list: Predicted future values.
+        """
+        # Compute slopes
+        diff1 = row['CGM_10'] - row['CGM_15']
+        diff2 = row['CGM_5'] - row['CGM_10']
+        diff3 = row['CGM'] - row['CGM_5']
+
+        slope = np.mean([diff1, diff2, diff3])
+
+        # Predict future values
+        predictions = [row['CGM']]
+        for _ in range(steps):
+            next_value = predictions[-1] + slope
+            predictions.append(next_value)
+
+        return predictions[1:]  # Remove the last known value
+
 
     def best_params(self):
         return None
