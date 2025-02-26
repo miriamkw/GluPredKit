@@ -25,7 +25,8 @@ class Parser(BaseParser):
         """
         file_path -- the file path to the T1DEXI dataset root folder.
         """
-        self.subject_ids = get_valid_subject_ids(file_path)[:3] # TODO!!!
+        print(f"Processing data from {file_path}")
+        self.subject_ids = get_valid_subject_ids(file_path)
         df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict = self.get_dataframes(file_path)
         df_resampled = self.resample_data(df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict)
         return df_resampled
@@ -35,7 +36,7 @@ class Parser(BaseParser):
         # Total: 763 with, 638 without MDI
         # We use only the subjects not on MDI in this parser
         processed_dfs = []
-
+        count = 1
         for subject_id in self.subject_ids:
             df_subject = df_glucose[df_glucose['id'] == subject_id].copy()
             df_subject = df_subject.resample('5min', label='right').mean()
@@ -107,6 +108,8 @@ class Parser(BaseParser):
             df_subject.sort_index(inplace=True)
 
             processed_dfs.append(df_subject)
+            print(f"{count}/{len(self.subject_ids)} are prepared")
+            count += 1
 
         df_final = pd.concat(processed_dfs)
         return df_final
@@ -117,12 +120,19 @@ class Parser(BaseParser):
         dataframes.
         """
         heartrate_dict = get_heartrate_dict(file_path, self.subject_ids)
+        print("Heartrate dict processed")
         df_glucose = get_df_glucose(file_path, self.subject_ids)
+        print("Glucose data processed")
         df_meals = get_df_meals(file_path, self.subject_ids)
+        print("Meal data processed")
         df_insulin = get_df_insulin(file_path, self.subject_ids)
+        print("Insulin data processed")
         df_bolus = get_df_bolus(df_insulin)
+        print("Bolus data processed")
         df_basal = get_df_basal(df_insulin)
+        print("Basal data processed")
         df_exercise = get_df_exercise(file_path, self.subject_ids)
+        print("Exercise data processed")
         return df_glucose, df_meals, df_bolus, df_basal, df_exercise, heartrate_dict
 
 
@@ -335,7 +345,7 @@ def get_df_from_zip_deflate_64(zip_path, file_name, subject_ids=None):
         with zip_file.open(matched_file) as xpt_file:
             df = xport.to_dataframe(xpt_file)  # Load the .xpt file into a DataFrame
 
-        if subject_ids:
+        if subject_ids is not None:
             df = df[df['USUBJID'].isin(subject_ids)]
         return df
 
