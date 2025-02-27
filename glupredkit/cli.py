@@ -137,12 +137,12 @@ def parse(parser, username, password, start_date, file_path, end_date, output_fi
         if file_path is None:
             raise ValueError(f"{parser} parser requires that you provide --file-path")
         else:
-            folder_1 = os.path.join(file_path, 'T1DEXI - DATA FOR UPLOAD')
+            folder_1 = os.path.join(file_path, 'T1DEXI.zip')
             parsed_data_1 = chosen_parser(file_path=folder_1)
             parsed_data_1 = helpers.add_is_test_column(parsed_data_1, test_size)
             save_data(output_file_name="T1DEXI", data=parsed_data_1)
 
-            folder_2 = os.path.join(file_path, 'T1DEXIP - DATA FOR UPLOAD')
+            folder_2 = os.path.join(file_path, 'T1DEXIP.zip')
             parsed_data_2 = chosen_parser(file_path=folder_2)
             parsed_data_2 = helpers.add_is_test_column(parsed_data_2, test_size)
             save_data(output_file_name="T1DEXIP", data=parsed_data_2)
