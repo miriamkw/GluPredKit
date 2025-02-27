@@ -48,6 +48,7 @@ class Parser(BaseParser):
                 df_subject_meal_grams = df_subject_meals[df_subject_meals['meal_grams'].notna()][['meal_grams']].resample('5min', label='right').sum()
                 df_subject_meal_name = df_subject_meals[df_subject_meals['meal_label'].notna()][['meal_label']].resample('5min', label='right').agg(
                     lambda x: ', '.join(x))
+
                 df_subject_carbs = df_subject_meals[df_subject_meals['carbs'].notna()][['carbs']].resample('5min', label='right').sum()
 
                 df_subject = pd.merge(df_subject, df_subject_meal_grams, on="date", how='outer')
@@ -56,11 +57,11 @@ class Parser(BaseParser):
 
                 # Fill NaN where numbers were turned to 0 or strings were turned to ''
                 df_subject['meal_grams'] = df_subject['meal_grams'].replace(0, np.nan)
-                df_subject['meal_label'] = df_subject['meal_label'].replace('', None)
+                df_subject['meal_label'] = df_subject['meal_label'].replace('', np.nan)
                 df_subject['carbs'] = df_subject['carbs'].replace(0, np.nan)
             else:
                 df_subject['meal_grams'] = np.nan
-                df_subject['meal_label'] = None
+                df_subject['meal_label'] = np.nan
                 df_subject['carbs'] = np.nan
 
             df_subject_bolus = df_bolus[df_bolus['id'] == subject_id].copy()
@@ -85,15 +86,17 @@ class Parser(BaseParser):
                                                                                                             label='right').mean()
                 df_subject_exercise_workout_duration = df_subject_exercise[['workout_duration']].resample('5min',
                                                                                                           label='right').sum()
+
                 df_subject = pd.merge(df_subject, df_subject_exercise_workout, on="date", how='outer')
                 df_subject = pd.merge(df_subject, df_subject_exercise_workout_intensity, on="date", how='outer')
                 df_subject = pd.merge(df_subject, df_subject_exercise_workout_duration, on="date", how='outer')
 
                 # Fill NaN for empty strings
-                df_subject['workout_label'] = df_subject['workout_label'].replace('', None)
+                df_subject['workout_label'] = df_subject['workout_label'].replace('', np.nan)
             else:
-                df_subject['workout_label'] = None
-                df_subject['workout_intensity'] = None
+                df_subject['workout_label'] = np.nan
+                df_subject['workout_intensity'] = np.nan
+                df_subject['workout_duration'] = np.nan
 
             if subject_id in heartrate_dict and not heartrate_dict[subject_id].empty:
                 df_subject_heartrate = heartrate_dict[subject_id]
@@ -106,6 +109,9 @@ class Parser(BaseParser):
             # Some rows might have gotten added nan values for the subject id after resampling
             df_subject['id'] = subject_id
             df_subject.sort_index(inplace=True)
+
+            # Ensuring homogenous time intervals
+            df_subject = df_subject.resample('5T').asfreq()
 
             processed_dfs.append(df_subject)
             print(f"{count}/{len(self.subject_ids)} are prepared")
@@ -268,7 +274,7 @@ def get_df_basal(df_insulin):
 
 
 def get_df_exercise(file_path, subject_ids):
-    df_exercise = get_df_from_zip_deflate_64(file_path, 'PR.xpt', subject_ids=subject_ids)
+    df_exercise = get_df_from_zip_deflate_64(file_path, '/PR.xpt', subject_ids=subject_ids)
     df_exercise.loc[:, 'PRSTDTC'] = create_sas_date_for_column(df_exercise['PRSTDTC'])
 
     if 'T1DEXIP' in file_path:
@@ -335,6 +341,7 @@ def get_df_from_zip_deflate_64(zip_path, file_name, subject_ids=None):
     with zipfile_deflate64.ZipFile(zip_path, 'r') as zip_file:
         # Find the file in the archive that ends with the specified file_name
         matched_files = [f for f in zip_file.namelist() if f.endswith(file_name)]
+
         if not matched_files:
             raise FileNotFoundError(f"No file ending with '{file_name}' found in the zip archive.")
 
